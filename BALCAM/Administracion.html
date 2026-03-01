@@ -81,7 +81,9 @@ nav{
 .flow-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;}
 .flow-name{font-size:13px;font-weight:600;}
 .flow-check{margin-left:auto;color:var(--green);}
-.flow-connector{width:2px;height:10px;background:var(--border);margin:0 0 2px 22px;}
+@keyframes spin  { to { transform:rotate(360deg); } }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.4;} }
+
 
 /* Reloj */
 .clock-card{background:linear-gradient(135deg,#1e1b4b,#312e81);color:#fff;padding:18px 20px;}
@@ -681,8 +683,8 @@ nav{
           </div>
 
           <!-- Botón actualizar -->
-          <button onclick="admActualizarEstadoPreg()"
-            style="padding:10px 20px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap;box-shadow:0 4px 14px rgba(124,58,237,.3);">
+          <button onclick="admActualizarTodo()"
+            style="padding:10px 20px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap;box-shadow:0 4px 14px rgba(124,58,237,.3);" id="adm-btn-actualizar">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
             Actualizar
           </button>
@@ -760,15 +762,22 @@ nav{
 
           <!-- Tabla Totalizadas -->
           <div class="card" style="padding:0;overflow:hidden;">
-            <div style="padding:16px 20px;border-bottom:1px solid #f3f0ff;display:flex;align-items:center;justify-content:space-between;">
-              <div>
-                <div style="font-size:13px;font-weight:800;color:var(--text);">Respuestas Totalizadas</div>
-                <div style="font-size:11px;color:var(--muted);margin-top:1px;">Por opción de voto</div>
+            <div style="padding:14px 20px;border-bottom:1px solid #f3f0ff;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div>
+                  <div style="font-size:13px;font-weight:800;color:var(--text);">Respuestas Totalizadas</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:1px;">Por opción de voto</div>
+                </div>
+                <button onclick="exportarResTotal()" style="background:#f3f0ff;border:1px solid #ddd6fe;color:#7c3aed;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  CSV
+                </button>
               </div>
-              <button onclick="exportarResTotal()" style="background:#f3f0ff;border:1px solid #ddd6fe;color:#7c3aed;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;">
-                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                CSV
-              </button>
+              <div style="position:relative;">
+                <svg width="13" height="13" fill="none" stroke="#94a3b8" stroke-width="2" viewBox="0 0 24 24" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input id="bus-total" type="text" placeholder="Buscar opción…" oninput="filtrarTablaTotal()"
+                  style="width:100%;box-sizing:border-box;padding:7px 12px 7px 30px;border:1.5px solid #e8e3ff;border-radius:8px;font-size:12px;color:var(--text);outline:none;background:#faf8ff;">
+              </div>
             </div>
             <div style="overflow-x:auto;">
               <table style="width:100%;border-collapse:collapse;font-size:13px;" id="adm-total-tabla">
@@ -788,15 +797,22 @@ nav{
 
           <!-- Tabla Votos por Unidad -->
           <div class="card" style="padding:0;overflow:hidden;">
-            <div style="padding:16px 20px;border-bottom:1px solid #f3f0ff;display:flex;align-items:center;justify-content:space-between;">
-              <div>
-                <div id="adm-votos-titulo" style="font-size:13px;font-weight:800;color:var(--text);">Respuestas por Unidad</div>
-                <div style="font-size:11px;color:var(--muted);margin-top:1px;">Detalle individual</div>
+            <div style="padding:14px 20px;border-bottom:1px solid #f3f0ff;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div>
+                  <div id="adm-votos-titulo" style="font-size:13px;font-weight:800;color:var(--text);">Respuestas por Unidad</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:1px;">Detalle individual</div>
+                </div>
+                <button onclick="exportarResUnidad()" style="background:#f3f0ff;border:1px solid #ddd6fe;color:#7c3aed;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  CSV
+                </button>
               </div>
-              <button onclick="exportarResUnidad()" style="background:#f3f0ff;border:1px solid #ddd6fe;color:#7c3aed;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;">
-                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                CSV
-              </button>
+              <div style="position:relative;">
+                <svg width="13" height="13" fill="none" stroke="#94a3b8" stroke-width="2" viewBox="0 0 24 24" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input id="bus-votos" type="text" placeholder="Buscar unidad o respuesta…" oninput="filtrarTablaVotos()"
+                  style="width:100%;box-sizing:border-box;padding:7px 12px 7px 30px;border:1.5px solid #e8e3ff;border-radius:8px;font-size:12px;color:var(--text);outline:none;background:#faf8ff;">
+              </div>
             </div>
             <div style="overflow-x:auto;max-height:320px;overflow-y:auto;">
               <table style="width:100%;border-collapse:collapse;font-size:13px;">
@@ -816,15 +832,22 @@ nav{
 
         <!-- Tabla Sin votar -->
         <div class="card" style="padding:0;overflow:hidden;">
-          <div style="padding:16px 20px;border-bottom:1px solid #f3f0ff;display:flex;align-items:center;justify-content:space-between;">
-            <div>
-              <div id="adm-sinvoto-titulo" style="font-size:13px;font-weight:800;color:var(--text);">Unidades sin votar</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:1px;">Pendientes por emitir voto</div>
+          <div style="padding:14px 20px;border-bottom:1px solid #f3f0ff;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <div>
+                <div id="adm-sinvoto-titulo" style="font-size:13px;font-weight:800;color:var(--text);">Unidades sin votar</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:1px;">Pendientes por emitir voto</div>
+              </div>
+              <button onclick="exportarSinVoto()" style="background:#fff0f0;border:1px solid #fecaca;color:#dc2626;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;">
+                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                CSV
+              </button>
             </div>
-            <button onclick="exportarSinVoto()" style="background:#fff0f0;border:1px solid #fecaca;color:#dc2626;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;">
-              <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              CSV
-            </button>
+            <div style="position:relative;">
+              <svg width="13" height="13" fill="none" stroke="#b91c1c" stroke-width="2" viewBox="0 0 24 24" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input id="bus-sinvoto" type="text" placeholder="Buscar unidad pendiente…" oninput="filtrarTablaSinVoto()"
+                style="width:100%;box-sizing:border-box;padding:7px 12px 7px 30px;border:1.5px solid #fecaca;border-radius:8px;font-size:12px;color:var(--text);outline:none;background:#fff8f8;">
+            </div>
           </div>
           <div style="overflow-x:auto;max-height:280px;overflow-y:auto;">
             <table style="width:100%;border-collapse:collapse;font-size:13px;">
@@ -1642,6 +1665,71 @@ async function admActualizarEstadoPreg() {
   admPregActual.estado = nuevoEstado;
   renderEstadoChip(nuevoEstado);
   toast("Estado actualizado: " + nuevoEstado, "ok");
+}
+
+// Actualizar TODO: recarga preguntas desde Supabase + votos + resultados
+async function admActualizarTodo() {
+  const btn = document.getElementById("adm-btn-actualizar");
+  btn.disabled = true;
+  btn.innerHTML = `<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="animation:spin .7s linear infinite"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Actualizando…`;
+
+  // 1. Recargar lista de preguntas (por si se agregaron desde Panel)
+  const prevId = admPregActual?.id || null;
+  await cargarPreguntasAdmin();
+
+  // 2. Si había una pregunta seleccionada, mantenerla y recargar sus datos
+  if (prevId) {
+    document.getElementById("adm-preg-sel").value = prevId;
+    admPregActual = admPreguntas.find(p=>p.id===prevId) || null;
+    if (admPregActual) {
+      // Actualizar estado en Supabase también
+      const nuevoEstado = document.getElementById("adm-preg-estado").value;
+      if (nuevoEstado !== admPregActual.estado) {
+        const { error } = await sb.from("preguntas").update({ estado: nuevoEstado }).eq("id", admPregActual.id);
+        if (!error) { admPregActual.estado = nuevoEstado; renderEstadoChip(nuevoEstado); }
+      }
+      await Promise.all([cargarVotos(), cargarUnidadesAdmin(), cargarParticipAdmin()]);
+      renderResultados();
+      // Limpiar buscadores
+      ["bus-total","bus-votos","bus-sinvoto"].forEach(id => {
+        const el = document.getElementById(id); if(el) el.value="";
+      });
+    }
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Actualizar`;
+  toast("Todo actualizado ✓","ok");
+}
+
+// ── BUSCADORES DE TABLAS ───────────────────────────────────────────────────────
+function filtrarTablaTotal() {
+  const q = (document.getElementById("bus-total").value||"").toLowerCase().trim();
+  const rows = document.getElementById("adm-total-tbody")?.querySelectorAll("tr") || [];
+  rows.forEach(tr => {
+    // No ocultar filas de totales (tienen colspan)
+    if (tr.querySelector("td[colspan]")) return;
+    const txt = tr.textContent.toLowerCase();
+    tr.style.display = (!q || txt.includes(q)) ? "" : "none";
+  });
+}
+
+function filtrarTablaVotos() {
+  const q = (document.getElementById("bus-votos").value||"").toLowerCase().trim();
+  const rows = document.getElementById("adm-votos-tbody")?.querySelectorAll("tr") || [];
+  rows.forEach(tr => {
+    const txt = tr.textContent.toLowerCase();
+    tr.style.display = (!q || txt.includes(q)) ? "" : "none";
+  });
+}
+
+function filtrarTablaSinVoto() {
+  const q = (document.getElementById("bus-sinvoto").value||"").toLowerCase().trim();
+  const rows = document.getElementById("adm-sinvoto-tbody")?.querySelectorAll("tr") || [];
+  rows.forEach(tr => {
+    const txt = tr.textContent.toLowerCase();
+    tr.style.display = (!q || txt.includes(q)) ? "" : "none";
+  });
 }
 
 function renderEstadoChip(estado) {
