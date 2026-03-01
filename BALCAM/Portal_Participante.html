@@ -196,6 +196,35 @@ body{
 /* Toast */
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);padding:12px 20px;border-radius:12px;font-size:13px;font-weight:700;color:#fff;opacity:0;pointer-events:none;transition:all .3s;z-index:999;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.3);}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ── STATS BAR ── */
+.stats-bar{
+  background:var(--card);border:1px solid var(--border);border-radius:20px;
+  padding:18px 20px;margin-bottom:16px;
+  animation:slide-in .4s ease;
+}
+.stats-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:14px;}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.stat-item{}
+.stat-val{font-size:26px;font-weight:900;color:#fff;line-height:1;margin-bottom:3px;}
+.stat-val .stat-of{font-size:14px;font-weight:600;color:var(--muted);}
+.stat-lbl{font-size:11px;color:var(--muted);margin-bottom:7px;}
+.stat-track{height:6px;background:rgba(124,58,237,.15);border-radius:20px;overflow:hidden;margin-bottom:4px;}
+.stat-fill{height:100%;border-radius:20px;transition:width 1s ease;min-width:4px;}
+.stat-pct{font-size:11px;font-weight:700;color:rgba(255,255,255,.5);}
+.quorum-badge{
+  margin-top:12px;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);
+  border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;color:#6ee7b7;
+  text-align:center;
+}
+/* ── MORA BLOQUEO ── */
+.mora-bloqueo{
+  background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.25);
+  border-radius:22px;padding:40px 24px;text-align:center;margin-top:16px;
+}
+.mora-titulo{font-size:22px;font-weight:900;color:#fca5a5;margin-bottom:10px;}
+.mora-sub{font-size:14px;color:rgba(255,255,255,.7);line-height:1.6;margin-bottom:14px;}
+.mora-contacto{font-size:12px;color:rgba(255,255,255,.4);border-top:1px solid rgba(255,255,255,.1);padding-top:14px;margin-top:14px;}
 </style>
 </head>
 <body>
@@ -227,7 +256,7 @@ const sb = supabase.createClient(
   "sb_publishable_e1x6gdl3QHjwdKa5UIjYxQ_eMkUaTad"
 );
 
-// Recuperar sesión del participante
+// ── SESIÓN ────────────────────────────────────────────
 const SS = {
   unidadId: sessionStorage.getItem("part_unidad_id"),
   codigo:   sessionStorage.getItem("part_codigo"),
@@ -235,35 +264,32 @@ const SS = {
   evId:     sessionStorage.getItem("part_ev_id"),
   orgId:    sessionStorage.getItem("part_org_id"),
 };
+const EV_ID  = SS.evId;
+const ORG_ID = SS.orgId;
 
-const params = new URLSearchParams(location.search);
-const EV_ID  = SS.evId  || params.get("ev");
-const ORG_ID = SS.orgId || params.get("org");
+let evData      = null;   // datos del evento (incluye toggles de config)
+let preguntas   = [];     // preguntas activas
+let misVotos    = {};     // {pregId: respuesta}
+let unidadInfo  = null;   // {en_mora, coeficiente}
+let statsGlobal = {};     // {total_participantes, total_votaron_preg}
 
-let evData      = null;
-let preguntas   = [];
-let misVotos    = {};  // id_pregunta -> respuesta
-let realtimeCh  = null;
-
-// ── INIT ─────────────────────────────────────────────
+// ── INIT ──────────────────────────────────────────────
 async function init() {
-  // Si no hay sesión, volver al login
   if (!SS.unidadId || !EV_ID) {
     location.href = `Login_Participante.html?ev=${EV_ID||""}&org=${ORG_ID||""}`;
     return;
   }
-  // Poblar nav
   document.getElementById("nav-nombre").textContent = SS.nombre || "Participante";
   document.getElementById("nav-unidad").textContent = "Unidad " + (SS.codigo || "—");
 
-  await Promise.all([cargarEvento(), cargarMisVotos()]);
+  await Promise.all([cargarEvento(), cargarMisVotos(), cargarUnidadInfo()]);
   suscribirRealtime();
 }
 
 // ── CARGAR EVENTO ─────────────────────────────────────
 async function cargarEvento() {
   const { data } = await sb.from("eventos")
-    .select("id,nombre,estado,tipo,ocultar_graficos")
+    .select("id,nombre,estado,tipo,ocultar_graficos,permitir_voto_mora,permitir_cambiar_respuestas,restringir_acceso,permitir_registro_iniciado,fecha,quorum_minimo")
     .eq("id", EV_ID).single();
   if (!data) return;
   evData = data;
@@ -272,31 +298,72 @@ async function cargarEvento() {
   await cargarPreguntas();
 }
 
+// ── CARGAR UNIDAD INFO ────────────────────────────────
+async function cargarUnidadInfo() {
+  const { data } = await sb.from("unidades")
+    .select("en_mora,coeficiente").eq("id", SS.unidadId).single();
+  unidadInfo = data || { en_mora: false, coeficiente: 0 };
+}
+
 // ── CARGAR MIS VOTOS ──────────────────────────────────
 async function cargarMisVotos() {
   const { data } = await sb.from("votos")
     .select("id_pregunta,respuesta")
     .eq("id_evento", EV_ID)
     .eq("id_unidad", SS.unidadId);
+  misVotos = {};
   (data||[]).forEach(v => { misVotos[v.id_pregunta] = v.respuesta; });
 }
 
-// ── CARGAR PREGUNTAS ──────────────────────────────────
+// ── CARGAR PREGUNTAS ACTIVAS ──────────────────────────
 async function cargarPreguntas() {
   const { data } = await sb.from("preguntas")
     .select("*")
     .eq("id_evento", EV_ID)
-    .eq("estado", "activa")
+    .eq("estado", "Activa")
     .order("orden");
   preguntas = data || [];
+  await cargarStatsParticipacion();
   renderMain();
+}
+
+// ── STATS PARTICIPACIÓN ───────────────────────────────
+async function cargarStatsParticipacion() {
+  // Total registrados
+  const { count: totalPart } = await sb.from("participantes")
+    .select("*", { count:"exact", head:true })
+    .eq("id_evento", EV_ID);
+
+  // Total que han votado (al menos una pregunta)
+  const { count: totalVotaron } = await sb.from("votos")
+    .select("*", { count:"exact", head:true })
+    .eq("id_evento", EV_ID);
+
+  // Coeficiente total votado (suma de coeficientes distintos por unidad)
+  const { data: votosPrimer } = await sb.from("votos")
+    .select("id_unidad,coeficiente")
+    .eq("id_evento", EV_ID);
+
+  let coefVotado = 0;
+  const unidadesContadas = new Set();
+  (votosPrimer||[]).forEach(v => {
+    if (!unidadesContadas.has(v.id_unidad)) {
+      unidadesContadas.add(v.id_unidad);
+      coefVotado += parseFloat(String(v.coeficiente||0).replace(",",".")) || 0;
+    }
+  });
+
+  statsGlobal = {
+    totalPart: totalPart || 0,
+    totalVotaron: unidadesContadas.size,
+    coefVotado,
+  };
 }
 
 // ── RENDER PRINCIPAL ──────────────────────────────────
 function renderMain() {
   const main = document.getElementById("main");
 
-  // Estado del evento
   const estadoMap = {
     "Creado":      ["chip-creado",   "Creado"],
     "En registro": ["chip-registro", "En registro"],
@@ -312,19 +379,27 @@ function renderMain() {
     </div>
   `;
 
-  // Si el evento no está en curso, mostrar espera
+  // Bloqueo si unidad en mora y no está permitido
+  const bloqueadoPorMora = unidadInfo?.en_mora && !evData?.permitir_voto_mora;
+
+  if (bloqueadoPorMora) {
+    html += renderMoraBloqueo();
+    main.innerHTML = html;
+    return;
+  }
+
+  // Evento no en curso
   if (!evData || evData.estado !== "En curso") {
     const msgs = {
       "Creado":      { ico:"📋", t:"Evento no iniciado",   s:"El administrador aún no ha iniciado el evento. Por favor espera." },
       "En registro": { ico:"📝", t:"Registro en proceso",  s:"El registro está abierto. El evento comenzará pronto." },
       "Cerrado":     { ico:"🔒", t:"Evento finalizado",    s:"Este evento ya ha concluido. Gracias por participar." },
     };
-    const m = msgs[evData?.estado] || { ico:"⏳", t:"Esperando…", s:"Por favor espera las instrucciones." };
+    const m = msgs[evData?.estado] || { ico:"⏳", t:"Esperando…", s:"Por favor espera." };
     html += `
       <div class="esperando">
         <div class="esp-anim">
-          <div class="esp-ring"></div>
-          <div class="esp-ring2"></div>
+          <div class="esp-ring"></div><div class="esp-ring2"></div>
           <div class="esp-dot">${m.ico}</div>
         </div>
         <div class="esp-title">${m.t}</div>
@@ -338,19 +413,21 @@ function renderMain() {
     return;
   }
 
-  // Evento en curso — mostrar preguntas
+  // ── GRÁFICA GENERAL DE PARTICIPACIÓN ──
+  html += renderStatsBar();
+
+  // Sin preguntas activas
   if (!preguntas.length) {
     html += `
       <div class="sin-preg">
         <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         <h3>Sin preguntas activas</h3>
-        <p>El administrador aún no ha activado preguntas para votar.</p>
+        <p>El administrador activará las preguntas en breve.</p>
       </div>`;
     main.innerHTML = html;
     return;
   }
 
-  // Renderizar cada pregunta
   preguntas.forEach((preg, idx) => {
     const yaVote = misVotos[preg.id];
     const opciones = Array.isArray(preg.opciones) ? preg.opciones : [];
@@ -358,10 +435,64 @@ function renderMain() {
   });
 
   main.innerHTML = html;
+
+  // Cargar resultados de preguntas ya votadas
+  if (!evData?.ocultar_graficos) {
+    preguntas.forEach(p => { if (misVotos[p.id]) cargarResultados(p.id); });
+  }
 }
 
+// ── BARRA STATS DE PARTICIPACIÓN ─────────────────────
+function renderStatsBar() {
+  const total  = statsGlobal.totalPart || 0;
+  const votaron = statsGlobal.totalVotaron || 0;
+  const pctNom  = total > 0 ? Math.round((votaron / total) * 100) : 0;
+  const coefPct = (statsGlobal.coefVotado * 100).toFixed(2);
+  const quorumMin = parseFloat(String(evData?.quorum_minimo||0).replace(",",".")) || 0;
+  const quorumAlc = quorumMin > 0 ? Math.min(((statsGlobal.coefVotado / quorumMin) * 100), 100).toFixed(1) : null;
+  const quorumColor = quorumAlc >= 100 ? "#4ade80" : quorumAlc >= 50 ? "#fbbf24" : "#c4b5fd";
+
+  return `
+  <div class="stats-bar">
+    <div class="stats-title">📊 Participación en tiempo real</div>
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-val">${votaron}<span class="stat-of">/${total}</span></div>
+        <div class="stat-lbl">Unidades votando</div>
+        <div class="stat-track"><div class="stat-fill" style="width:${pctNom}%;background:linear-gradient(90deg,#7c3aed,#c026d3);"></div></div>
+        <div class="stat-pct">${pctNom}%</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val" style="color:${quorumColor};">${coefPct}%</div>
+        <div class="stat-lbl">Coeficiente votado</div>
+        ${quorumAlc !== null ? `
+        <div class="stat-track"><div class="stat-fill" style="width:${Math.min(quorumAlc,100)}%;background:linear-gradient(90deg,${quorumColor},${quorumColor}88);"></div></div>
+        <div class="stat-pct" style="color:${quorumColor};">${quorumAlc}% del quórum</div>
+        ` : `<div style="height:14px;"></div>`}
+      </div>
+    </div>
+    ${quorumAlc >= 100 ? `<div class="quorum-badge">✓ Quórum alcanzado</div>` : ""}
+  </div>`;
+}
+
+// ── BLOQUEO MORA ──────────────────────────────────────
+function renderMoraBloqueo() {
+  return `
+  <div class="mora-bloqueo">
+    <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
+    <div class="mora-titulo">Unidad en mora</div>
+    <div class="mora-sub">
+      La unidad <strong>${SS.codigo}</strong> tiene cartera pendiente.<br>
+      Para participar en la votación debes ponerte al día.
+    </div>
+    <div class="mora-contacto">Comunícate con la Administración para más información.</div>
+  </div>`;
+}
+
+// ── RENDER PREGUNTA ───────────────────────────────────
 function renderPregunta(preg, idx, yaVote, opciones) {
   const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const puedeEditar = yaVote && evData?.permitir_cambiar_respuestas;
 
   let html = `<div class="pregunta-card" id="preg-${preg.id}" style="margin-bottom:16px;">
     <div class="preg-head">
@@ -371,29 +502,55 @@ function renderPregunta(preg, idx, yaVote, opciones) {
     </div>
     <div class="preg-body">`;
 
-  if (yaVote) {
-    // Ya votó — mostrar badge + resultados si están habilitados
+  if (yaVote && !puedeEditar) {
+    // Votó y no puede cambiar
     html += `<div class="votado-badge">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
       Tu voto: <strong>${yaVote}</strong>
     </div>`;
-
     if (!evData?.ocultar_graficos) {
       html += `<div id="res-${preg.id}"><div class="spin-dark" style="width:24px;height:24px;margin:8px auto;"></div></div>`;
     }
-  } else {
-    // Mostrar opciones para votar
+  } else if (yaVote && puedeEditar) {
+    // Votó pero puede cambiar — mostrar opciones con la actual marcada + botón cambiar
+    html += `<div class="votado-badge" style="background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#fcd34d;">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      Votaste: <strong>${yaVote}</strong> — <span style="opacity:.7;font-size:12px;">puedes cambiar</span>
+    </div>`;
     html += `<div class="opciones" id="ops-${preg.id}">`;
     opciones.forEach((op, i) => {
       const texto = typeof op === "object" ? op.texto : op;
-      html += `<div class="opcion" id="op-${preg.id}-${i}" onclick="seleccionar('${preg.id}',${i},'${texto.replace(/'/g,"\\'")}')">
+      const esMio = texto === yaVote;
+      html += `<div class="opcion${esMio?" selected":""}" id="op-${preg.id}-${i}" onclick="seleccionar('${preg.id}',${i},'${texto.replace(/'/g,"\\'")}')">
         <div class="op-radio"><div class="op-check"></div></div>
         <div class="op-letra">${letras[i]}</div>
         <div class="op-text">${texto}</div>
       </div>`;
     });
     html += `</div>
-    <button class="btn-votar" id="btnv-${preg.id}" onclick="votar('${preg.id}')" disabled>
+    <button class="btn-votar" id="btnv-${preg.id}" onclick="votar('${preg.id}')"
+      style="background:linear-gradient(135deg,#d97706,#f59e0b);">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+      Cambiar respuesta
+    </button>`;
+    if (!evData?.ocultar_graficos) {
+      html += `<div id="res-${preg.id}" style="margin-top:12px;"><div class="spin-dark" style="width:24px;height:24px;margin:8px auto;"></div></div>`;
+    }
+  } else {
+    // Sin voto — mostrar opciones normales
+    const selActual = selecciones[preg.id];
+    html += `<div class="opciones" id="ops-${preg.id}">`;
+    opciones.forEach((op, i) => {
+      const texto = typeof op === "object" ? op.texto : op;
+      const esSel = selActual?.idx === i;
+      html += `<div class="opcion${esSel?" selected":""}" id="op-${preg.id}-${i}" onclick="seleccionar('${preg.id}',${i},'${texto.replace(/'/g,"\\'")}')">
+        <div class="op-radio"><div class="op-check"></div></div>
+        <div class="op-letra">${letras[i]}</div>
+        <div class="op-text">${texto}</div>
+      </div>`;
+    });
+    html += `</div>
+    <button class="btn-votar" id="btnv-${preg.id}" onclick="votar('${preg.id}')" ${selActual?"":"disabled"}>
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
       Confirmar voto
     </button>`;
@@ -403,14 +560,14 @@ function renderPregunta(preg, idx, yaVote, opciones) {
   return html;
 }
 
-// Selección temporal en el DOM
+// ── SELECCIÓN TEMPORAL ────────────────────────────────
 const selecciones = {};
 function seleccionar(pregId, idx, texto) {
   selecciones[pregId] = { idx, texto };
-  // Visual
   document.querySelectorAll(`#ops-${pregId} .opcion`).forEach(el => el.classList.remove("selected"));
   document.getElementById(`op-${pregId}-${idx}`)?.classList.add("selected");
-  document.getElementById(`btnv-${pregId}`)?.removeAttribute("disabled");
+  const btn = document.getElementById(`btnv-${pregId}`);
+  if (btn) btn.removeAttribute("disabled");
 }
 
 // ── VOTAR ─────────────────────────────────────────────
@@ -419,15 +576,10 @@ async function votar(pregId) {
   if (!sel) return;
 
   const btn = document.getElementById(`btnv-${pregId}`);
-  btn.disabled = true;
-  btn.innerHTML = `<div class="spin"></div>Enviando…`;
+  if (btn) { btn.disabled = true; btn.innerHTML = `<div class="spin"></div>Enviando…`; }
 
-  // Obtener coeficiente de la unidad
-  const { data: unidadData } = await sb.from("unidades")
-    .select("coeficiente").eq("id", SS.unidadId).single();
-  const coef = unidadData?.coeficiente || 0;
+  const coef = parseFloat(String(unidadInfo?.coeficiente||0).replace(",",".")) || 0;
 
-  // Upsert — si ya votó, actualiza; si no, inserta
   const { error } = await sb.from("votos").upsert({
     id_pregunta:  pregId,
     id_evento:    EV_ID,
@@ -437,29 +589,34 @@ async function votar(pregId) {
   }, { onConflict: "id_pregunta,id_unidad" });
 
   if (error) {
-    btn.disabled = false;
-    btn.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Confirmar voto`;
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Confirmar voto`;
+    }
     toast("Error al votar. Intenta de nuevo.", "err");
     return;
   }
 
+  const esCambio = !!misVotos[pregId];
   misVotos[pregId] = sel.texto;
-  toast("✓ Voto registrado correctamente", "ok");
+  toast(esCambio ? "✓ Respuesta actualizada" : "✓ Voto registrado correctamente", "ok");
 
-  // Cargar resultados si no están ocultos
-  if (!evData?.ocultar_graficos) {
-    await cargarResultados(pregId);
-  }
+  await cargarStatsParticipacion();
 
-  // Re-render solo esta pregunta
+  // Re-render esta pregunta
   const idx = preguntas.findIndex(p => p.id === pregId);
   const preg = preguntas[idx];
-  const opciones = Array.isArray(preg.opciones) ? preg.opciones : [];
+  const opciones = Array.isArray(preg?.opciones) ? preg.opciones : [];
   const card = document.getElementById(`preg-${pregId}`);
   if (card) {
     card.outerHTML = renderPregunta(preg, idx, sel.texto, opciones);
-    if (!evData?.ocultar_graficos) cargarResultados(pregId);
   }
+
+  // Actualizar barra de stats
+  const statsEl = document.querySelector(".stats-bar");
+  if (statsEl) statsEl.outerHTML = renderStatsBar();
+
+  if (!evData?.ocultar_graficos) cargarResultados(pregId);
 }
 
 // ── RESULTADOS ────────────────────────────────────────
@@ -470,40 +627,46 @@ async function cargarResultados(pregId) {
 
   if (!votos?.length) return;
 
-  // Agrupar por respuesta y sumar coeficientes
   const totales = {};
-  let sumTotal = 0;
+  let sumCoef = 0;
+  let countTotal = votos.length;
   votos.forEach(v => {
     const r = v.respuesta || "—";
     const c = parseFloat(String(v.coeficiente||0).replace(",",".")) || 0;
     totales[r] = (totales[r] || 0) + c;
-    sumTotal += c;
+    sumCoef += c;
   });
 
-  const preg = preguntas.find(p => p.id === pregId);
+  const preg    = preguntas.find(p => p.id === pregId);
   const opciones = Array.isArray(preg?.opciones) ? preg.opciones : [];
-  const miVoto = misVotos[pregId];
+  const miVoto   = misVotos[pregId];
 
   let html = `<div class="resultado-card">
-    <div class="res-title">📊 Resultados en tiempo real — ${votos.length} voto${votos.length!==1?"s":""}</div>`;
+    <div class="res-title">📊 Resultados en tiempo real — ${countTotal} voto${countTotal!==1?"s":""}</div>`;
 
-  // Ordenar opciones de mayor a menor
   const resOrdenados = opciones.map(op => {
     const texto = typeof op === "object" ? op.texto : op;
-    const coef = totales[texto] || 0;
-    const pct = sumTotal > 0 ? (coef / sumTotal) * 100 : 0;
-    return { texto, coef, pct };
+    const coef  = totales[texto] || 0;
+    const pct   = sumCoef > 0 ? (coef / sumCoef) * 100 : 0;
+    const count = votos.filter(v => v.respuesta === texto).length;
+    return { texto, coef, pct, count };
   }).sort((a,b) => b.pct - a.pct);
 
   resOrdenados.forEach(r => {
     const esMiVoto = r.texto === miVoto;
+    const barColor = esMiVoto
+      ? "background:linear-gradient(90deg,var(--p2),var(--pink));"
+      : "background:rgba(124,58,237,.3);";
     html += `<div class="res-barra-wrap">
       <div class="res-label">
         <span>${r.texto}${esMiVoto ? '<span class="mi-voto-badge">✓ Mi voto</span>' : ''}</span>
-        <span class="pct">${r.pct.toFixed(1)}%</span>
+        <span style="display:flex;gap:8px;align-items:center;">
+          <span style="font-size:11px;color:var(--muted);">${r.count} unid.</span>
+          <span class="pct">${r.pct.toFixed(1)}%</span>
+        </span>
       </div>
       <div class="res-barra-bg">
-        <div class="res-barra ${esMiVoto?"mi-voto":"otro"}" style="width:${r.pct}%"></div>
+        <div class="res-barra" style="width:${r.pct}%;${barColor}"></div>
       </div>
     </div>`;
   });
@@ -516,28 +679,27 @@ async function cargarResultados(pregId) {
 
 // ── REALTIME ──────────────────────────────────────────
 function suscribirRealtime() {
-  // Escuchar cambios en el evento (estado, ocultar_graficos)
   sb.channel(`portal-ev-${EV_ID}`)
     .on("postgres_changes", {
       event: "UPDATE", schema: "public", table: "eventos",
       filter: `id=eq.${EV_ID}`
     }, async (payload) => {
       evData = { ...evData, ...payload.new };
-      await cargarPreguntas();
+      await Promise.all([cargarPreguntas(), cargarStatsParticipacion()]);
     })
-    // Escuchar nuevas preguntas activas
     .on("postgres_changes", {
       event: "*", schema: "public", table: "preguntas",
       filter: `id_evento=eq.${EV_ID}`
     }, async () => {
       await cargarPreguntas();
     })
-    // Escuchar nuevos votos para actualizar gráficas en vivo
     .on("postgres_changes", {
       event: "*", schema: "public", table: "votos",
       filter: `id_evento=eq.${EV_ID}`
-    }, () => {
-      // Refrescar resultados de preguntas ya votadas
+    }, async () => {
+      await cargarStatsParticipacion();
+      const statsEl = document.querySelector(".stats-bar");
+      if (statsEl) statsEl.outerHTML = renderStatsBar();
       Object.keys(misVotos).forEach(pregId => {
         if (!evData?.ocultar_graficos) cargarResultados(pregId);
       });
