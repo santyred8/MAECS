@@ -282,20 +282,42 @@ async function init() {
   document.getElementById("nav-nombre").textContent = SS.nombre || "Participante";
   document.getElementById("nav-unidad").textContent = "Unidad " + (SS.codigo || "—");
 
-  await Promise.all([cargarEvento(), cargarMisVotos(), cargarUnidadInfo()]);
-  suscribirRealtime();
+  try {
+    await Promise.all([cargarEvento(), cargarMisVotos(), cargarUnidadInfo()]);
+    suscribirRealtime();
+  } catch(e) {
+    mostrarError("Error al cargar el portal. Recarga la página.");
+  }
+}
+
+function mostrarError(msg) {
+  document.getElementById("main").innerHTML = `
+    <div style="text-align:center;padding:60px 20px;">
+      <div style="font-size:40px;margin-bottom:16px;">⚠️</div>
+      <div style="font-size:16px;font-weight:700;color:#f87171;margin-bottom:8px;">${msg}</div>
+      <button onclick="location.reload()" style="margin-top:16px;padding:12px 24px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">
+        🔄 Reintentar
+      </button>
+    </div>`;
 }
 
 // ── CARGAR EVENTO ─────────────────────────────────────
 async function cargarEvento() {
-  const { data } = await sb.from("eventos")
-    .select("id,nombre,estado,tipo,ocultar_graficos,permitir_voto_mora,permitir_cambiar_respuestas,restringir_acceso,permitir_registro_iniciado,fecha,quorum_minimo")
-    .eq("id", EV_ID).single();
-  if (!data) return;
-  evData = data;
-  document.title = data.nombre + " — Portal";
-  document.getElementById("nav-ev").textContent = data.nombre;
-  await cargarPreguntas();
+  try {
+    const { data } = await sb.from("eventos")
+      .select("id,nombre,estado,tipo,ocultar_graficos,permitir_voto_mora,permitir_cambiar_respuestas,restringir_acceso,permitir_registro_iniciado,fecha,quorum_minimo")
+      .eq("id", EV_ID).single();
+    if (!data) {
+      mostrarError("No se encontró el evento. Verifica el enlace.");
+      return;
+    }
+    evData = data;
+    document.title = data.nombre + " — Portal";
+    document.getElementById("nav-ev").textContent = data.nombre;
+    await cargarPreguntas();
+  } catch(e) {
+    mostrarError("Error de conexión. Recarga la página.");
+  }
 }
 
 // ── CARGAR UNIDAD INFO ────────────────────────────────
@@ -593,7 +615,12 @@ async function votar(pregId) {
       btn.disabled = false;
       btn.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Confirmar voto`;
     }
-    toast("Error al votar. Intenta de nuevo.", "err");
+    console.error("Error votar:", error);
+    if (error.code === "42501") {
+      toast("Sin permisos para votar. Contacta al administrador.", "err");
+    } else {
+      toast("Error al votar: " + (error.message||"Intenta de nuevo"), "err");
+    }
     return;
   }
 
