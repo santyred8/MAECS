@@ -579,17 +579,21 @@ async function pollPreguntas() {
   if (sinCambios && !reabiertas.length) return;
 
   // ── Preguntas que se volvieron Inactivas: quitar del DOM completamente
-  const inactivadas = preguntas.filter(p =>
-    !activas.find(a=>a.id===p.id) && !cerradas.find(c=>c.id===p.id)
+  // Buscar en el DOM todos los cards actuales (activas + cerradas que estaban antes)
+  // Una pregunta se inactiva si ya no aparece ni en activas ni en cerradas
+  const todasEnDOM = Array.from(document.querySelectorAll(".pregunta-card"))
+    .map(el => el.id.replace("preg-",""));
+  const inactivadas = todasEnDOM.filter(domId =>
+    !activas.find(a => String(a.id) === domId) &&
+    !cerradas.find(c => String(c.id) === domId)
   );
-  inactivadas.forEach(p => {
+  inactivadas.forEach(domId => {
     // Destruir chart
-    if (portalCharts[p.id]) { portalCharts[p.id].destroy(); delete portalCharts[p.id]; }
-    delete portalChartCache[p.id];
-    // NO borrar misVotos[p.id] — si la pregunta se reactiva necesitamos saber si ya votó
-    // El voto en BD sigue ahí; el admin decide si lo borra desde su panel
+    if (portalCharts[domId]) { portalCharts[domId].destroy(); delete portalCharts[domId]; }
+    delete portalChartCache[domId];
+    // NO borrar misVotos — si se reactiva necesitamos saber si ya votó
     // Quitar card del DOM
-    const card = document.getElementById(`preg-${p.id}`);
+    const card = document.getElementById(`preg-${domId}`);
     if (card) card.remove();
     // Si no quedan cards activos → mostrar "esperando"
     const main = document.getElementById("main");
