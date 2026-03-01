@@ -674,8 +674,9 @@ async function pollPreguntas() {
   // ── Preguntas Nuevas (Activa por primera vez): insertar en DOM
   const nuevasCards = activas.filter(a => !document.getElementById(`preg-${a.id}`));
   if (nuevasCards.length) {
-    // Quitar "esperando preguntas" si existe
+    // Quitar cualquier "esperando preguntas" que exista (con o sin id)
     document.getElementById("esp-wrap")?.remove();
+    document.querySelectorAll(".esperando").forEach(el => el.remove());
     const main = document.getElementById("main");
     // Insertar en orden correcto
     nuevasCards.forEach(p => {
@@ -821,7 +822,7 @@ function renderMain() {
     if (unidadInfo?.en_mora && !evData?.permitir_voto_mora) {
       html += renderMoraBloqueo();
     } else if (!preguntas.length) {
-      html += renderEsperando("⏳","Esperando preguntas","El administrador activará las preguntas pronto.");
+      html += `<div id="esp-wrap">${renderEsperando("⏳","Esperando preguntas","El administrador activará las preguntas pronto.")}</div>`;
     } else {
       html += preguntas.map((p,i) => renderPregunta(p, i, misVotos[p.id], Array.isArray(p.opciones)?p.opciones:[])).join("");
     }
