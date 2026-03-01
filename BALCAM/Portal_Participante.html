@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>BALCAM — Portal de Votación</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -788,6 +789,19 @@ async function votar(pregId) {
   if (!evData?.ocultar_graficos) cargarResultados(pregId);
 }
 
+// Paleta de colores para portal (oscuro)
+const PORTAL_COLORS = [
+  { bg:"rgba(168,85,247,.8)",  border:"#a855f7" },
+  { bg:"rgba(34,211,238,.8)",  border:"#22d3ee" },
+  { bg:"rgba(251,146,60,.8)",  border:"#fb923c" },
+  { bg:"rgba(74,222,128,.8)",  border:"#4ade80" },
+  { bg:"rgba(248,113,113,.8)", border:"#f87171" },
+  { bg:"rgba(250,204,21,.8)",  border:"#facc15" },
+];
+
+// Charts activos por pregunta { pregId: Chart instance }
+const portalCharts = {};
+
 // ── RESULTADOS ────────────────────────────────────────
 async function cargarResultados(pregId) {
   const { data: votos } = await sb.from("votos")
@@ -797,53 +811,175 @@ async function cargarResultados(pregId) {
   if (!votos?.length) return;
 
   const totales = {};
-  let sumCoef = 0;
-  let countTotal = votos.length;
+  let sumCoef   = 0;
   votos.forEach(v => {
     const r = v.respuesta || "—";
     const c = parseFloat(String(v.coeficiente||0).replace(",",".")) || 0;
-    totales[r] = (totales[r] || 0) + c;
-    sumCoef += c;
+    totales[r] = (totales[r]||0) + c;
+    sumCoef   += c;
   });
 
   const preg    = preguntas.find(p => p.id === pregId);
   const opciones = Array.isArray(preg?.opciones) ? preg.opciones : [];
   const miVoto   = misVotos[pregId];
 
-  let html = `<div class="resultado-card">
-    <div class="res-title">📊 Resultados en tiempo real — ${countTotal} voto${countTotal!==1?"s":""}</div>`;
-
-  const resOrdenados = opciones.map(op => {
+  const resData = opciones.map((op,i) => {
     const texto = typeof op === "object" ? op.texto : op;
     const coef  = totales[texto] || 0;
-    const pct   = sumCoef > 0 ? (coef / sumCoef) * 100 : 0;
-    const count = votos.filter(v => v.respuesta === texto).length;
-    return { texto, coef, pct, count };
-  }).sort((a,b) => b.pct - a.pct);
-
-  resOrdenados.forEach(r => {
-    const esMiVoto = r.texto === miVoto;
-    const barColor = esMiVoto
-      ? "background:linear-gradient(90deg,var(--p2),var(--pink));"
-      : "background:rgba(124,58,237,.3);";
-    html += `<div class="res-barra-wrap">
-      <div class="res-label">
-        <span>${r.texto}${esMiVoto ? '<span class="mi-voto-badge">✓ Mi voto</span>' : ''}</span>
-        <span style="display:flex;gap:8px;align-items:center;">
-          <span style="font-size:11px;color:var(--muted);">${r.count} unid.</span>
-          <span class="pct">${r.pct.toFixed(1)}%</span>
-        </span>
-      </div>
-      <div class="res-barra-bg">
-        <div class="res-barra" style="width:${r.pct}%;${barColor}"></div>
-      </div>
-    </div>`;
+    const pct   = sumCoef > 0 ? (coef/sumCoef)*100 : 0;
+    const count = votos.filter(v=>v.respuesta===texto).length;
+    return { texto, coef, pct, count, idx:i };
   });
 
-  html += `</div>`;
-
   const resEl = document.getElementById(`res-${pregId}`);
-  if (resEl) resEl.outerHTML = html;
+  if (!resEl) return;
+
+  // Destruir chart anterior si existe
+  if (portalCharts[pregId]) { portalCharts[pregId].destroy(); delete portalCharts[pregId]; }
+
+  const canvasId = `chart-${pregId}`;
+  resEl.outerHTML = `
+    <div class="resultado-card" id="res-${pregId}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+        <div class="res-title" style="margin:0;">📊 ${votos.length} voto${votos.length!==1?"s":""} registrados</div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="toggleTipoGrafica('${pregId}','bar')" id="tipo-bar-${pregId}"
+            style="padding:5px 10px;border-radius:8px;border:1.5px solid rgba(168,85,247,.5);background:rgba(168,85,247,.15);color:#c4b5fd;font-size:11px;font-weight:700;cursor:pointer;">
+            ▐▌ Barras
+          </button>
+          <button onclick="toggleTipoGrafica('${pregId}','doughnut')" id="tipo-pie-${pregId}"
+            style="padding:5px 10px;border-radius:8px;border:1.5px solid rgba(255,255,255,.1);background:transparent;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;">
+            ◉ Torta
+          </button>
+        </div>
+      </div>
+      <!-- Leyenda / mi voto badge -->
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
+        ${resData.map((r,i)=>`
+          <div style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;background:${r.texto===miVoto?'rgba(74,222,128,.15)':'rgba(255,255,255,.06)'};border:1px solid ${r.texto===miVoto?'rgba(74,222,128,.3)':'rgba(255,255,255,.08)'};">
+            <div style="width:8px;height:8px;border-radius:50%;background:${PORTAL_COLORS[i%PORTAL_COLORS.length].border};flex-shrink:0;"></div>
+            <span style="font-size:11px;font-weight:700;color:${r.texto===miVoto?'#4ade80':'#c4b5fd'};">${r.texto}${r.texto===miVoto?' ✓':''}</span>
+          </div>`).join("")}
+      </div>
+      <!-- Canvas chart -->
+      <div style="position:relative;height:clamp(180px,45vw,280px);">
+        <canvas id="${canvasId}"></canvas>
+      </div>
+      <!-- Tabla rápida debajo -->
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:6px;">
+        ${resData.map((r,i)=>{
+          const esMio = r.texto===miVoto;
+          return `<div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:${PORTAL_COLORS[i%PORTAL_COLORS.length].border};flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+                <span style="font-size:12px;font-weight:${esMio?800:600};color:${esMio?'#4ade80':'#c4b5fd'};">${r.texto}${esMio?' ✓':''}</span>
+                <span style="font-size:12px;font-weight:800;color:#fff;">${r.pct.toFixed(1)}%</span>
+              </div>
+              <div style="height:5px;background:rgba(255,255,255,.08);border-radius:20px;overflow:hidden;">
+                <div style="height:100%;border-radius:20px;background:${PORTAL_COLORS[i%PORTAL_COLORS.length].border};width:${r.pct}%;transition:width .8s ease;min-width:${r.pct>0?4:0}px;"></div>
+              </div>
+            </div>
+            <div style="font-size:11px;color:var(--muted);min-width:48px;text-align:right;">${r.count} unid.</div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+
+  // Dibujar chart
+  const newEl = document.getElementById(canvasId);
+  if (!newEl) return;
+  renderPortalChart(pregId, canvasId, resData, "bar");
+}
+
+function renderPortalChart(pregId, canvasId, resData, tipo) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  if (portalCharts[pregId]) { portalCharts[pregId].destroy(); }
+
+  const labels  = resData.map(r=>r.texto);
+  const pctVals = resData.map(r=>+r.pct.toFixed(2));
+  const bgColors = resData.map((_,i)=>PORTAL_COLORS[i%PORTAL_COLORS.length].bg);
+  const brColors = resData.map((_,i)=>PORTAL_COLORS[i%PORTAL_COLORS.length].border);
+  const miVoto   = misVotos[pregId];
+
+  const isBar = tipo === "bar";
+  portalCharts[pregId] = new Chart(canvas, {
+    type: tipo,
+    data: {
+      labels: labels.map(l=>l.length>20?l.slice(0,18)+"…":l),
+      datasets: [{
+        label: "% Coeficiente",
+        data: pctVals,
+        backgroundColor: bgColors,
+        borderColor: brColors,
+        borderWidth: 2,
+        ...(isBar ? { borderRadius:8, borderSkipped:false } : { hoverOffset:8 }),
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: !isBar, labels: { color:"#c4b5fd", font:{size:11,weight:"700"}, padding:12 } },
+        tooltip: {
+          backgroundColor: "rgba(15,10,30,.95)",
+          titleColor: "#fff",
+          bodyColor: "#c4b5fd",
+          borderColor: "rgba(168,85,247,.3)",
+          borderWidth: 1,
+          padding: 12,
+          callbacks: {
+            label: c => ` ${c.raw}% del coeficiente`
+          }
+        }
+      },
+      ...(isBar ? {
+        scales: {
+          y: {
+            grid: { color:"rgba(255,255,255,.04)", drawBorder:false },
+            ticks: { color:"#9d8ec0", font:{size:10}, callback:v=>v+"%" },
+            beginAtZero: true,
+          },
+          x: {
+            grid: { display:false },
+            ticks: { color:"#c4b5fd", font:{size:10,weight:"600"}, maxRotation:25 }
+          }
+        }
+      } : {})
+    }
+  });
+
+  // Marcar botón activo
+  const btnBar = document.getElementById(`tipo-bar-${pregId}`);
+  const btnPie = document.getElementById(`tipo-pie-${pregId}`);
+  if (btnBar) {
+    btnBar.style.background = isBar ? "rgba(168,85,247,.25)" : "transparent";
+    btnBar.style.borderColor = isBar ? "rgba(168,85,247,.6)" : "rgba(255,255,255,.1)";
+    btnBar.style.color = isBar ? "#c4b5fd" : "var(--muted)";
+  }
+  if (btnPie) {
+    btnPie.style.background = !isBar ? "rgba(168,85,247,.25)" : "transparent";
+    btnPie.style.borderColor = !isBar ? "rgba(168,85,247,.6)" : "rgba(255,255,255,.1)";
+    btnPie.style.color = !isBar ? "#c4b5fd" : "var(--muted)";
+  }
+}
+
+// Cambiar tipo de gráfica sin recargar datos
+const portalChartData = {}; // {pregId: resData}
+function toggleTipoGrafica(pregId, tipo) {
+  const canvas = document.getElementById(`chart-${pregId}`);
+  if (!canvas) return;
+  // Encontrar los datos del chart actual
+  const chart = portalCharts[pregId];
+  if (!chart) return;
+  const resData = chart.data.labels.map((lbl,i) => ({
+    texto: lbl,
+    pct: chart.data.datasets[0].data[i],
+    count: 0,
+    idx: i,
+  }));
+  renderPortalChart(pregId, `chart-${pregId}`, resData, tipo);
 }
 
 // ── REALTIME ──────────────────────────────────────────
