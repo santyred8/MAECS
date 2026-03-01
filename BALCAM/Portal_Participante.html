@@ -243,6 +243,57 @@ body{
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);padding:12px 20px;border-radius:12px;font-size:13px;font-weight:700;color:#fff;opacity:0;pointer-events:none;transition:all .3s;z-index:999;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.3);}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
+/* ── RESULTADO CARD — nuevo sistema ── */
+.resultado-card{
+  background:var(--card2);border-radius:18px;border:1px solid var(--border);
+  padding:16px;margin-top:14px;
+  animation:slide-in .3s ease;
+}
+.res-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;}
+.res-title{font-size:12px;font-weight:700;color:var(--muted);}
+.res-tipo-btns{display:flex;gap:4px;}
+.res-tipo-btn{
+  padding:5px 10px;border-radius:8px;border:1.5px solid rgba(255,255,255,.1);
+  background:transparent;color:var(--muted);font-size:13px;cursor:pointer;
+  transition:all .2s;
+}
+.res-tipo-btn.on{
+  border-color:rgba(168,85,247,.6);background:rgba(168,85,247,.2);color:#c4b5fd;
+}
+.res-leyenda{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;}
+.res-ley-item{
+  display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
+  font-size:11px;font-weight:600;color:var(--muted);
+}
+.res-ley-item.mio{background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.25);color:#4ade80;}
+.res-ley-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+/* Canvas wrapper — altura adaptiva por breakpoint */
+.res-canvas-wrap{
+  position:relative;
+  height: 150px; /* mobile <480px */
+  margin-bottom:12px;
+}
+@media(min-width:480px){ .res-canvas-wrap{ height:190px; } }
+@media(min-width:700px){ .res-canvas-wrap{ height:230px; } }
+@media(min-width:900px){ .res-canvas-wrap{ height:220px; } }
+/* Barras CSS */
+.res-barras-css{display:flex;flex-direction:column;gap:8px;}
+.res-fila{display:flex;align-items:center;gap:8px;}
+.res-fila-label{
+  font-size:11px;font-weight:600;color:var(--muted);
+  width:60px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+@media(min-width:480px){ .res-fila-label{ width:90px; } }
+.res-fila-label.mio{color:#4ade80;}
+.res-fila-track{
+  flex:1;height:7px;background:rgba(255,255,255,.07);border-radius:20px;overflow:hidden;
+}
+.res-fila-fill{height:100%;border-radius:20px;transition:width .6s ease;min-width:3px;}
+.res-fila-nums{display:flex;flex-direction:column;align-items:flex-end;min-width:52px;}
+.res-fila-pct{font-size:11px;font-weight:800;color:#c4b5fd;}
+.res-fila-cnt{font-size:10px;color:var(--muted);}
+
 /* Sidebar card base */
 .sidebar > * { animation: slide-in .35s ease; }
 
@@ -631,7 +682,7 @@ function renderPregunta(preg, idx, yaVote, opciones) {
       Tu voto: <strong>${yaVote}</strong>
     </div>`;
     if (!evData?.ocultar_graficos) {
-      html += `<div id="res-${preg.id}"><div class="spin-dark" style="width:24px;height:24px;margin:8px auto;"></div></div>`;
+      html += `<div id="res-${preg.id}" style="margin-top:8px;"></div>`;
     }
   } else if (yaVote && puedeEditar) {
     // Votó pero puede cambiar — mostrar opciones con la actual marcada + botón cambiar
@@ -656,7 +707,7 @@ function renderPregunta(preg, idx, yaVote, opciones) {
       Cambiar respuesta
     </button>`;
     if (!evData?.ocultar_graficos) {
-      html += `<div id="res-${preg.id}" style="margin-top:12px;"><div class="spin-dark" style="width:24px;height:24px;margin:8px auto;"></div></div>`;
+      html += `<div id="res-${preg.id}" style="margin-top:12px;"></div>`;
     }
   } else {
     // Sin voto — mostrar opciones normales
@@ -788,157 +839,204 @@ async function votar(pregId) {
   const statsEl = document.querySelector(".stats-bar");
   if (statsEl) statsEl.outerHTML = renderStatsBar();
 
-  // Esperar a que el DOM se actualice antes de dibujar la gráfica
+  // Actualizar gráfica (se reconstruye si no existe, actualiza datos si ya existe)
   if (!evData?.ocultar_graficos) {
-    setTimeout(() => cargarResultados(pregId), 80);
+    // Al cambiar respuesta, el miVoto cambia — forzar reconstrucción del card
+    const resEl = document.getElementById(`res-${pregId}`);
+    if (resEl) resEl.remove(); // forzar rebuild para reflejar nuevo "mi voto"
+    delete portalCharts[pregId];
+    setTimeout(() => cargarResultados(pregId), 60);
   }
 }
 
-// Paleta de colores para portal (oscuro)
+// ─── PORTAL CHARTS ─────────────────────────────────────
 const PORTAL_COLORS = [
-  { bg:"rgba(168,85,247,.8)",  border:"#a855f7" },
-  { bg:"rgba(34,211,238,.8)",  border:"#22d3ee" },
-  { bg:"rgba(251,146,60,.8)",  border:"#fb923c" },
-  { bg:"rgba(74,222,128,.8)",  border:"#4ade80" },
-  { bg:"rgba(248,113,113,.8)", border:"#f87171" },
-  { bg:"rgba(250,204,21,.8)",  border:"#facc15" },
+  { bg:"rgba(168,85,247,.85)", border:"#a855f7" },
+  { bg:"rgba(34,211,238,.85)", border:"#22d3ee" },
+  { bg:"rgba(251,146,60,.85)", border:"#fb923c" },
+  { bg:"rgba(74,222,128,.85)", border:"#4ade80" },
+  { bg:"rgba(248,113,113,.85)",border:"#f87171" },
+  { bg:"rgba(250,204,21,.85)", border:"#facc15" },
 ];
 
-// Charts activos por pregunta { pregId: Chart instance }
+// { pregId: Chart }  — instancias activas
 const portalCharts = {};
+// { pregId: "bar"|"doughnut" } — tipo actual por pregunta
+const portalChartTipo = {};
+// { pregId: resData[] } — últimos datos guardados para toggle
+const portalChartCache = {};
 
-// ── RESULTADOS ────────────────────────────────────────
+// ─── CARGA Y ACTUALIZACIÓN DE RESULTADOS ───────────────
 async function cargarResultados(pregId) {
+  if (evData?.ocultar_graficos) return;
+
   const { data: votos } = await sb.from("votos")
     .select("respuesta,coeficiente")
     .eq("id_pregunta", pregId);
 
-  if (!votos?.length) return;
-
-  const totales = {};
-  let sumCoef   = 0;
-  votos.forEach(v => {
-    const r = v.respuesta || "—";
-    const c = parseFloat(String(v.coeficiente||0).replace(",",".")) || 0;
-    totales[r] = (totales[r]||0) + c;
-    sumCoef   += c;
-  });
-
   const preg    = preguntas.find(p => p.id === pregId);
   const opciones = Array.isArray(preg?.opciones) ? preg.opciones : [];
   const miVoto   = misVotos[pregId];
+  const votosList = votos || [];
 
-  const resData = opciones.map((op,i) => {
-    const texto = typeof op === "object" ? op.texto : op;
-    const coef  = totales[texto] || 0;
-    const pct   = sumCoef > 0 ? (coef/sumCoef)*100 : 0;
-    const count = votos.filter(v=>v.respuesta===texto).length;
-    return { texto, coef, pct, count, idx:i };
+  // Calcular totales
+  const totales = {};
+  let sumCoef = 0;
+  votosList.forEach(v => {
+    const r = v.respuesta || "—";
+    const c = parseFloat(String(v.coeficiente||0).replace(",",".")) || 0;
+    totales[r] = (totales[r]||0) + c;
+    sumCoef += c;
   });
 
+  const resData = opciones.map((op, i) => {
+    const texto = typeof op === "object" ? op.texto : op;
+    const coef  = totales[texto] || 0;
+    const pct   = sumCoef > 0 ? (coef / sumCoef) * 100 : 0;
+    const count = votosList.filter(v => v.respuesta === texto).length;
+    return { texto, coef, pct, count, idx: i };
+  });
+
+  portalChartCache[pregId] = resData;
+
+  // ── Si el contenedor de resultados no existe aún → construir HTML ──
   const resEl = document.getElementById(`res-${pregId}`);
-  if (!resEl) return;
+  if (!resEl || !document.getElementById(`chart-${pregId}`)) {
+    // Construir card completo
+    if (resEl) resEl.outerHTML = buildResultCard(pregId, resData, miVoto, votosList.length);
+    else return; // no hay dónde poner los resultados
+    // Dibujar chart después de que el DOM exista
+    requestAnimationFrame(() => {
+      renderPortalChart(pregId, resData, portalChartTipo[pregId] || "bar");
+    });
+    return;
+  }
 
-  // Destruir chart anterior si existe
-  if (portalCharts[pregId]) { portalCharts[pregId].destroy(); delete portalCharts[pregId]; }
+  // ── Card ya existe → solo actualizar datos sin tocar DOM ──
+  // Actualizar contador de votos
+  const cntEl = document.getElementById(`res-cnt-${pregId}`);
+  if (cntEl) cntEl.textContent = `${votosList.length} voto${votosList.length!==1?"s":""}`;
 
-  const canvasId = `chart-${pregId}`;
-  resEl.outerHTML = `
-    <div class="resultado-card" id="res-${pregId}">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
-        <div class="res-title" style="margin:0;">📊 ${votos.length} voto${votos.length!==1?"s":""} registrados</div>
-        <div style="display:flex;gap:6px;">
-          <button onclick="toggleTipoGrafica('${pregId}','bar')" id="tipo-bar-${pregId}"
-            style="padding:5px 10px;border-radius:8px;border:1.5px solid rgba(168,85,247,.5);background:rgba(168,85,247,.15);color:#c4b5fd;font-size:11px;font-weight:700;cursor:pointer;">
-            ▐▌ Barras
-          </button>
-          <button onclick="toggleTipoGrafica('${pregId}','doughnut')" id="tipo-pie-${pregId}"
-            style="padding:5px 10px;border-radius:8px;border:1.5px solid rgba(255,255,255,.1);background:transparent;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;">
-            ◉ Torta
-          </button>
-        </div>
-      </div>
-      <!-- Leyenda / mi voto badge -->
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
-        ${resData.map((r,i)=>`
-          <div style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;background:${r.texto===miVoto?'rgba(74,222,128,.15)':'rgba(255,255,255,.06)'};border:1px solid ${r.texto===miVoto?'rgba(74,222,128,.3)':'rgba(255,255,255,.08)'};">
-            <div style="width:8px;height:8px;border-radius:50%;background:${PORTAL_COLORS[i%PORTAL_COLORS.length].border};flex-shrink:0;"></div>
-            <span style="font-size:11px;font-weight:700;color:${r.texto===miVoto?'#4ade80':'#c4b5fd'};">${r.texto}${r.texto===miVoto?' ✓':''}</span>
-          </div>`).join("")}
-      </div>
-      <!-- Canvas chart -->
-      <div style="position:relative;height:${window.innerWidth<480?'200px':'clamp(200px,40vw,300px)'};">
-        <canvas id="${canvasId}" style="max-width:100%;"></canvas>
-      </div>
-      <!-- Tabla rápida debajo -->
-      <div style="margin-top:14px;display:flex;flex-direction:column;gap:6px;">
-        ${resData.map((r,i)=>{
-          const esMio = r.texto===miVoto;
-          return `<div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:8px;height:8px;border-radius:50%;background:${PORTAL_COLORS[i%PORTAL_COLORS.length].border};flex-shrink:0;"></div>
-            <div style="flex:1;min-width:0;">
-              <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
-                <span style="font-size:12px;font-weight:${esMio?800:600};color:${esMio?'#4ade80':'#c4b5fd'};">${r.texto}${esMio?' ✓':''}</span>
-                <span style="font-size:12px;font-weight:800;color:#fff;">${r.pct.toFixed(1)}%</span>
-              </div>
-              <div style="height:5px;background:rgba(255,255,255,.08);border-radius:20px;overflow:hidden;">
-                <div style="height:100%;border-radius:20px;background:${PORTAL_COLORS[i%PORTAL_COLORS.length].border};width:${r.pct}%;transition:width .8s ease;min-width:${r.pct>0?4:0}px;"></div>
-              </div>
-            </div>
-            <div style="font-size:11px;color:var(--muted);min-width:48px;text-align:right;">${r.count} unid.</div>
-          </div>`;
-        }).join("")}
-      </div>
-    </div>`;
+  // Actualizar tabla de barras CSS (sin chart)
+  resData.forEach((r, i) => {
+    const barEl = document.getElementById(`res-bar-${pregId}-${i}`);
+    const pctEl = document.getElementById(`res-pct-${pregId}-${i}`);
+    const cEl   = document.getElementById(`res-cnt2-${pregId}-${i}`);
+    if (barEl) barEl.style.width = r.pct.toFixed(1) + "%";
+    if (pctEl) pctEl.textContent = r.pct.toFixed(1) + "%";
+    if (cEl)   cEl.textContent   = r.count + " unid.";
+  });
 
-  // Dibujar chart
-  const newEl = document.getElementById(canvasId);
-  if (!newEl) return;
-  renderPortalChart(pregId, canvasId, resData, "bar");
+  // Actualizar chart SIN reconstruirlo (solo nuevos datos)
+  const chart = portalCharts[pregId];
+  if (chart) {
+    const pctVals = resData.map(r => +r.pct.toFixed(2));
+    chart.data.datasets[0].data = pctVals;
+    chart.update("none"); // "none" = sin animación → sin salto
+  }
 }
 
-function renderPortalChart(pregId, canvasId, resData, tipo) {
-  const canvas = document.getElementById(canvasId);
+// ─── CONSTRUIR HTML DEL CARD DE RESULTADOS ─────────────
+function buildResultCard(pregId, resData, miVoto, totalVotos) {
+  const tipo = portalChartTipo[pregId] || "bar";
+  return `
+  <div class="resultado-card" id="res-${pregId}">
+    <div class="res-header">
+      <div class="res-title">
+        📊 <span id="res-cnt-${pregId}">${totalVotos} voto${totalVotos!==1?"s":""}</span> registrados
+      </div>
+      <div class="res-tipo-btns">
+        <button onclick="toggleTipoGrafica('${pregId}','bar')" id="tipo-bar-${pregId}" class="res-tipo-btn ${tipo==='bar'?'on':''}">▐▌</button>
+        <button onclick="toggleTipoGrafica('${pregId}','doughnut')" id="tipo-pie-${pregId}" class="res-tipo-btn ${tipo==='doughnut'?'on':''}">◉</button>
+      </div>
+    </div>
+    <!-- Leyenda compacta -->
+    <div class="res-leyenda">
+      ${resData.map((r,i) => `
+        <div class="res-ley-item ${r.texto===miVoto?'mio':''}">
+          <div class="res-ley-dot" style="background:${PORTAL_COLORS[i%PORTAL_COLORS.length].border};"></div>
+          <span>${r.texto}${r.texto===miVoto?' ✓':''}</span>
+        </div>`).join("")}
+    </div>
+    <!-- Canvas -->
+    <div class="res-canvas-wrap">
+      <canvas id="chart-${pregId}"></canvas>
+    </div>
+    <!-- Barras CSS debajo (siempre visibles, sin depender del canvas) -->
+    <div class="res-barras-css">
+      ${resData.map((r,i) => {
+        const esMio = r.texto === miVoto;
+        const color = PORTAL_COLORS[i%PORTAL_COLORS.length].border;
+        return `<div class="res-fila">
+          <div class="res-fila-label ${esMio?'mio':''}">${r.texto}${esMio?' ✓':''}</div>
+          <div class="res-fila-track">
+            <div id="res-bar-${pregId}-${i}" class="res-fila-fill" style="width:${r.pct.toFixed(1)}%;background:${color};"></div>
+          </div>
+          <div class="res-fila-nums">
+            <span id="res-pct-${pregId}-${i}" class="res-fila-pct">${r.pct.toFixed(1)}%</span>
+            <span id="res-cnt2-${pregId}-${i}" class="res-fila-cnt">${r.count} unid.</span>
+          </div>
+        </div>`;
+      }).join("")}
+    </div>
+  </div>`;
+}
+
+// ─── DIBUJAR / ACTUALIZAR CHART ────────────────────────
+function renderPortalChart(pregId, resData, tipo) {
+  const canvas = document.getElementById(`chart-${pregId}`);
   if (!canvas) return;
-  if (portalCharts[pregId]) { portalCharts[pregId].destroy(); }
 
-  const labels  = resData.map(r=>r.texto);
-  const pctVals = resData.map(r=>+r.pct.toFixed(2));
-  const bgColors = resData.map((_,i)=>PORTAL_COLORS[i%PORTAL_COLORS.length].bg);
-  const brColors = resData.map((_,i)=>PORTAL_COLORS[i%PORTAL_COLORS.length].border);
-  const miVoto   = misVotos[pregId];
+  portalChartTipo[pregId] = tipo;
 
-  const isBar = tipo === "bar";
+  if (portalCharts[pregId]) {
+    portalCharts[pregId].destroy();
+    delete portalCharts[pregId];
+  }
+
+  const labels   = resData.map(r => r.texto);
+  const pctVals  = resData.map(r => +r.pct.toFixed(2));
+  const bgColors = resData.map((_,i) => PORTAL_COLORS[i%PORTAL_COLORS.length].bg);
+  const brColors = resData.map((_,i) => PORTAL_COLORS[i%PORTAL_COLORS.length].border);
+  const isMobile = window.innerWidth < 520;
+  const isBar    = tipo === "bar";
+
   portalCharts[pregId] = new Chart(canvas, {
     type: tipo,
     data: {
-      labels: labels.map(l=>l.length>20?l.slice(0,18)+"…":l),
+      labels: labels.map(l => l.length > (isMobile?10:16) ? l.slice(0,isMobile?9:15)+"…" : l),
       datasets: [{
         label: "% Coeficiente",
         data: pctVals,
         backgroundColor: bgColors,
         borderColor: brColors,
         borderWidth: 2,
-        ...(isBar ? { borderRadius:8, borderSkipped:false } : { hoverOffset:8 }),
+        ...(isBar ? {
+          borderRadius: 6,
+          borderSkipped: false,
+        } : { hoverOffset: 6 }),
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      animation: { duration: 600 },
+      animation: { duration: 400 },
       plugins: {
         legend: {
           display: !isBar,
-          labels: { color:"#c4b5fd", font:{size:10,weight:"700"}, padding:10, boxWidth:10 }
+          labels: { color:"#c4b5fd", font:{size:10,weight:"700"}, padding:8, boxWidth:10 }
         },
         tooltip: {
-          backgroundColor: "rgba(15,10,30,.95)",
+          backgroundColor: "rgba(10,5,25,.95)",
           titleColor: "#fff",
           bodyColor: "#c4b5fd",
-          borderColor: "rgba(168,85,247,.3)",
+          borderColor: "rgba(168,85,247,.4)",
           borderWidth: 1,
           padding: 10,
-          callbacks: { label: c => ` ${c.raw.toFixed(1)}% del coeficiente` }
+          callbacks: {
+            title: items => labels[items[0].dataIndex] || "",
+            label: c => ` ${c.raw.toFixed(1)}% del coeficiente`
+          }
         }
       },
       ...(isBar ? {
@@ -946,19 +1044,14 @@ function renderPortalChart(pregId, canvasId, resData, tipo) {
           y: {
             beginAtZero: true,
             grid: { color:"rgba(255,255,255,.05)", drawBorder:false },
-            ticks: { color:"#9d8ec0", font:{size:9}, callback:v=>v+"%" }
+            ticks: { color:"rgba(196,181,253,.6)", font:{size:9}, callback:v=>v+"%" }
           },
           x: {
             grid: { display:false },
             ticks: {
               color:"#c4b5fd",
-              font:{ size: window.innerWidth<480 ? 9 : 10, weight:"600" },
-              maxRotation: window.innerWidth<480 ? 45 : 20,
-              callback: (val, i) => {
-                const lbl = labels[i] || "";
-                const max = window.innerWidth<480 ? 8 : 14;
-                return lbl.length > max ? lbl.slice(0,max-1)+"…" : lbl;
-              }
+              font:{ size: isMobile ? 9 : 10, weight:"600" },
+              maxRotation: isMobile ? 35 : 15,
             }
           }
         }
@@ -966,36 +1059,18 @@ function renderPortalChart(pregId, canvasId, resData, tipo) {
     }
   });
 
-  // Marcar botón activo
-  const btnBar = document.getElementById(`tipo-bar-${pregId}`);
-  const btnPie = document.getElementById(`tipo-pie-${pregId}`);
-  if (btnBar) {
-    btnBar.style.background = isBar ? "rgba(168,85,247,.25)" : "transparent";
-    btnBar.style.borderColor = isBar ? "rgba(168,85,247,.6)" : "rgba(255,255,255,.1)";
-    btnBar.style.color = isBar ? "#c4b5fd" : "var(--muted)";
-  }
-  if (btnPie) {
-    btnPie.style.background = !isBar ? "rgba(168,85,247,.25)" : "transparent";
-    btnPie.style.borderColor = !isBar ? "rgba(168,85,247,.6)" : "rgba(255,255,255,.1)";
-    btnPie.style.color = !isBar ? "#c4b5fd" : "var(--muted)";
-  }
+  // Actualizar botones
+  const bBar = document.getElementById(`tipo-bar-${pregId}`);
+  const bPie = document.getElementById(`tipo-pie-${pregId}`);
+  if (bBar) bBar.className = `res-tipo-btn ${isBar?"on":""}`;
+  if (bPie) bPie.className = `res-tipo-btn ${!isBar?"on":""}`;
 }
 
-// Cambiar tipo de gráfica sin recargar datos
-const portalChartData = {}; // {pregId: resData}
+// ─── TOGGLE TIPO GRÁFICA ───────────────────────────────
 function toggleTipoGrafica(pregId, tipo) {
-  const canvas = document.getElementById(`chart-${pregId}`);
-  if (!canvas) return;
-  // Encontrar los datos del chart actual
-  const chart = portalCharts[pregId];
-  if (!chart) return;
-  const resData = chart.data.labels.map((lbl,i) => ({
-    texto: lbl,
-    pct: chart.data.datasets[0].data[i],
-    count: 0,
-    idx: i,
-  }));
-  renderPortalChart(pregId, `chart-${pregId}`, resData, tipo);
+  const cache = portalChartCache[pregId];
+  if (!cache) return;
+  renderPortalChart(pregId, cache, tipo);
 }
 
 // ── REALTIME ──────────────────────────────────────────
@@ -1019,11 +1094,19 @@ function suscribirRealtime() {
       filter: `id_evento=eq.${EV_ID}`
     }, async () => {
       await cargarStatsParticipacion();
+      // Actualizar barra stats
       const statsEl = document.querySelector(".stats-bar");
       if (statsEl) statsEl.outerHTML = renderStatsBar();
-      Object.keys(misVotos).forEach(pregId => {
-        if (!evData?.ocultar_graficos) cargarResultados(pregId);
-      });
+      // Actualizar charts ya visibles sin reconstruir DOM (para todos, no solo los míos)
+      if (!evData?.ocultar_graficos) {
+        const allPregIds = Object.keys(portalChartCache);
+        // Preguntas donde el chart ya existe → actualizar solo datos
+        allPregIds.forEach(pregId => { cargarResultados(pregId); });
+        // Preguntas donde voté pero el chart aún no está construido
+        Object.keys(misVotos).forEach(pregId => {
+          if (!portalChartCache[pregId]) cargarResultados(pregId);
+        });
+      }
     })
     .subscribe();
 }
