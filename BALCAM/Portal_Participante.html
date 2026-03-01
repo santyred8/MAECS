@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>BALCAM — Portal de Votación</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -426,17 +426,15 @@ function mostrarError(msg) {
 function iniciarPolling() {
   if (pollingInt) clearInterval(pollingInt);
   pollingInt = setInterval(async () => {
-    if (document.hidden) return; // no consultar si la pestaña no está visible
+    if (document.hidden) return;
+    // SOLO actualizar stats y gráficas — NUNCA reconstruir el DOM de preguntas
     await cargarStatsParticipacion();
     actualizarStatsInPlace();
     if (!evData?.ocultar_graficos) {
-      Object.keys(portalChartCache).forEach(pregId => actualizarGraficaDesdeCache(pregId));
-      // También pedir datos frescos para preguntas con chart
+      // Solo charts que ya están dibujados
       const pregIds = Object.keys(portalCharts);
-      if (pregIds.length) {
-        for (const pregId of pregIds) {
-          await cargarYActualizarGrafica(pregId);
-        }
+      for (const pregId of pregIds) {
+        await cargarYActualizarGrafica(pregId);
       }
     }
   }, 10000);
@@ -562,6 +560,15 @@ function renderMain() {
     } else {
       html += preguntas.map((p,i) => renderPregunta(p, i, misVotos[p.id], Array.isArray(p.opciones)?p.opciones:[])).join("");
     }
+  }
+
+  // En móvil con preguntas ya renderizadas: NO reconstruir todo (causa parpadeo)
+  // Solo reconstruir si realmente no existe el contenido o cambió el estado
+  const yaTienePreguntas = !esDesktop() && !!document.getElementById(`preg-${preguntas[0]?.id}`);
+  if (yaTienePreguntas && evData?.estado === "En curso" && !unidadInfo?.en_mora) {
+    // Solo actualizar stats bar in-place, no tocar las preguntas
+    actualizarStatsInPlace();
+    return;
   }
 
   main.innerHTML = html;
@@ -1149,17 +1156,25 @@ function toast(msg, tipo="ok") {
   _tt = setTimeout(()=>t.className="", 3500);
 }
 
-// Re-render on resize
+// Re-render on resize — solo si cambia entre mobile↔desktop
+// En móvil el browser-chrome sube/baja al scrollear y dispara resize constantemente
+let _lastWasDesktop = window.innerWidth >= 900; // inicializar al cargar
 let _resizeTimer;
 window.addEventListener("resize", () => {
   clearTimeout(_resizeTimer);
-  _resizeTimer = setTimeout(() => { if (evData) renderMain(); }, 300);
+  _resizeTimer = setTimeout(() => {
+    const nowDesktop = esDesktop();
+    // Solo re-render si REALMENTE cambió el breakpoint
+    if (_lastWasDesktop !== null && nowDesktop !== _lastWasDesktop) {
+      _lastWasDesktop = nowDesktop;
+      if (evData) renderMain();
+    }
+  }, 400);
 });
 
-// Detener polling cuando la página pierde foco
+// Actualizar al volver a la pestaña — solo stats y charts, NO renderMain
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && pollingInt) {
-    // Actualizar inmediatamente al volver
+  if (!document.hidden && evData) {
     cargarStatsParticipacion().then(() => {
       actualizarStatsInPlace();
       if (!evData?.ocultar_graficos) {
