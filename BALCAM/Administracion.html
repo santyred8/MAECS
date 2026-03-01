@@ -676,6 +676,7 @@ nav{
           <div>
             <label style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);display:block;margin-bottom:5px;">Estado</label>
             <select id="adm-preg-estado"
+              onchange="confirmarCambioEstado(this)"
               style="padding:10px 14px;background:#faf8ff;border:1.5px solid #e8e3ff;border-radius:10px;color:var(--text);font-size:14px;font-weight:600;outline:none;cursor:pointer;min-width:130px;">
               <option value="Inactiva">⏸ Inactiva</option>
               <option value="Activa">▶ Activa</option>
@@ -1671,6 +1672,42 @@ async function admSelPregunta() {
   suscribirPregRealtime(id);
 }
 
+// ── MODAL CONFIRMACIÓN INACTIVA ──────────────────────
+let _estadoPendiente = null; // valor que se quiere poner en el select
+
+function confirmarCambioEstado(select) {
+  const nuevo = select.value;
+  if (nuevo === "Inactiva") {
+    _estadoPendiente = nuevo;
+    // Revertir visualmente hasta que confirme
+    select.value = admPregActual?.estado || "Inactiva";
+    // Mostrar modal
+    const modal = document.getElementById("modal-inactiva");
+    modal.style.display = "flex";
+  }
+  // Activa/Cerrada: no necesitan confirmación, el botón Actualizar la guarda
+}
+
+function cancelarInactiva() {
+  _estadoPendiente = null;
+  document.getElementById("modal-inactiva").style.display = "none";
+}
+
+function confirmarInactiva() {
+  document.getElementById("modal-inactiva").style.display = "none";
+  if (_estadoPendiente) {
+    document.getElementById("adm-preg-estado").value = _estadoPendiente;
+    _estadoPendiente = null;
+    // Guardar inmediatamente
+    admActualizarEstadoPreg();
+  }
+}
+
+// Cerrar modal al hacer clic fuera
+document.getElementById("modal-inactiva").addEventListener("click", function(e) {
+  if (e.target === this) cancelarInactiva();
+});
+
 async function admActualizarEstadoPreg() {
   if (!admPregActual) { toast("Selecciona una pregunta","err"); return; }
   const nuevoEstado = document.getElementById("adm-preg-estado").value;
@@ -2260,5 +2297,36 @@ document.head.appendChild(_regStyle);
 
 init();
 </script>
+<!-- Modal de confirmación para Inactiva -->
+<div id="modal-inactiva" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(15,10,30,.85);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:20px;max-width:440px;width:100%;padding:32px;box-shadow:0 24px 64px rgba(0,0,0,.3);">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+      <div style="width:48px;height:48px;border-radius:14px;background:#fef3c7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="24" height="24" fill="none" stroke="#d97706" stroke-width="2.5" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <div>
+        <div style="font-size:16px;font-weight:800;color:#1e1b4b;">¿Inactivar esta pregunta?</div>
+        <div style="font-size:12px;color:#64748b;margin-top:2px;">Acción con consecuencias en el portal</div>
+      </div>
+    </div>
+    <div style="background:#fef9eb;border:1.5px solid #fcd34d;border-radius:12px;padding:14px 16px;margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px;">⚠ ¿Qué ocurre al inactivar?</div>
+      <ul style="font-size:12px;color:#78350f;line-height:1.8;padding-left:16px;margin:0;">
+        <li>La pregunta <strong>desaparece del portal</strong> para los participantes</li>
+        <li>El historial de votos en el portal <strong>se oculta</strong> (los datos siguen en BD)</li>
+        <li>Si la reactivás luego, los participantes que ya votaron <strong>verán su voto anterior</strong></li>
+        <li>Los datos en <strong>Administración no se borran</strong> — solo se ocultan</li>
+      </ul>
+    </div>
+    <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:12px 16px;margin-bottom:24px;font-size:12px;color:#166534;">
+      💡 <strong>Recomendación:</strong> Si fue un error de contenido, preferí <strong>Cerrada</strong> — así queda el historial visible y podés revisarlo.
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="cancelarInactiva()" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid #e8e3ff;background:#f8f7ff;color:#7c3aed;font-size:14px;font-weight:700;cursor:pointer;">Cancelar</button>
+      <button onclick="confirmarInactiva()" style="flex:1;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Sí, inactivar</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
