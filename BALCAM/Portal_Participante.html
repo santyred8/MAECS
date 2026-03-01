@@ -32,7 +32,7 @@ body{
   position:sticky;top:0;z-index:100;
   background:rgba(15,10,30,.85);backdrop-filter:blur(20px);
   border-bottom:1px solid var(--border);
-  padding:0 20px;height:56px;
+  padding:0 24px;height:56px;
   display:flex;align-items:center;justify-content:space-between;
 }
 .nav-brand{font-size:16px;font-weight:900;letter-spacing:-.5px;color:#fff;}
@@ -47,8 +47,53 @@ body{
   max-width:200px;
 }
 
-/* ── MAIN ── */
-.main{max-width:540px;margin:0 auto;padding:20px 16px 40px;}
+/* ── LAYOUT ── */
+.layout{display:flex;min-height:calc(100vh - 56px);}
+
+/* MOBILE: columna única centrada */
+.main{
+  width:100%;max-width:540px;
+  margin:0 auto;padding:20px 16px 40px;
+}
+.sidebar{display:none;}
+
+/* DESKTOP (≥900px): sidebar fijo izquierda + contenido derecha */
+@media(min-width:900px){
+  .layout{
+    max-width:1200px;margin:0 auto;
+    display:grid;
+    grid-template-columns:300px 1fr;
+    gap:28px;
+    padding:28px 32px 48px;
+    align-items:start;
+  }
+  .main{
+    max-width:100%;margin:0;padding:0;
+    grid-column:2;
+    /* Preguntas se muestran en grid de 1 col, más anchas */
+  }
+  .sidebar{
+    display:flex;flex-direction:column;gap:14px;
+    position:sticky;top:76px;
+    grid-column:1;
+  }
+  /* En desktop las pregunta-card se ven más amplias */
+  .preg-titulo{font-size:20px;}
+  .btn-votar{font-size:15px;padding:16px;}
+  .opcion{padding:16px 20px;}
+  .op-text{font-size:16px;}
+  /* Stats bar en desktop va al sidebar */
+  .stats-bar{margin-bottom:0;}
+  /* Dos columnas para opciones cuando hay muchas */
+  .opciones.muchas{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+}
+@media(min-width:1200px){
+  .layout{grid-template-columns:320px 1fr;}
+}
 
 /* ── ESPERANDO ── */
 .esperando{
@@ -197,6 +242,15 @@ body{
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);padding:12px 20px;border-radius:12px;font-size:13px;font-weight:700;color:#fff;opacity:0;pointer-events:none;transition:all .3s;z-index:999;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.3);}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
+/* Sidebar card base */
+.sidebar > * { animation: slide-in .35s ease; }
+
+/* Desktop nav wider */
+@media(min-width:900px){
+  .nav{ padding:0 32px; }
+  .nav-ev{ max-width:360px; }
+}
+
 /* ── STATS BAR ── */
 .stats-bar{
   background:var(--card);border:1px solid var(--border);border-radius:20px;
@@ -241,12 +295,27 @@ body{
   </div>
 </nav>
 
-<!-- MAIN -->
-<div class="main" id="main">
-  <div style="display:flex;justify-content:center;padding:60px 0;">
-    <div class="spin-dark"></div>
+<!-- LAYOUT WRAPPER -->
+<div class="layout">
+
+  <!-- SIDEBAR (solo visible en desktop) -->
+  <aside class="sidebar" id="sidebar">
+    <!-- Stats y info del evento van aquí en desktop -->
+    <div id="sidebar-content">
+      <div style="display:flex;justify-content:center;padding:40px 0;">
+        <div class="spin-dark"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="main" id="main">
+    <div style="display:flex;justify-content:center;padding:60px 0;">
+      <div class="spin-dark"></div>
+    </div>
   </div>
-</div>
+
+</div><!-- /layout -->
 
 <div id="toast"></div>
 
@@ -383,8 +452,11 @@ async function cargarStatsParticipacion() {
 }
 
 // ── RENDER PRINCIPAL ──────────────────────────────────
+function esDesktop() { return window.innerWidth >= 900; }
+
 function renderMain() {
-  const main = document.getElementById("main");
+  const main    = document.getElementById("main");
+  const sidebar = document.getElementById("sidebar-content");
 
   const estadoMap = {
     "Creado":      ["chip-creado",   "Creado"],
@@ -394,17 +466,41 @@ function renderMain() {
   };
   const [chipClass, chipLabel] = estadoMap[evData?.estado] || ["chip-creado","—"];
 
-  let html = `
-    <div class="ev-estado-bar">
-      <div id="ev-nombre-bar" class="ev-nombre-bar">${evData?.nombre||"—"}</div>
-      <div class="estado-chip ${chipClass}">${chipLabel}</div>
-    </div>
-  `;
+  // ── SIDEBAR en desktop: info del evento + stats ──
+  if (esDesktop() && sidebar) {
+    sidebar.innerHTML = `
+      <!-- Info evento -->
+      <div style="background:linear-gradient(135deg,rgba(79,5,153,.5),rgba(124,58,237,.3));border:1px solid var(--border);border-radius:20px;padding:20px;">
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:rgba(196,181,253,.6);margin-bottom:8px;">Evento activo</div>
+        <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:12px;">${evData?.nombre||"—"}</div>
+        <div class="estado-chip ${chipClass}" style="display:inline-block;">${chipLabel}</div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Tu unidad</div>
+          <div style="font-size:20px;font-weight:900;color:#c4b5fd;">${SS.codigo||"—"}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">${SS.nombre||""}</div>
+        </div>
+      </div>
+      <!-- Stats -->
+      ${evData?.estado === "En curso" ? renderStatsBar() : ""}
+      <!-- Progreso preguntas -->
+      ${evData?.estado === "En curso" && preguntas.length ? renderProgresoPreguntas() : ""}
+    `;
+  }
 
-  // Bloqueo si unidad en mora y no está permitido
-  const bloqueadoPorMora = unidadInfo?.en_mora && !evData?.permitir_voto_mora;
+  // ── MAIN CONTENT ──
+  let html = "";
 
-  if (bloqueadoPorMora) {
+  // En mobile: mostrar barra de estado del evento
+  if (!esDesktop()) {
+    html += `
+      <div class="ev-estado-bar">
+        <div id="ev-nombre-bar" class="ev-nombre-bar">${evData?.nombre||"—"}</div>
+        <div class="estado-chip ${chipClass}">${chipLabel}</div>
+      </div>`;
+  }
+
+  // Bloqueo mora
+  if (unidadInfo?.en_mora && !evData?.permitir_voto_mora) {
     html += renderMoraBloqueo();
     main.innerHTML = html;
     return;
@@ -435,10 +531,12 @@ function renderMain() {
     return;
   }
 
-  // ── GRÁFICA GENERAL DE PARTICIPACIÓN ──
-  html += renderStatsBar();
+  // En mobile: stats arriba del todo
+  if (!esDesktop()) {
+    html += renderStatsBar();
+  }
 
-  // Sin preguntas activas
+  // Sin preguntas
   if (!preguntas.length) {
     html += `
       <div class="sin-preg">
@@ -451,14 +549,13 @@ function renderMain() {
   }
 
   preguntas.forEach((preg, idx) => {
-    const yaVote = misVotos[preg.id];
+    const yaVote  = misVotos[preg.id];
     const opciones = Array.isArray(preg.opciones) ? preg.opciones : [];
     html += renderPregunta(preg, idx, yaVote, opciones);
   });
 
   main.innerHTML = html;
 
-  // Cargar resultados de preguntas ya votadas
   if (!evData?.ocultar_graficos) {
     preguntas.forEach(p => { if (misVotos[p.id]) cargarResultados(p.id); });
   }
@@ -582,7 +679,52 @@ function renderPregunta(preg, idx, yaVote, opciones) {
   return html;
 }
 
-// ── SELECCIÓN TEMPORAL ────────────────────────────────
+// ── PROGRESO PREGUNTAS (sidebar desktop) ──────────────
+function renderProgresoPreguntas() {
+  const total   = preguntas.length;
+  const votadas = preguntas.filter(p => misVotos[p.id]).length;
+  const pct     = total > 0 ? Math.round((votadas/total)*100) : 0;
+  return `
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;">
+    <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:14px;">Tu progreso</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+      <div style="font-size:32px;font-weight:900;color:#fff;">${votadas}</div>
+      <div style="color:var(--muted);font-size:13px;">de ${total}<br>preguntas<br>respondidas</div>
+    </div>
+    <div style="height:8px;background:rgba(124,58,237,.15);border-radius:20px;overflow:hidden;">
+      <div style="height:100%;border-radius:20px;background:linear-gradient(90deg,var(--p2),var(--pink));width:${pct}%;transition:width .8s ease;"></div>
+    </div>
+    <div style="margin-top:8px;font-size:12px;font-weight:700;color:${pct===100?'#4ade80':'var(--muted)'};">
+      ${pct===100 ? "✓ Todas respondidas" : pct+"%  completado"}
+    </div>
+    <!-- Lista rápida de preguntas -->
+    <div style="margin-top:14px;display:flex;flex-direction:column;gap:6px;">
+      ${preguntas.map((p,i) => {
+        const voto = misVotos[p.id];
+        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:10px;background:${voto?'rgba(74,222,128,.08)':'rgba(255,255,255,.04)'};border:1px solid ${voto?'rgba(74,222,128,.2)':'rgba(255,255,255,.06)'};">
+          <div style="width:20px;height:20px;border-radius:6px;background:${voto?'rgba(74,222,128,.2)':'rgba(124,58,237,.2)'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:${voto?'#4ade80':'#c4b5fd'};flex-shrink:0;">${i+1}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:11px;font-weight:600;color:${voto?'#fff':'var(--muted)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.titulo||"Pregunta "+(i+1)}</div>
+            ${voto ? `<div style="font-size:10px;color:#4ade80;font-weight:700;">✓ ${voto}</div>` : `<div style="font-size:10px;color:var(--muted);">Pendiente</div>`}
+          </div>
+        </div>`;
+      }).join("")}
+    </div>
+  </div>`;
+}
+
+// ── ACTUALIZAR SIDEBAR ────────────────────────────────
+function actualizarSidebar() {
+  if (!esDesktop()) return;
+  const sidebar = document.getElementById("sidebar-content");
+  if (!sidebar) return;
+  // Re-render sidebar stats y progreso
+  const statsEl = sidebar.querySelector(".stats-bar");
+  if (statsEl) statsEl.outerHTML = renderStatsBar();
+  const progEl = sidebar.querySelector("[data-prog]");
+  // Simplest: just re-render the whole sidebar (it's fast)
+  renderMain();
+}
 const selecciones = {};
 function seleccionar(pregId, idx, texto) {
   selecciones[pregId] = { idx, texto };
@@ -744,6 +886,13 @@ function toast(msg, tipo="ok") {
   clearTimeout(_tt);
   _tt = setTimeout(() => t.className = "", 3500);
 }
+
+// Re-render on resize (mobile ↔ desktop)
+let _resizeTimer;
+window.addEventListener("resize", () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(() => { if (evData) renderMain(); }, 200);
+});
 
 init();
 </script>
