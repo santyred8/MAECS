@@ -998,6 +998,10 @@ async function init() {
   if (!session) { location.href="Panel.html"; return; }
   document.getElementById("nav-email").textContent = session.user.email;
   if (!EV_ID||!ORG_ID) { toast("URL inválida","err"); return; }
+  // Cerrar modal inactiva al hacer clic fuera
+  document.getElementById("modal-inactiva").addEventListener("click", function(e) {
+    if (e.target === this) cancelarInactiva();
+  });
   iniciarReloj();
   await Promise.all([cargarOrg(), cargarEvento()]);
 }
@@ -1702,11 +1706,6 @@ function confirmarInactiva() {
     admActualizarEstadoPreg();
   }
 }
-
-// Cerrar modal al hacer clic fuera
-document.getElementById("modal-inactiva").addEventListener("click", function(e) {
-  if (e.target === this) cancelarInactiva();
-});
 
 async function admActualizarEstadoPreg() {
   if (!admPregActual) { toast("Selecciona una pregunta","err"); return; }
