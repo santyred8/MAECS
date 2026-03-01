@@ -421,23 +421,190 @@ function mostrarError(msg) {
     </div>`;
 }
 
-// ── POLLING (reemplaza Realtime) ──────────────────────
-// Cada 10s consulta votos y stats sin tocar el DOM de preguntas
+// ── POLLING INTELIGENTE ───────────────────────────────
+// Cada 6s revisa: config del evento, estado de preguntas, stats y gráficas
+// Aplica cambios quirúrgicamente sin reconstruir el DOM
 function iniciarPolling() {
   if (pollingInt) clearInterval(pollingInt);
   pollingInt = setInterval(async () => {
     if (document.hidden) return;
-    // SOLO actualizar stats y gráficas — NUNCA reconstruir el DOM de preguntas
-    await cargarStatsParticipacion();
+    await Promise.all([
+      pollEvento(),
+      pollPreguntas(),
+      cargarStatsParticipacion(),
+    ]);
     actualizarStatsInPlace();
     if (!evData?.ocultar_graficos) {
-      // Solo charts que ya están dibujados
-      const pregIds = Object.keys(portalCharts);
-      for (const pregId of pregIds) {
+      for (const pregId of Object.keys(portalCharts)) {
         await cargarYActualizarGrafica(pregId);
       }
     }
-  }, 10000);
+  }, 6000);
+}
+
+// ── POLL EVENTO — detecta cambios de config ───────────
+async function pollEvento() {
+  const { data } = await sb.from("eventos")
+    .select("id,nombre,estado,tipo,ocultar_graficos,permitir_voto_mora,permitir_cambiar_respuestas,fecha,quorum_minimo")
+    .eq("id", EV_ID).single();
+  if (!data || !evData) return;
+
+  const cambios = [];
+  if (data.ocultar_graficos      !== evData.ocultar_graficos)      cambios.push("graficos");
+  if (data.permitir_cambiar_respuestas !== evData.permitir_cambiar_respuestas) cambios.push("cambiar");
+  if (data.estado                !== evData.estado)                cambios.push("estado");
+  if (data.permitir_voto_mora    !== evData.permitir_voto_mora)    cambios.push("mora");
+  if (data.quorum_minimo         !== evData.quorum_minimo)         cambios.push("quorum");
+
+  if (!cambios.length) return; // sin cambios, no hacer nada
+
+  evData = data; // actualizar estado global
+
+  // Aplicar cada cambio quirúrgicamente
+  if (cambios.includes("estado")) {
+    // Estado del evento cambió → necesita re-render completo
+    await cargarPreguntas();
+    return;
+  }
+  if (cambios.includes("cambiar")) {
+    // Botón cambiar respuesta: mostrar/ocultar en cada pregunta
+    aplicarCambiarRespuestas(data.permitir_cambiar_respuestas);
+  }
+  if (cambios.includes("graficos")) {
+    // Gráficas: mostrar u ocultar
+    aplicarOcultarGraficos(data.ocultar_graficos);
+  }
+  if (cambios.includes("mora")) {
+    // Si cambia la política de mora y la unidad está en mora → re-render
+    if (unidadInfo?.en_mora) await cargarPreguntas();
+  }
+  if (cambios.includes("quorum")) {
+    actualizarStatsInPlace();
+  }
+}
+
+// Mostrar/ocultar botón "Cambiar respuesta" en cada pregunta ya votada
+function aplicarCambiarRespuestas(permitir) {
+  preguntas.forEach(p => {
+    const voto = misVotos[p.id];
+    if (!voto) return; // sin voto, no aplica
+    const btn  = document.getElementById(`btnv-${p.id}`);
+    const ops  = document.getElementById(`ops-${p.id}`);
+    const badge = document.getElementById(`vbadge-${p.id}`);
+
+    if (permitir) {
+      // Mostrar opciones y botón cambiar
+      if (ops)  ops.style.display  = "";
+      if (btn)  { btn.style.display = ""; btn.disabled = true; }
+      if (badge) {
+        badge.style.cssText = "background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#fcd34d;display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:12px;border:1px solid;margin-bottom:12px;font-size:14px;font-weight:600;";
+        badge.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Votaste: <strong id="vtexto-${p.id}">${voto}</strong> — <span style="opacity:.7;font-size:12px;">puedes cambiar</span>`;
+      }
+    } else {
+      // Ocultar opciones y botón
+      if (ops)  ops.style.display  = "none";
+      if (btn)  btn.style.display  = "none";
+      if (badge) {
+        badge.style.cssText = "";
+        badge.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Tu voto: <strong id="vtexto-${p.id}">${voto}</strong>`;
+      }
+    }
+  });
+}
+
+// Mostrar u ocultar gráficas sin reconstruir las preguntas
+function aplicarOcultarGraficos(ocultar) {
+  preguntas.forEach(p => {
+    const resCard = document.getElementById(`rescard-${p.id}`) || document.getElementById(`res-${p.id}`);
+    if (ocultar) {
+      // Ocultar gráfica
+      if (resCard) resCard.style.display = "none";
+      // Destruir chart para liberar memoria
+      if (portalCharts[p.id]) { portalCharts[p.id].destroy(); delete portalCharts[p.id]; }
+      delete portalChartCache[p.id];
+    } else {
+      // Mostrar — si tenía gráfica, restaurarla
+      if (resCard) {
+        resCard.style.display = "";
+      } else if (misVotos[p.id]) {
+        // No existía el div → crearlo y cargar
+        const body = document.getElementById(`preg-body-${p.id}`);
+        if (body && !document.getElementById(`res-${p.id}`)) {
+          const div = document.createElement("div");
+          div.id = `res-${p.id}`;
+          div.style.marginTop = "12px";
+          body.appendChild(div);
+        }
+        cargarYActualizarGrafica(p.id);
+      }
+    }
+  });
+}
+
+// ── POLL PREGUNTAS — detecta cierres ─────────────────
+async function pollPreguntas() {
+  const { data } = await sb.from("preguntas")
+    .select("id,titulo,estado,opciones,orden")
+    .eq("id_evento", EV_ID)
+    .order("orden");
+  if (!data) return;
+
+  const activas  = data.filter(p => p.estado === "Activa");
+  const actuales = preguntas.map(p => p.id).sort().join(",");
+  const nuevas   = activas.map(p => p.id).sort().join(",");
+
+  if (actuales === nuevas) return; // sin cambios en preguntas activas
+
+  // Detectar preguntas cerradas
+  const cerradas = preguntas.filter(p => !activas.find(a => a.id === p.id));
+  const agregadas = activas.filter(a => !preguntas.find(p => p.id === a.id));
+
+  // Actualizar lista global
+  preguntas = activas;
+
+  // Cerradas: bloquear UI de esa pregunta sin destruir el card
+  cerradas.forEach(p => {
+    const card = document.getElementById(`preg-${p.id}`);
+    if (!card) return;
+    const body = document.getElementById(`preg-body-${p.id}`);
+    if (body) {
+      // Ocultar opciones y botón
+      const ops = document.getElementById(`ops-${p.id}`);
+      const btn = document.getElementById(`btnv-${p.id}`);
+      if (ops) ops.style.display = "none";
+      if (btn) btn.style.display = "none";
+      // Agregar banner de cierre si no existe
+      if (!document.getElementById(`cerrado-${p.id}`)) {
+        const banner = document.createElement("div");
+        banner.id = `cerrado-${p.id}`;
+        banner.style.cssText = "background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.3);border-radius:12px;padding:12px 16px;color:#f87171;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;margin-top:8px;";
+        banner.innerHTML = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Pregunta cerrada — no se aceptan más votos`;
+        body.appendChild(banner);
+      }
+    }
+  });
+
+  // Preguntas nuevas: agregarlas al DOM sin reconstruir todo
+  if (agregadas.length) {
+    const main = document.getElementById("main");
+    agregadas.forEach(p => {
+      if (!document.getElementById(`preg-${p.id}`)) {
+        const div = document.createElement("div");
+        div.innerHTML = renderPregunta(p, preguntas.indexOf(p), misVotos[p.id], Array.isArray(p.opciones)?p.opciones:[]);
+        main.appendChild(div.firstElementChild);
+      }
+    });
+    // Actualizar numeración
+    actualizarNumeracionPreguntas();
+  }
+}
+
+// Actualizar "Pregunta X de N" en todos los cards
+function actualizarNumeracionPreguntas() {
+  preguntas.forEach((p, i) => {
+    const numEl = document.querySelector(`#preg-${p.id} .preg-num`);
+    if (numEl) numEl.textContent = `Pregunta ${i+1} de ${preguntas.length}`;
+  });
 }
 
 // ── CARGAR EVENTO ─────────────────────────────────────
