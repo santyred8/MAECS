@@ -541,38 +541,81 @@ function aplicarOcultarGraficos(ocultar) {
   });
 }
 
-// ── POLL PREGUNTAS — detecta cierres ─────────────────
+// ── POLL PREGUNTAS ───────────────────────────────────
+// Maneja 3 estados: Activa, Cerrada, Inactiva
+// • Activa   → visible con opciones de voto
+// • Cerrada  → historial compacto (sin gráfica, sin opciones)
+// • Inactiva → invisible completamente (no existe para el usuario)
 async function pollPreguntas() {
   const { data } = await sb.from("preguntas")
-    .select("id,titulo,estado,opciones,orden")
+    .select("id,titulo,estado,opciones,orden,descripcion")
     .eq("id_evento", EV_ID)
     .order("orden");
   if (!data) return;
 
-  const activas  = data.filter(p => p.estado === "Activa");
-  const actuales = preguntas.map(p => p.id).sort().join(",");
-  const nuevas   = activas.map(p => p.id).sort().join(",");
+  const activas   = data.filter(p => p.estado === "Activa");
+  const cerradas  = data.filter(p => p.estado === "Cerrada");
+  // Inactivas = ni Activa ni Cerrada (estado Inactiva u otro)
 
-  if (actuales === nuevas) return; // sin cambios en preguntas activas
+  // Comparar con estado actual
+  const actualesIds = preguntas.map(p => p.id).sort().join(",");
+  const nuevasIds   = activas.map(p => p.id).sort().join(",");
 
-  // Detectar preguntas cerradas
-  const cerradas = preguntas.filter(p => !activas.find(a => a.id === p.id));
-  const agregadas = activas.filter(a => !preguntas.find(p => p.id === a.id));
+  // También detectar preguntas que cambiaron de Cerrada a Activa (re-apertura)
+  const reabiertas = activas.filter(a => {
+    const enCard = document.getElementById(`preg-${a.id}`);
+    // Existe en DOM pero está en modo historial (no tiene ops ni btnv activos)
+    return enCard && enCard.dataset.estado === "cerrada";
+  });
 
-  // Actualizar lista global
-  preguntas = activas;
+  // Sin ningún cambio → salir
+  const cerradasIds = cerradas.map(p=>p.id).sort().join(",");
+  const prevCerradasIds = (window._prevCerradasIds || "");
+  const sinCambios = actualesIds === nuevasIds && cerradasIds === prevCerradasIds;
+  window._prevCerradasIds = cerradasIds;
+  if (sinCambios && !reabiertas.length) return;
 
-  // Cerradas: colapsar a vista historial compacta
-  cerradas.forEach(p => {
-    const card = document.getElementById(`preg-${p.id}`);
-    if (!card) return;
-
-    // Destruir chart y limpiar cache
+  // ── Preguntas que se volvieron Inactivas: quitar del DOM completamente
+  const inactivadas = preguntas.filter(p =>
+    !activas.find(a=>a.id===p.id) && !cerradas.find(c=>c.id===p.id)
+  );
+  inactivadas.forEach(p => {
+    // Destruir chart
     if (portalCharts[p.id]) { portalCharts[p.id].destroy(); delete portalCharts[p.id]; }
     delete portalChartCache[p.id];
+    // Eliminar voto del historial local (la pregunta fue invalidada)
+    delete misVotos[p.id];
+    // Quitar card del DOM
+    const card = document.getElementById(`preg-${p.id}`);
+    if (card) card.remove();
+    // Si no quedan preguntas activas ni cards visibles → mostrar "esperando"
+    const main = document.getElementById("main");
+    const tieneCards = main && main.querySelector(".pregunta-card");
+    if (!tieneCards && activas.length === 0) {
+      // Solo mostrar esperando si no hay ningún card activo
+      const esperandoExiste = main && main.querySelector(".esperando");
+      if (!esperandoExiste && main) {
+        const div = document.createElement("div");
+        div.id = "esp-wrap";
+        div.innerHTML = renderEsperando("⏳","Esperando preguntas","El administrador activará las preguntas pronto.");
+        main.appendChild(div);
+      }
+    }
+  });
 
+  // ── Preguntas Cerradas: colapsar a historial compacto
+  const recienCerradas = cerradas.filter(c => {
+    const card = document.getElementById(`preg-${c.id}`);
+    return card && card.dataset.estado !== "cerrada"; // ya procesadas no retocar
+  });
+  recienCerradas.forEach(p => {
+    const card = document.getElementById(`preg-${p.id}`);
+    if (!card) return;
+    card.dataset.estado = "cerrada";
+    // Destruir chart
+    if (portalCharts[p.id]) { portalCharts[p.id].destroy(); delete portalCharts[p.id]; }
+    delete portalChartCache[p.id];
     const miVoto = misVotos[p.id];
-    // Reemplazar el body entero con una vista compacta de historial
     const body = document.getElementById(`preg-body-${p.id}`);
     if (body) {
       body.innerHTML = `
@@ -592,25 +635,59 @@ async function pollPreguntas() {
           }
         </div>`;
     }
-    // Reducir padding del card
     card.style.marginBottom = "8px";
     const head = card.querySelector(".preg-head");
     if (head) head.style.paddingBottom = "10px";
   });
 
-  // Preguntas nuevas: agregarlas al DOM sin reconstruir todo
-  if (agregadas.length) {
+  // ── Preguntas Re-abiertas (Cerrada → Activa): restaurar UI completa
+  reabiertas.forEach(p => {
+    const pregData = activas.find(a => a.id === p.id);
+    if (!pregData) return;
+    const card = document.getElementById(`preg-${p.id}`);
+    if (!card) return;
+    card.dataset.estado = "activa";
+    card.style.marginBottom = "16px";
+    const head = card.querySelector(".preg-head");
+    if (head) head.style.paddingBottom = "";
+    // Reconstruir body completo con opciones frescas
+    const body = document.getElementById(`preg-body-${p.id}`);
+    if (body) {
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = renderPregunta(pregData, activas.indexOf(pregData), misVotos[p.id], Array.isArray(pregData.opciones)?pregData.opciones:[]);
+      const nuevoBody = tempDiv.firstElementChild?.querySelector(`#preg-body-${p.id}`);
+      if (nuevoBody) body.innerHTML = nuevoBody.innerHTML;
+    }
+    // Cargar gráfica si corresponde
+    if (!evData?.ocultar_graficos && misVotos[p.id]) {
+      setTimeout(() => cargarYActualizarGrafica(p.id), 80);
+    }
+  });
+
+  // ── Preguntas Nuevas (Activa por primera vez): insertar en DOM
+  const nuevasCards = activas.filter(a => !document.getElementById(`preg-${a.id}`));
+  if (nuevasCards.length) {
+    // Quitar "esperando preguntas" si existe
+    document.getElementById("esp-wrap")?.remove();
     const main = document.getElementById("main");
-    agregadas.forEach(p => {
-      if (!document.getElementById(`preg-${p.id}`)) {
-        const div = document.createElement("div");
-        div.innerHTML = renderPregunta(p, preguntas.indexOf(p), misVotos[p.id], Array.isArray(p.opciones)?p.opciones:[]);
+    // Insertar en orden correcto
+    nuevasCards.forEach(p => {
+      const div = document.createElement("div");
+      div.innerHTML = renderPregunta(p, activas.indexOf(p), misVotos[p.id], Array.isArray(p.opciones)?p.opciones:[]);
+      // Insertar en posición correcta según orden
+      const siguiente = activas[activas.indexOf(p)+1];
+      const siguienteEl = siguiente ? document.getElementById(`preg-${siguiente.id}`) : null;
+      if (siguienteEl) {
+        main.insertBefore(div.firstElementChild, siguienteEl);
+      } else {
         main.appendChild(div.firstElementChild);
       }
     });
-    // Actualizar numeración
-    actualizarNumeracionPreguntas();
   }
+
+  // Actualizar lista global de activas
+  preguntas = activas;
+  actualizarNumeracionPreguntas();
 }
 
 // Actualizar "Pregunta X de N" en todos los cards
@@ -743,11 +820,11 @@ function renderMain() {
     }
   }
 
-  // En móvil con preguntas ya renderizadas: NO reconstruir todo (causa parpadeo)
-  // Solo reconstruir si realmente no existe el contenido o cambió el estado
-  const yaTienePreguntas = !esDesktop() && !!document.getElementById(`preg-${preguntas[0]?.id}`);
-  if (yaTienePreguntas && evData?.estado === "En curso" && !unidadInfo?.en_mora) {
-    // Solo actualizar stats bar in-place, no tocar las preguntas
+  // Guard: en móvil si ya hay cards de preguntas activas, NO reconstruir (evita parpadeo)
+  // pollPreguntas() maneja cambios quirúrgicamente
+  const primerActiva = preguntas[0];
+  const yaTieneActivas = !!primerActiva && !!document.getElementById(`preg-${primerActiva.id}`);
+  if (yaTieneActivas && evData?.estado === "En curso" && !unidadInfo?.en_mora) {
     actualizarStatsInPlace();
     return;
   }
