@@ -388,11 +388,12 @@ const SS = {
 const EV_ID  = SS.evId;
 const ORG_ID = SS.orgId;
 
-let evData      = null;   // datos del evento (incluye toggles de config)
-let preguntas   = [];     // preguntas activas
-let misVotos    = {};     // {pregId: respuesta}
-let unidadInfo  = null;   // {en_mora, coeficiente}
-let statsGlobal = {};     // {total_participantes, total_votaron_preg}
+let evData      = null;
+let preguntas   = [];
+let misVotos    = {};
+let unidadInfo  = null;
+let statsGlobal = { totalPart:0, totalVotaron:0, coefVotado:0 };
+let pollingInt  = null;  // intervalo de polling
 
 // ── INIT ──────────────────────────────────────────────
 async function init() {
@@ -405,7 +406,7 @@ async function init() {
 
   try {
     await Promise.all([cargarEvento(), cargarMisVotos(), cargarUnidadInfo()]);
-    suscribirRealtime();
+    iniciarPolling();
   } catch(e) {
     mostrarError("Error al cargar el portal. Recarga la página.");
   }
@@ -416,29 +417,41 @@ function mostrarError(msg) {
     <div style="text-align:center;padding:60px 20px;">
       <div style="font-size:40px;margin-bottom:16px;">⚠️</div>
       <div style="font-size:16px;font-weight:700;color:#f87171;margin-bottom:8px;">${msg}</div>
-      <button onclick="location.reload()" style="margin-top:16px;padding:12px 24px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">
-        🔄 Reintentar
-      </button>
+      <button onclick="location.reload()" style="margin-top:16px;padding:12px 24px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">🔄 Reintentar</button>
     </div>`;
+}
+
+// ── POLLING (reemplaza Realtime) ──────────────────────
+// Cada 10s consulta votos y stats sin tocar el DOM de preguntas
+function iniciarPolling() {
+  if (pollingInt) clearInterval(pollingInt);
+  pollingInt = setInterval(async () => {
+    if (document.hidden) return; // no consultar si la pestaña no está visible
+    await cargarStatsParticipacion();
+    actualizarStatsInPlace();
+    if (!evData?.ocultar_graficos) {
+      Object.keys(portalChartCache).forEach(pregId => actualizarGraficaDesdeCache(pregId));
+      // También pedir datos frescos para preguntas con chart
+      const pregIds = Object.keys(portalCharts);
+      if (pregIds.length) {
+        for (const pregId of pregIds) {
+          await cargarYActualizarGrafica(pregId);
+        }
+      }
+    }
+  }, 10000);
 }
 
 // ── CARGAR EVENTO ─────────────────────────────────────
 async function cargarEvento() {
-  try {
-    const { data } = await sb.from("eventos")
-      .select("id,nombre,estado,tipo,ocultar_graficos,permitir_voto_mora,permitir_cambiar_respuestas,restringir_acceso,permitir_registro_iniciado,fecha,quorum_minimo")
-      .eq("id", EV_ID).single();
-    if (!data) {
-      mostrarError("No se encontró el evento. Verifica el enlace.");
-      return;
-    }
-    evData = data;
-    document.title = data.nombre + " — Portal";
-    document.getElementById("nav-ev").textContent = data.nombre;
-    await cargarPreguntas();
-  } catch(e) {
-    mostrarError("Error de conexión. Recarga la página.");
-  }
+  const { data } = await sb.from("eventos")
+    .select("id,nombre,estado,tipo,ocultar_graficos,permitir_voto_mora,permitir_cambiar_respuestas,fecha,quorum_minimo")
+    .eq("id", EV_ID).single();
+  if (!data) { mostrarError("No se encontró el evento."); return; }
+  evData = data;
+  document.title = data.nombre + " — Portal";
+  document.getElementById("nav-ev").textContent = data.nombre;
+  await cargarPreguntas();
 }
 
 // ── CARGAR UNIDAD INFO ────────────────────────────────
@@ -461,10 +474,7 @@ async function cargarMisVotos() {
 // ── CARGAR PREGUNTAS ACTIVAS ──────────────────────────
 async function cargarPreguntas() {
   const { data } = await sb.from("preguntas")
-    .select("*")
-    .eq("id_evento", EV_ID)
-    .eq("estado", "Activa")
-    .order("orden");
+    .select("*").eq("id_evento", EV_ID).eq("estado", "Activa").order("orden");
   preguntas = data || [];
   await cargarStatsParticipacion();
   renderMain();
@@ -472,24 +482,20 @@ async function cargarPreguntas() {
 
 // ── STATS PARTICIPACIÓN ───────────────────────────────
 async function cargarStatsParticipacion() {
-  // Total registrados
+  // Solo participantes activos (activo = true)
   const { count: totalPart } = await sb.from("participantes")
     .select("*", { count:"exact", head:true })
-    .eq("id_evento", EV_ID);
+    .eq("id_evento", EV_ID)
+    .eq("activo", true);
 
-  // Total que han votado (al menos una pregunta)
-  const { count: totalVotaron } = await sb.from("votos")
-    .select("*", { count:"exact", head:true })
-    .eq("id_evento", EV_ID);
-
-  // Coeficiente total votado (suma de coeficientes distintos por unidad)
-  const { data: votosPrimer } = await sb.from("votos")
+  // Votos únicos por unidad
+  const { data: votosUniq } = await sb.from("votos")
     .select("id_unidad,coeficiente")
     .eq("id_evento", EV_ID);
 
   let coefVotado = 0;
   const unidadesContadas = new Set();
-  (votosPrimer||[]).forEach(v => {
+  (votosUniq||[]).forEach(v => {
     if (!unidadesContadas.has(v.id_unidad)) {
       unidadesContadas.add(v.id_unidad);
       coefVotado += parseFloat(String(v.coeficiente||0).replace(",",".")) || 0;
@@ -497,7 +503,7 @@ async function cargarStatsParticipacion() {
   });
 
   statsGlobal = {
-    totalPart: totalPart || 0,
+    totalPart:    totalPart || 0,
     totalVotaron: unidadesContadas.size,
     coefVotado,
   };
@@ -509,19 +515,17 @@ function esDesktop() { return window.innerWidth >= 900; }
 function renderMain() {
   const main    = document.getElementById("main");
   const sidebar = document.getElementById("sidebar-content");
-
   const estadoMap = {
-    "Creado":      ["chip-creado",   "Creado"],
-    "En registro": ["chip-registro", "En registro"],
-    "En curso":    ["chip-curso",    "En curso"],
-    "Cerrado":     ["chip-cerrado",  "Cerrado"],
+    "Creado":      ["chip-creado","Creado"],
+    "En registro": ["chip-registro","En registro"],
+    "En curso":    ["chip-curso","En curso"],
+    "Cerrado":     ["chip-cerrado","Cerrado"],
   };
   const [chipClass, chipLabel] = estadoMap[evData?.estado] || ["chip-creado","—"];
 
-  // ── SIDEBAR en desktop: info del evento + stats ──
+  // ── SIDEBAR en desktop ──
   if (esDesktop() && sidebar) {
     sidebar.innerHTML = `
-      <!-- Info evento -->
       <div style="background:linear-gradient(135deg,rgba(79,5,153,.5),rgba(124,58,237,.3));border:1px solid var(--border);border-radius:20px;padding:20px;">
         <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:rgba(196,181,253,.6);margin-bottom:8px;">Evento activo</div>
         <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:12px;">${evData?.nombre||"—"}</div>
@@ -532,133 +536,127 @@ function renderMain() {
           <div style="font-size:12px;color:var(--muted);margin-top:2px;">${SS.nombre||""}</div>
         </div>
       </div>
-      <!-- Stats -->
-      ${evData?.estado === "En curso" ? renderStatsBar() : ""}
-      <!-- Progreso preguntas -->
-      ${evData?.estado === "En curso" && preguntas.length ? renderProgresoPreguntas() : ""}
+      ${evData?.estado === "En curso" ? `<div id="stats-bar-wrap">${renderStatsBar()}</div>` : ""}
+      ${evData?.estado === "En curso" && preguntas.length ? `<div id="progreso-wrap">${renderProgresoPreguntas()}</div>` : ""}
     `;
   }
 
   // ── MAIN CONTENT ──
   let html = "";
 
-  // En mobile: mostrar barra de estado del evento
-  if (!esDesktop()) {
-    html += `
-      <div class="ev-estado-bar">
-        <div id="ev-nombre-bar" class="ev-nombre-bar">${evData?.nombre||"—"}</div>
-        <div class="estado-chip ${chipClass}">${chipLabel}</div>
-      </div>`;
+  if (!esDesktop() && evData?.estado === "En curso") {
+    html += `<div id="stats-bar-wrap">${renderStatsBar()}</div>`;
   }
 
-  // Bloqueo mora
-  if (unidadInfo?.en_mora && !evData?.permitir_voto_mora) {
-    html += renderMoraBloqueo();
-    main.innerHTML = html;
-    return;
+  if (evData?.estado === "Creado") {
+    html += renderEsperando("📋","Evento no iniciado","El evento aún no ha comenzado. Espera las instrucciones.");
+  } else if (evData?.estado === "En registro") {
+    html += renderEsperando("📝","Registro en proceso","El registro está abierto. En breve comenzará la votación.");
+  } else if (evData?.estado === "Cerrado") {
+    html += renderEsperando("🔒","Evento finalizado","La asamblea ha concluido. Gracias por participar.");
+  } else if (evData?.estado === "En curso") {
+    if (unidadInfo?.en_mora && !evData?.permitir_voto_mora) {
+      html += renderMoraBloqueo();
+    } else if (!preguntas.length) {
+      html += renderEsperando("⏳","Esperando preguntas","El administrador activará las preguntas pronto.");
+    } else {
+      html += preguntas.map((p,i) => renderPregunta(p, i, misVotos[p.id], Array.isArray(p.opciones)?p.opciones:[])).join("");
+    }
   }
-
-  // Evento no en curso
-  if (!evData || evData.estado !== "En curso") {
-    const msgs = {
-      "Creado":      { ico:"📋", t:"Evento no iniciado",   s:"El administrador aún no ha iniciado el evento. Por favor espera." },
-      "En registro": { ico:"📝", t:"Registro en proceso",  s:"El registro está abierto. El evento comenzará pronto." },
-      "Cerrado":     { ico:"🔒", t:"Evento finalizado",    s:"Este evento ya ha concluido. Gracias por participar." },
-    };
-    const m = msgs[evData?.estado] || { ico:"⏳", t:"Esperando…", s:"Por favor espera." };
-    html += `
-      <div class="esperando">
-        <div class="esp-anim">
-          <div class="esp-ring"></div><div class="esp-ring2"></div>
-          <div class="esp-dot">${m.ico}</div>
-        </div>
-        <div class="esp-title">${m.t}</div>
-        <div class="esp-sub">${m.s}</div>
-        <div class="esp-ev">
-          <div class="esp-ev-label">Evento</div>
-          <div class="esp-ev-nombre">${evData?.nombre||"—"}</div>
-        </div>
-      </div>`;
-    main.innerHTML = html;
-    return;
-  }
-
-  // En mobile: stats arriba del todo
-  if (!esDesktop()) {
-    html += renderStatsBar();
-  }
-
-  // Sin preguntas
-  if (!preguntas.length) {
-    html += `
-      <div class="sin-preg">
-        <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        <h3>Sin preguntas activas</h3>
-        <p>El administrador activará las preguntas en breve.</p>
-      </div>`;
-    main.innerHTML = html;
-    return;
-  }
-
-  preguntas.forEach((preg, idx) => {
-    const yaVote  = misVotos[preg.id];
-    const opciones = Array.isArray(preg.opciones) ? preg.opciones : [];
-    html += renderPregunta(preg, idx, yaVote, opciones);
-  });
 
   main.innerHTML = html;
 
-  if (!evData?.ocultar_graficos) {
-    setTimeout(() => {
-      preguntas.forEach(p => { if (misVotos[p.id]) cargarResultados(p.id); });
-    }, 100);
+  // Cargar gráficas para preguntas ya votadas
+  if (!evData?.ocultar_graficos && evData?.estado === "En curso") {
+    requestAnimationFrame(() => {
+      preguntas.forEach(p => {
+        if (misVotos[p.id]) cargarYActualizarGrafica(p.id);
+      });
+    });
   }
 }
 
-// ── BARRA STATS DE PARTICIPACIÓN ─────────────────────
-function renderStatsBar() {
-  const total  = statsGlobal.totalPart || 0;
-  const votaron = statsGlobal.totalVotaron || 0;
-  const pctNom  = total > 0 ? Math.round((votaron / total) * 100) : 0;
-  const coefPct = (statsGlobal.coefVotado * 100).toFixed(2);
-  const quorumMin = parseFloat(String(evData?.quorum_minimo||0).replace(",",".")) || 0;
-  const quorumAlc = quorumMin > 0 ? Math.min(((statsGlobal.coefVotado / quorumMin) * 100), 100).toFixed(1) : null;
-  const quorumColor = quorumAlc >= 100 ? "#4ade80" : quorumAlc >= 50 ? "#fbbf24" : "#c4b5fd";
+function renderEsperando(icon, titulo, sub) {
+  return `<div class="esperando"><div class="esp-ring"><div class="esp-icon">${icon}</div></div>
+    <div class="esp-titulo">${titulo}</div><div class="esp-sub">${sub}</div></div>`;
+}
 
+// ── STATS BAR ─────────────────────────────────────────
+function renderStatsBar() {
+  const total      = statsGlobal.totalPart || 0;
+  const votaron    = statsGlobal.totalVotaron || 0;
+  const coefVot    = statsGlobal.coefVotado || 0;
+  const quorumMin  = parseFloat(evData?.quorum_minimo || 0);
+  const pctNom     = total > 0 ? Math.round(votaron / total * 100) : 0;
+  const coefPct    = (coefVot * 100).toFixed(2);
+  const quorumAlc  = quorumMin > 0 ? (coefVot / quorumMin * 100) : null;
+  const quorumColor = quorumAlc === null ? "#7c3aed" : quorumAlc >= 100 ? "#10b981" : quorumAlc >= 50 ? "#f59e0b" : "#a855f7";
   return `
-  <div class="stats-bar">
-    <div class="stats-title">📊 Participación en tiempo real</div>
+  <div class="stats-bar" id="stats-bar">
+    <div class="stats-title">Participación en tiempo real</div>
     <div class="stats-grid">
       <div class="stat-item">
-        <div class="stat-val">${votaron}<span class="stat-of">/${total}</span></div>
+        <div class="stat-val" id="sv-votaron">${votaron}<span class="stat-of">/${total}</span></div>
         <div class="stat-lbl">Unidades votando</div>
-        <div class="stat-track"><div class="stat-fill" style="width:${pctNom}%;background:linear-gradient(90deg,#7c3aed,#c026d3);"></div></div>
-        <div class="stat-pct">${pctNom}%</div>
+        <div class="stat-track"><div class="stat-fill" id="sf-nom" style="width:${pctNom}%;background:linear-gradient(90deg,#7c3aed,#c026d3);"></div></div>
+        <div class="stat-pct" id="sp-nom">${pctNom}%</div>
       </div>
       <div class="stat-item">
-        <div class="stat-val" style="color:${quorumColor};">${coefPct}%</div>
+        <div class="stat-val" id="sv-coef" style="color:${quorumColor};">${coefPct}%</div>
         <div class="stat-lbl">Coeficiente votado</div>
         ${quorumAlc !== null ? `
-        <div class="stat-track"><div class="stat-fill" style="width:${Math.min(quorumAlc,100)}%;background:linear-gradient(90deg,${quorumColor},${quorumColor}88);"></div></div>
-        <div class="stat-pct" style="color:${quorumColor};">${quorumAlc}% del quórum</div>
+        <div class="stat-track"><div class="stat-fill" id="sf-quorum" style="width:${Math.min(quorumAlc,100).toFixed(1)}%;background:linear-gradient(90deg,${quorumColor},${quorumColor}88);"></div></div>
+        <div class="stat-pct" id="sp-quorum" style="color:${quorumColor};">${quorumAlc.toFixed(1)}% del quórum</div>
         ` : `<div style="height:14px;"></div>`}
       </div>
     </div>
-    ${quorumAlc >= 100 ? `<div class="quorum-badge">✓ Quórum alcanzado</div>` : ""}
+    ${quorumAlc !== null && quorumAlc >= 100 ? `<div class="quorum-badge" id="qbadge">✓ Quórum alcanzado</div>` : `<div id="qbadge"></div>`}
   </div>`;
 }
 
-// ── BLOQUEO MORA ──────────────────────────────────────
+// Actualiza stats IN-PLACE — NO toca el DOM de las preguntas
+function actualizarStatsInPlace() {
+  const total      = statsGlobal.totalPart || 0;
+  const votaron    = statsGlobal.totalVotaron || 0;
+  const coefVot    = statsGlobal.coefVotado || 0;
+  const quorumMin  = parseFloat(evData?.quorum_minimo || 0);
+  const pctNom     = total > 0 ? Math.round(votaron / total * 100) : 0;
+  const coefPct    = (coefVot * 100).toFixed(2);
+  const quorumAlc  = quorumMin > 0 ? (coefVot / quorumMin * 100) : null;
+  const quorumColor = quorumAlc === null ? "#7c3aed" : quorumAlc >= 100 ? "#10b981" : quorumAlc >= 50 ? "#f59e0b" : "#a855f7";
+
+  const setEl = (id, val) => { const e = document.getElementById(id); if(e) e.textContent = val; };
+  const setStyle = (id, prop, val) => { const e = document.getElementById(id); if(e) e.style[prop] = val; };
+
+  const svV = document.getElementById("sv-votaron");
+  if (svV) svV.innerHTML = `${votaron}<span class="stat-of">/${total}</span>`;
+  setStyle("sf-nom", "width", pctNom + "%");
+  setEl("sp-nom", pctNom + "%");
+  setEl("sv-coef", coefPct + "%");
+  setStyle("sv-coef", "color", quorumColor);
+  if (quorumAlc !== null) {
+    setStyle("sf-quorum", "width", Math.min(quorumAlc,100).toFixed(1) + "%");
+    setEl("sp-quorum", quorumAlc.toFixed(1) + "% del quórum");
+    setStyle("sp-quorum", "color", quorumColor);
+    const badge = document.getElementById("qbadge");
+    if (badge) {
+      badge.textContent = quorumAlc >= 100 ? "✓ Quórum alcanzado" : "";
+      badge.className = quorumAlc >= 100 ? "quorum-badge" : "";
+    }
+  }
+
+  // Actualizar progreso sidebar
+  const progWrap = document.getElementById("progreso-wrap");
+  if (progWrap) progWrap.innerHTML = renderProgresoPreguntas();
+}
+
+// ── MORA ──────────────────────────────────────────────
 function renderMoraBloqueo() {
-  return `
-  <div class="mora-bloqueo">
+  return `<div class="mora-bloqueo">
     <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
     <div class="mora-titulo">Unidad en mora</div>
-    <div class="mora-sub">
-      La unidad <strong>${SS.codigo}</strong> tiene cartera pendiente.<br>
-      Para participar en la votación debes ponerte al día.
-    </div>
-    <div class="mora-contacto">Comunícate con la Administración para más información.</div>
+    <div class="mora-sub">La unidad <strong>${SS.codigo}</strong> tiene cartera pendiente.<br>Para participar debes ponerte al día.</div>
+    <div class="mora-contacto">Comunícate con la Administración.</div>
   </div>`;
 }
 
@@ -666,57 +664,46 @@ function renderMoraBloqueo() {
 function renderPregunta(preg, idx, yaVote, opciones) {
   const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const puedeEditar = yaVote && evData?.permitir_cambiar_respuestas;
-
-  let html = `<div class="pregunta-card" id="preg-${preg.id}" style="margin-bottom:16px;">
+  let html = `<div class="pregunta-card" id="preg-${preg.id}">
     <div class="preg-head">
       <div class="preg-num">Pregunta ${idx+1} de ${preguntas.length}</div>
       <div class="preg-titulo">${preg.titulo||"Sin título"}</div>
       ${preg.descripcion ? `<div class="preg-desc">${preg.descripcion}</div>` : ""}
     </div>
-    <div class="preg-body">`;
+    <div class="preg-body" id="preg-body-${preg.id}">`;
 
   if (yaVote && !puedeEditar) {
-    // Votó y no puede cambiar
-    html += `<div class="votado-badge">
+    html += `<div class="votado-badge" id="vbadge-${preg.id}">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-      Tu voto: <strong>${yaVote}</strong>
+      Tu voto: <strong id="vtexto-${preg.id}">${yaVote}</strong>
     </div>`;
-    if (!evData?.ocultar_graficos) {
-      html += `<div id="res-${preg.id}" style="margin-top:8px;"></div>`;
-    }
+    if (!evData?.ocultar_graficos) html += `<div id="res-${preg.id}"></div>`;
   } else if (yaVote && puedeEditar) {
-    // Votó pero puede cambiar — mostrar opciones con la actual marcada + botón cambiar
-    html += `<div class="votado-badge" style="background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#fcd34d;">
+    html += `<div class="votado-badge" id="vbadge-${preg.id}" style="background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#fcd34d;">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-      Votaste: <strong>${yaVote}</strong> — <span style="opacity:.7;font-size:12px;">puedes cambiar</span>
-    </div>`;
-    html += `<div class="opciones" id="ops-${preg.id}">`;
+      Votaste: <strong id="vtexto-${preg.id}">${yaVote}</strong> — <span style="opacity:.7;font-size:12px;">puedes cambiar</span>
+    </div>
+    <div class="opciones" id="ops-${preg.id}">`;
     opciones.forEach((op, i) => {
       const texto = typeof op === "object" ? op.texto : op;
-      const esMio = texto === yaVote;
-      html += `<div class="opcion${esMio?" selected":""}" id="op-${preg.id}-${i}" onclick="seleccionar('${preg.id}',${i},'${texto.replace(/'/g,"\\'")}')">
+      html += `<div class="opcion${texto===yaVote?" selected":""}" id="op-${preg.id}-${i}" onclick="seleccionar('${preg.id}',${i},'${texto.replace(/'/g,"\\'")}')">
         <div class="op-radio"><div class="op-check"></div></div>
         <div class="op-letra">${letras[i]}</div>
         <div class="op-text">${texto}</div>
       </div>`;
     });
     html += `</div>
-    <button class="btn-votar" id="btnv-${preg.id}" onclick="votar('${preg.id}')"
-      style="background:linear-gradient(135deg,#d97706,#f59e0b);">
+    <button class="btn-votar" id="btnv-${preg.id}" onclick="votar('${preg.id}')" disabled style="background:linear-gradient(135deg,#d97706,#f59e0b);">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
       Cambiar respuesta
     </button>`;
-    if (!evData?.ocultar_graficos) {
-      html += `<div id="res-${preg.id}" style="margin-top:12px;"></div>`;
-    }
+    if (!evData?.ocultar_graficos) html += `<div id="res-${preg.id}" style="margin-top:12px;"></div>`;
   } else {
-    // Sin voto — mostrar opciones normales
     const selActual = selecciones[preg.id];
     html += `<div class="opciones" id="ops-${preg.id}">`;
     opciones.forEach((op, i) => {
       const texto = typeof op === "object" ? op.texto : op;
-      const esSel = selActual?.idx === i;
-      html += `<div class="opcion${esSel?" selected":""}" id="op-${preg.id}-${i}" onclick="seleccionar('${preg.id}',${i},'${texto.replace(/'/g,"\\'")}')">
+      html += `<div class="opcion${selActual?.idx===i?" selected":""}" id="op-${preg.id}-${i}" onclick="seleccionar('${preg.id}',${i},'${texto.replace(/'/g,"\\'")}')">
         <div class="op-radio"><div class="op-check"></div></div>
         <div class="op-letra">${letras[i]}</div>
         <div class="op-text">${texto}</div>
@@ -728,12 +715,11 @@ function renderPregunta(preg, idx, yaVote, opciones) {
       Confirmar voto
     </button>`;
   }
-
   html += `</div></div>`;
   return html;
 }
 
-// ── PROGRESO PREGUNTAS (sidebar desktop) ──────────────
+// ── PROGRESO SIDEBAR ──────────────────────────────────
 function renderProgresoPreguntas() {
   const total   = preguntas.length;
   const votadas = preguntas.filter(p => misVotos[p.id]).length;
@@ -746,12 +732,9 @@ function renderProgresoPreguntas() {
       <div style="color:var(--muted);font-size:13px;">de ${total}<br>preguntas<br>respondidas</div>
     </div>
     <div style="height:8px;background:rgba(124,58,237,.15);border-radius:20px;overflow:hidden;">
-      <div style="height:100%;border-radius:20px;background:linear-gradient(90deg,var(--p2),var(--pink));width:${pct}%;transition:width .8s ease;"></div>
+      <div style="height:100%;border-radius:20px;background:linear-gradient(90deg,var(--p2),var(--pink));width:${pct}%;transition:width .8s;"></div>
     </div>
-    <div style="margin-top:8px;font-size:12px;font-weight:700;color:${pct===100?'#4ade80':'var(--muted)'};">
-      ${pct===100 ? "✓ Todas respondidas" : pct+"%  completado"}
-    </div>
-    <!-- Lista rápida de preguntas -->
+    <div style="margin-top:8px;font-size:12px;font-weight:700;color:${pct===100?'#4ade80':'var(--muted)'};">${pct===100?"✓ Todas respondidas":pct+"% completado"}</div>
     <div style="margin-top:14px;display:flex;flex-direction:column;gap:6px;">
       ${preguntas.map((p,i) => {
         const voto = misVotos[p.id];
@@ -767,17 +750,7 @@ function renderProgresoPreguntas() {
   </div>`;
 }
 
-// ── ACTUALIZAR SIDEBAR ────────────────────────────────
-function actualizarSidebar() {
-  if (!esDesktop()) return;
-  const sidebar = document.getElementById("sidebar-content");
-  if (!sidebar) return;
-  // Re-render sidebar stats y progreso
-  actualizarStatsInPlace();
-  const progEl = sidebar.querySelector("[data-prog]");
-  // Simplest: just re-render the whole sidebar (it's fast)
-  renderMain();
-}
+// ── SELECCIONAR OPCIÓN ────────────────────────────────
 const selecciones = {};
 function seleccionar(pregId, idx, texto) {
   selecciones[pregId] = { idx, texto };
@@ -796,55 +769,103 @@ async function votar(pregId) {
   if (btn) { btn.disabled = true; btn.innerHTML = `<div class="spin"></div>Enviando…`; }
 
   const coef = parseFloat(String(unidadInfo?.coeficiente||0).replace(",",".")) || 0;
-
   const { error } = await sb.from("votos").upsert({
-    id_pregunta:  pregId,
-    id_evento:    EV_ID,
-    id_unidad:    SS.unidadId,
-    respuesta:    sel.texto,
-    coeficiente:  coef,
+    id_pregunta: pregId, id_evento: EV_ID,
+    id_unidad: SS.unidadId, respuesta: sel.texto, coeficiente: coef,
   }, { onConflict: "id_pregunta,id_unidad" });
 
   if (error) {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Confirmar voto`;
-    }
-    console.error("Error votar:", error);
-    if (error.code === "42501") {
-      toast("Sin permisos para votar. Contacta al administrador.", "err");
-    } else {
-      toast("Error al votar: " + (error.message||"Intenta de nuevo"), "err");
-    }
+    if (btn) { btn.disabled = false; btn.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Confirmar voto`; }
+    toast(error.code==="42501" ? "Sin permisos. Contacta al administrador." : "Error: "+(error.message||"Intenta de nuevo"), "err");
     return;
   }
 
   const esCambio = !!misVotos[pregId];
   misVotos[pregId] = sel.texto;
-  toast(esCambio ? "✓ Respuesta actualizada" : "✓ Voto registrado correctamente", "ok");
+  toast(esCambio ? "✓ Respuesta actualizada" : "✓ Voto registrado", "ok");
 
-  await cargarStatsParticipacion();
+  // Actualizar DOM quirúrgicamente — SIN outerHTML del card
+  _actualizarCardTrasVoto(pregId, sel.texto);
 
-  // Re-render esta pregunta
-  const idx = preguntas.findIndex(p => p.id === pregId);
-  const preg = preguntas[idx];
-  const opciones = Array.isArray(preg?.opciones) ? preg.opciones : [];
-  const card = document.getElementById(`preg-${pregId}`);
-  if (card) {
-    card.outerHTML = renderPregunta(preg, idx, sel.texto, opciones);
+  // Stats en segundo plano
+  cargarStatsParticipacion().then(() => actualizarStatsInPlace());
+
+  // Gráfica
+  if (!evData?.ocultar_graficos) {
+    delete portalCharts[pregId];
+    delete portalChartCache[pregId];
+    setTimeout(() => cargarYActualizarGrafica(pregId), 80);
+  }
+}
+
+// Actualización quirúrgica del card tras votar — NO usa outerHTML
+function _actualizarCardTrasVoto(pregId, texto) {
+  const puedeEditar = evData?.permitir_cambiar_respuestas;
+
+  // Actualizar badge de voto
+  const badge = document.getElementById(`vbadge-${pregId}`);
+  const vtexto = document.getElementById(`vtexto-${pregId}`);
+  if (vtexto) {
+    vtexto.textContent = texto;
+  } else if (!badge) {
+    // Crear badge por primera vez (primera votación)
+    const body = document.getElementById(`preg-body-${pregId}`);
+    if (body) {
+      const badgeDiv = document.createElement("div");
+      badgeDiv.className = puedeEditar ? "votado-badge" : "votado-badge";
+      badgeDiv.id = `vbadge-${pregId}`;
+      badgeDiv.style.cssText = puedeEditar ? "background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#fcd34d;" : "";
+      badgeDiv.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>${puedeEditar?"Votaste:":"Tu voto:"} <strong id="vtexto-${pregId}">${texto}</strong>${puedeEditar?' — <span style="opacity:.7;font-size:12px;">puedes cambiar</span>':""}`;
+      body.insertBefore(badgeDiv, body.firstChild);
+    }
+  } else {
+    // Badge existe pero sin vtexto — actualizarlo entero
+    if (puedeEditar) {
+      badge.style.cssText = "background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#fcd34d;";
+      badge.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Votaste: <strong id="vtexto-${pregId}">${texto}</strong> — <span style="opacity:.7;font-size:12px;">puedes cambiar</span>`;
+    }
   }
 
-  // Actualizar barra de stats
-  // Actualizar stats in-place
-  actualizarStatsInPlace();
+  // Si no puede editar: ocultar opciones y botón después de votar
+  if (!puedeEditar) {
+    const ops = document.getElementById(`ops-${pregId}`);
+    const btn = document.getElementById(`btnv-${pregId}`);
+    if (ops) ops.style.display = "none";
+    if (btn) btn.style.display = "none";
+  } else {
+    // Puede editar: restaurar botón y deseleccionar opciones
+    const btn = document.getElementById(`btnv-${pregId}`);
+    if (btn) {
+      btn.disabled = true; // deshabilitar hasta nueva selección
+      btn.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>Cambiar respuesta`;
+    }
+    // Marcar opción actual como selected
+    document.querySelectorAll(`#ops-${pregId} .opcion`).forEach(el => el.classList.remove("selected"));
+    const preg = preguntas.find(p => String(p.id) === String(pregId));
+    const opciones = Array.isArray(preg?.opciones) ? preg.opciones : [];
+    opciones.forEach((op, i) => {
+      const t = typeof op === "object" ? op.texto : op;
+      if (t === texto) document.getElementById(`op-${pregId}-${i}`)?.classList.add("selected");
+    });
+    delete selecciones[pregId]; // limpiar selección pendiente
+  }
 
-  // Actualizar gráfica (se reconstruye si no existe, actualiza datos si ya existe)
+  // Actualizar progreso sidebar
+  const progWrap = document.getElementById("progreso-wrap");
+  if (progWrap) progWrap.innerHTML = renderProgresoPreguntas();
+
+  // Asegurarse que el div de resultado existe
   if (!evData?.ocultar_graficos) {
-    // Al cambiar respuesta, el miVoto cambia — forzar reconstrucción del card
-    const resEl = document.getElementById(`res-${pregId}`);
-    if (resEl) resEl.remove(); // forzar rebuild para reflejar nuevo "mi voto"
-    delete portalCharts[pregId];
-    setTimeout(() => cargarResultados(pregId), 60);
+    let resEl = document.getElementById(`res-${pregId}`);
+    if (!resEl) {
+      const body = document.getElementById(`preg-body-${pregId}`);
+      if (body) {
+        resEl = document.createElement("div");
+        resEl.id = `res-${pregId}`;
+        resEl.style.marginTop = "12px";
+        body.appendChild(resEl);
+      }
+    }
   }
 }
 
@@ -858,314 +879,263 @@ const PORTAL_COLORS = [
   { bg:"rgba(250,204,21,.85)", border:"#facc15" },
 ];
 
-// { pregId: Chart }  — instancias activas
+// { pregId: Chart instance }
 const portalCharts = {};
-// { pregId: "bar"|"doughnut" } — tipo actual por pregunta
-const portalChartTipo = {};
-// { pregId: resData[] } — últimos datos guardados para toggle
+// { pregId: { resData, totalVotos, quorumMin } }
 const portalChartCache = {};
+// { pregId: "coef"|"quorum"|"nominal" } — métrica activa
+const chartMetrica = {};
 
-// ─── CARGA Y ACTUALIZACIÓN DE RESULTADOS ───────────────
-async function cargarResultados(pregId) {
+// ── CARGAR Y ACTUALIZAR GRÁFICA ───────────────────────
+async function cargarYActualizarGrafica(pregId) {
   if (evData?.ocultar_graficos) return;
 
   const { data: votos } = await sb.from("votos")
-    .select("respuesta,coeficiente")
+    .select("respuesta,coeficiente,id_unidad")
     .eq("id_pregunta", pregId);
 
-  const preg    = preguntas.find(p => p.id === pregId);
+  if (!votos) return;
+
+  const preg     = preguntas.find(p => String(p.id) === String(pregId));
   const opciones = Array.isArray(preg?.opciones) ? preg.opciones : [];
   const miVoto   = misVotos[pregId];
-  const votosList = votos || [];
+  const quorumMin = parseFloat(evData?.quorum_minimo || 0);
 
-  // Calcular totales
-  const totales = {};
-  let sumCoef = 0;
-  votosList.forEach(v => {
-    const r = v.respuesta || "—";
-    const c = parseFloat(String(v.coeficiente||0).replace(",",".")) || 0;
-    totales[r] = (totales[r]||0) + c;
-    sumCoef += c;
+  // Calcular por opción
+  const totCoef = {}, totNom = {}, totUniq = new Set();
+  opciones.forEach(op => { const t = typeof op==="object"?op.texto:op; totCoef[t]=0; totNom[t]=0; });
+  votos.forEach(v => {
+    const r = v.respuesta;
+    if (!totCoef[r]) { totCoef[r]=0; totNom[r]=0; }
+    totCoef[r] += parseFloat(String(v.coeficiente||0).replace(",",".")) || 0;
+    totNom[r]  += 1;
+    totUniq.add(v.id_unidad);
   });
+  const sumCoef = Object.values(totCoef).reduce((a,b)=>a+b, 0);
 
   const resData = opciones.map((op, i) => {
-    const texto = typeof op === "object" ? op.texto : op;
-    const coef  = totales[texto] || 0;
-    const pct   = sumCoef > 0 ? (coef / sumCoef) * 100 : 0;
-    const count = votosList.filter(v => v.respuesta === texto).length;
-    return { texto, coef, pct, count, idx: i };
+    const texto = typeof op==="object" ? op.texto : op;
+    const coef  = totCoef[texto] || 0;
+    const nom   = totNom[texto]  || 0;
+    return {
+      texto, idx: i,
+      coefPct:   sumCoef > 0 ? (coef/sumCoef)*100 : 0,
+      quorumPct: quorumMin > 0 ? (coef/quorumMin)*100 : 0,
+      nominal:   nom,
+    };
   });
 
-  portalChartCache[pregId] = resData;
+  portalChartCache[pregId] = { resData, totalVotos: votos.length, miVoto, quorumMin };
 
-  // ── Si el contenedor de resultados no existe aún → construir HTML ──
   const resEl = document.getElementById(`res-${pregId}`);
-  if (!resEl || !document.getElementById(`chart-${pregId}`)) {
-    // Construir card completo
-    if (resEl) resEl.outerHTML = buildResultCard(pregId, resData, miVoto, votosList.length);
-    else return; // no hay dónde poner los resultados
-    // Dibujar chart después de que el DOM exista
+  if (!resEl) return;
+
+  const chartExists = !!portalCharts[pregId];
+
+  if (!chartExists) {
+    // Primera vez: construir HTML
+    resEl.innerHTML = buildChartCard(pregId, resData, miVoto, votos.length, quorumMin);
     requestAnimationFrame(() => {
-      renderPortalChart(pregId, resData, portalChartTipo[pregId] || "bar");
+      requestAnimationFrame(() => {
+        dibujarChart(pregId, resData, miVoto);
+      });
     });
-    return;
-  }
-
-  // ── Card ya existe → solo actualizar datos sin tocar DOM ──
-  // Actualizar contador de votos
-  const cntEl = document.getElementById(`res-cnt-${pregId}`);
-  if (cntEl) cntEl.textContent = `${votosList.length} voto${votosList.length!==1?"s":""}`;
-
-  // Actualizar tabla de barras CSS (sin chart)
-  resData.forEach((r, i) => {
-    const barEl = document.getElementById(`res-bar-${pregId}-${i}`);
-    const pctEl = document.getElementById(`res-pct-${pregId}-${i}`);
-    const cEl   = document.getElementById(`res-cnt2-${pregId}-${i}`);
-    if (barEl) barEl.style.width = r.pct.toFixed(1) + "%";
-    if (pctEl) pctEl.textContent = r.pct.toFixed(1) + "%";
-    if (cEl)   cEl.textContent   = r.count + " unid.";
-  });
-
-  // Actualizar chart SIN reconstruirlo (solo nuevos datos)
-  const chart = portalCharts[pregId];
-  if (chart) {
-    const pctVals = resData.map(r => +r.pct.toFixed(2));
-    chart.data.datasets[0].data = pctVals;
-    chart.update("none"); // "none" = sin animación → sin salto
+  } else {
+    // Ya existe: actualizar solo datos
+    actualizarGraficaDesdeCache(pregId);
   }
 }
 
-// ─── CONSTRUIR HTML DEL CARD DE RESULTADOS ─────────────
-function buildResultCard(pregId, resData, miVoto, totalVotos) {
-  const tipo = portalChartTipo[pregId] || "bar";
+function actualizarGraficaDesdeCache(pregId) {
+  const cache = portalChartCache[pregId];
+  if (!cache || !portalCharts[pregId]) return;
+  const { resData, totalVotos, miVoto } = cache;
+  const metrica = chartMetrica[pregId] || "coef";
+
+  // Actualizar chart data
+  const chart = portalCharts[pregId];
+  chart.data.datasets[0].data = resData.map(r => getMetricVal(r, metrica));
+  chart.update("none"); // sin animación para velocidad
+
+  // Actualizar contador
+  const cntEl = document.getElementById(`res-cnt-${pregId}`);
+  if (cntEl) cntEl.textContent = `${totalVotos} voto${totalVotos!==1?"s":""}`;
+
+  // Actualizar tabla CSS
+  resData.forEach((r, i) => {
+    const val = getMetricVal(r, metrica);
+    const maxVal = Math.max(...resData.map(x => getMetricVal(x, metrica)));
+    const pctAncho = maxVal > 0 ? (val/maxVal)*100 : 0;
+    const el_bar = document.getElementById(`rbar-${pregId}-${i}`);
+    const el_val = document.getElementById(`rval-${pregId}-${i}`);
+    const el_nom = document.getElementById(`rnom-${pregId}-${i}`);
+    if (el_bar) el_bar.style.width = pctAncho + "%";
+    if (el_val) el_val.textContent = formatMetricVal(r, metrica);
+    if (el_nom) el_nom.textContent = r.nominal + " unid.";
+  });
+}
+
+function getMetricVal(r, metrica) {
+  if (metrica === "quorum") return +r.quorumPct.toFixed(2);
+  if (metrica === "nominal") return r.nominal;
+  return +r.coefPct.toFixed(2);
+}
+
+function formatMetricVal(r, metrica) {
+  if (metrica === "quorum")  return r.quorumPct.toFixed(1) + "% quórum";
+  if (metrica === "nominal") return r.nominal + " unid.";
+  return r.coefPct.toFixed(1) + "%";
+}
+
+// ── CONSTRUIR HTML DEL CARD ───────────────────────────
+function buildChartCard(pregId, resData, miVoto, totalVotos, quorumMin) {
+  const isMobile = window.innerWidth < 600;
+  const metrica  = chartMetrica[pregId] || "coef";
+
+  const btnStyle = (m) => metrica===m
+    ? "padding:5px 10px;border-radius:20px;border:1.5px solid rgba(168,85,247,.6);background:rgba(168,85,247,.2);color:#c4b5fd;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;"
+    : "padding:5px 10px;border-radius:20px;border:1.5px solid rgba(255,255,255,.12);background:transparent;color:var(--muted);font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;";
+
   return `
-  <div class="resultado-card" id="res-${pregId}">
-    <div class="res-header">
-      <div class="res-title">
-        📊 <span id="res-cnt-${pregId}">${totalVotos} voto${totalVotos!==1?"s":""}</span> registrados
-      </div>
-      <div class="res-tipo-btns">
-        <button onclick="toggleTipoGrafica('${pregId}','bar')" id="tipo-bar-${pregId}" class="res-tipo-btn ${tipo==='bar'?'on':''}">▐▌</button>
-        <button onclick="toggleTipoGrafica('${pregId}','doughnut')" id="tipo-pie-${pregId}" class="res-tipo-btn ${tipo==='doughnut'?'on':''}">◉</button>
+  <div class="resultado-card" id="rescard-${pregId}">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap;">
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);">📊 <span id="res-cnt-${pregId}">${totalVotos} voto${totalVotos!==1?"s":""}</span></div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;">
+        <button style="${btnStyle('coef')}" id="mbtn-coef-${pregId}" onclick="cambiarMetrica('${pregId}','coef')">Coef.</button>
+        ${quorumMin > 0 ? `<button style="${btnStyle('quorum')}" id="mbtn-quorum-${pregId}" onclick="cambiarMetrica('${pregId}','quorum')">Quórum</button>` : ""}
+        <button style="${btnStyle('nominal')}" id="mbtn-nominal-${pregId}" onclick="cambiarMetrica('${pregId}','nominal')">Nominal</button>
       </div>
     </div>
-    <!-- Leyenda compacta -->
-    <div class="res-leyenda">
-      ${resData.map((r,i) => `
-        <div class="res-ley-item ${r.texto===miVoto?'mio':''}">
-          <div class="res-ley-dot" style="background:${PORTAL_COLORS[i%PORTAL_COLORS.length].border};"></div>
-          <span>${r.texto}${r.texto===miVoto?' ✓':''}</span>
-        </div>`).join("")}
-    </div>
-    <!-- Canvas -->
-    <div class="res-canvas-wrap">
+    <!-- Canvas chart -->
+    <div style="position:relative;height:${isMobile ? Math.max(resData.length*38+20,130)+'px' : '220px'};" id="chwrap-${pregId}">
       <canvas id="chart-${pregId}"></canvas>
     </div>
-    <!-- Barras CSS debajo (siempre visibles, sin depender del canvas) -->
-    <div class="res-barras-css">
-      ${resData.map((r,i) => {
-        const esMio = r.texto === miVoto;
-        const color = PORTAL_COLORS[i%PORTAL_COLORS.length].border;
-        return `<div class="res-fila">
-          <div class="res-fila-label ${esMio?'mio':''}">${r.texto}${esMio?' ✓':''}</div>
-          <div class="res-fila-track">
-            <div id="res-bar-${pregId}-${i}" class="res-fila-fill" style="width:${r.pct.toFixed(1)}%;background:${color};"></div>
-          </div>
-          <div class="res-fila-nums">
-            <span id="res-pct-${pregId}-${i}" class="res-fila-pct">${r.pct.toFixed(1)}%</span>
-            <span id="res-cnt2-${pregId}-${i}" class="res-fila-cnt">${r.count} unid.</span>
-          </div>
-        </div>`;
-      }).join("")}
+    <!-- Tabla debajo -->
+    <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px;" id="chartabla-${pregId}">
+      ${buildTablaRows(pregId, resData, miVoto, metrica)}
     </div>
   </div>`;
 }
 
-// ─── DIBUJAR / ACTUALIZAR CHART ────────────────────────
-function renderPortalChart(pregId, resData, tipo) {
+function buildTablaRows(pregId, resData, miVoto, metrica) {
+  return resData.map((r, i) => {
+    const esMio  = r.texto === miVoto;
+    const color  = PORTAL_COLORS[i%PORTAL_COLORS.length].border;
+    const val    = formatMetricVal(r, metrica);
+    const maxVal = Math.max(...resData.map(x => getMetricVal(x, metrica)));
+    const pctAncho = maxVal > 0 ? (getMetricVal(r, metrica)/maxVal)*100 : 0;
+    return `<div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+          <span style="font-size:11px;font-weight:${esMio?800:600};color:${esMio?'#4ade80':'#c4b5fd'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52%;">${r.texto}${esMio?' ✓':''}</span>
+          <div style="display:flex;gap:6px;align-items:center;white-space:nowrap;">
+            <span id="rval-${pregId}-${i}" style="font-size:11px;font-weight:800;color:#fff;">${val}</span>
+            <span id="rnom-${pregId}-${i}" style="font-size:10px;color:var(--muted);">${r.nominal} unid.</span>
+          </div>
+        </div>
+        <div style="height:5px;background:rgba(255,255,255,.07);border-radius:20px;overflow:hidden;">
+          <div id="rbar-${pregId}-${i}" style="height:100%;border-radius:20px;background:${esMio?'linear-gradient(90deg,#4ade80,#22d3ee)':color};width:${pctAncho}%;transition:width .6s ease;"></div>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// ── DIBUJAR CHART (primera vez) ───────────────────────
+function dibujarChart(pregId, resData, miVoto) {
   const canvas = document.getElementById(`chart-${pregId}`);
   if (!canvas) return;
+  if (portalCharts[pregId]) { portalCharts[pregId].destroy(); }
 
-  portalChartTipo[pregId] = tipo;
-
-  if (portalCharts[pregId]) {
-    portalCharts[pregId].destroy();
-    delete portalCharts[pregId];
-  }
-
-  const labels   = resData.map(r => r.texto);
-  const pctVals  = resData.map(r => +r.pct.toFixed(2));
+  const metrica  = chartMetrica[pregId] || "coef";
+  const isMobile = window.innerWidth < 600;
+  const labels   = resData.map(r => r.texto.length > (isMobile?10:14) ? r.texto.slice(0,isMobile?9:13)+"…" : r.texto);
+  const vals     = resData.map(r => getMetricVal(r, metrica));
   const bgColors = resData.map((_,i) => PORTAL_COLORS[i%PORTAL_COLORS.length].bg);
   const brColors = resData.map((_,i) => PORTAL_COLORS[i%PORTAL_COLORS.length].border);
-  const isMobile = window.innerWidth < 520;
-  const isBar    = tipo === "bar";
 
   portalCharts[pregId] = new Chart(canvas, {
-    type: tipo,
+    type: "bar",
     data: {
-      labels: labels.map(l => l.length > (isMobile?10:16) ? l.slice(0,isMobile?9:15)+"…" : l),
+      labels,
       datasets: [{
-        label: "% Coeficiente",
-        data: pctVals,
+        data: vals,
         backgroundColor: bgColors,
         borderColor: brColors,
         borderWidth: 2,
-        ...(isBar ? {
-          borderRadius: 6,
-          borderSkipped: false,
-        } : { hoverOffset: 6 }),
+        borderRadius: 6,
+        borderSkipped: false,
       }]
     },
     options: {
+      indexAxis: isMobile ? "y" : "x",
       responsive: true,
       maintainAspectRatio: false,
-      animation: { duration: 400 },
+      animation: { duration: 350 },
       plugins: {
-        legend: {
-          display: !isBar,
-          labels: { color:"#c4b5fd", font:{size:10,weight:"700"}, padding:8, boxWidth:10 }
-        },
+        legend: { display: false },
         tooltip: {
           backgroundColor: "rgba(10,5,25,.95)",
-          titleColor: "#fff",
-          bodyColor: "#c4b5fd",
-          borderColor: "rgba(168,85,247,.4)",
-          borderWidth: 1,
-          padding: 10,
+          titleColor:"#fff", bodyColor:"#c4b5fd",
+          borderColor:"rgba(168,85,247,.4)", borderWidth:1, padding:10,
           callbacks: {
-            title: items => labels[items[0].dataIndex] || "",
-            label: c => ` ${c.raw.toFixed(1)}% del coeficiente`
-          }
-        }
-      },
-      ...(isBar ? {
-        scales: {
-          y: {
-            beginAtZero: true,
-            grid: { color:"rgba(255,255,255,.05)", drawBorder:false },
-            ticks: { color:"rgba(196,181,253,.6)", font:{size:9}, callback:v=>v+"%" }
-          },
-          x: {
-            grid: { display:false },
-            ticks: {
-              color:"#c4b5fd",
-              font:{ size: isMobile ? 9 : 10, weight:"600" },
-              maxRotation: isMobile ? 35 : 15,
+            title: items => resData[items[0].dataIndex]?.texto || "",
+            label: c => {
+              const r = resData[c.dataIndex];
+              const m = chartMetrica[pregId] || "coef";
+              return ` ${formatMetricVal(r, m)} · ${r.nominal} unid.`;
             }
           }
         }
-      } : {})
+      },
+      scales: {
+        [isMobile ? "x" : "y"]: {
+          beginAtZero: true,
+          grid: { color:"rgba(255,255,255,.05)", drawBorder:false },
+          ticks: { color:"rgba(196,181,253,.6)", font:{size:9},
+            callback: v => {
+              const m = chartMetrica[pregId] || "coef";
+              return m==="nominal" ? v : v+"%";
+            }
+          }
+        },
+        [isMobile ? "y" : "x"]: {
+          grid: { display: false },
+          ticks: { color:"#c4b5fd", font:{ size:9, weight:"600" }, maxRotation: isMobile?0:20 }
+        }
+      }
     }
   });
-
-  // Actualizar botones
-  const bBar = document.getElementById(`tipo-bar-${pregId}`);
-  const bPie = document.getElementById(`tipo-pie-${pregId}`);
-  if (bBar) bBar.className = `res-tipo-btn ${isBar?"on":""}`;
-  if (bPie) bPie.className = `res-tipo-btn ${!isBar?"on":""}`;
 }
 
-// ─── TOGGLE TIPO GRÁFICA ───────────────────────────────
-function toggleTipoGrafica(pregId, tipo) {
+// ── CAMBIAR MÉTRICA ───────────────────────────────────
+function cambiarMetrica(pregId, metrica) {
+  chartMetrica[pregId] = metrica;
   const cache = portalChartCache[pregId];
   if (!cache) return;
-  renderPortalChart(pregId, cache, tipo);
-}
 
-// ── ACTUALIZAR STATS SIN TOCAR DOM PRINCIPAL ─────────
-// Actualiza los números de stats sin destruir/recrear el elemento
-// → evita el salto/parpadeo en móvil
-function actualizarStatsInPlace() {
-  // Calcular valores del renderStatsBar
-  const total   = statsGlobal.totalPart || 0;
-  const votaron = statsGlobal.totalVotaron || 0;
-  const coefVot = statsGlobal.coefVotado || 0;
-  const quorumMin = parseFloat(evData?.quorum_minimo || 0);
-  const pctNom  = total > 0 ? Math.round(votaron / total * 100) : 0;
-  const coefPct = (coefVot * 100).toFixed(2);
-  const quorumAlc = quorumMin > 0 ? (coefVot / quorumMin * 100).toFixed(1) : null;
+  // Actualizar estilos de botones
+  ["coef","quorum","nominal"].forEach(m => {
+    const btn = document.getElementById(`mbtn-${m}-${pregId}`);
+    if (!btn) return;
+    btn.style.background = m===metrica ? "rgba(168,85,247,.2)" : "transparent";
+    btn.style.borderColor = m===metrica ? "rgba(168,85,247,.6)" : "rgba(255,255,255,.12)";
+    btn.style.color = m===metrica ? "#c4b5fd" : "var(--muted)";
+  });
 
-  // Intentar actualizar los elementos del stats-bar in-place
-  // Si no existen (primera carga) → renderizar desde cero
-  const statVals = document.querySelectorAll(".stat-val");
-  if (!statVals.length) {
-    // Primer render — necesita crear el elemento
-    const statsEl = document.querySelector(".stats-bar");
-    if (statsEl) statsEl.outerHTML = renderStatsBar();
-    return;
+  // Actualizar datos del chart
+  const chart = portalCharts[pregId];
+  if (chart) {
+    chart.data.datasets[0].data = cache.resData.map(r => getMetricVal(r, metrica));
+    chart.options.scales[window.innerWidth<600?"x":"y"].ticks.callback =
+      v => metrica==="nominal" ? v : v+"%";
+    chart.update();
   }
 
-  // Actualizar texto in-place en cada .stat-val/.stat-pct
-  const allStatItems = document.querySelectorAll(".stat-item");
-  if (allStatItems.length >= 2) {
-    // Ítem 0: unidades votando
-    const v0 = allStatItems[0].querySelector(".stat-val");
-    if (v0) v0.innerHTML = `${votaron}<span class="stat-of">/${total}</span>`;
-    const f0 = allStatItems[0].querySelector(".stat-fill");
-    if (f0) f0.style.width = pctNom + "%";
-    const p0 = allStatItems[0].querySelector(".stat-pct");
-    if (p0) p0.textContent = pctNom + "%";
-
-    // Ítem 1: coeficiente
-    const v1 = allStatItems[1].querySelector(".stat-val");
-    if (v1) v1.textContent = coefPct + "%";
-    const p1 = allStatItems[1].querySelector(".stat-pct");
-    if (p1 && quorumAlc !== null) p1.textContent = quorumAlc + "% del quórum";
-    const f1 = allStatItems[1].querySelector(".stat-fill");
-    if (f1 && quorumMin > 0) f1.style.width = Math.min(parseFloat(quorumAlc||0), 100) + "%";
-  }
-
-  // Badge quórum
-  const badge = document.querySelector(".quorum-badge");
-  if (quorumAlc !== null && parseFloat(quorumAlc) >= 100) {
-    if (!badge) {
-      const sb2 = document.querySelector(".stats-bar");
-      if (sb2) sb2.insertAdjacentHTML("beforeend", `<div class="quorum-badge">✓ Quórum alcanzado</div>`);
-    }
-  } else if (badge) {
-    badge.remove();
-  }
-
-  // Sidebar desktop: actualizar progreso si existe
-  if (esDesktop()) {
-    const progEl = document.querySelector("[data-sidebar-prog]");
-    if (progEl) progEl.outerHTML = renderProgresoPreguntas();
-  }
-}
-
-// ── REALTIME ──────────────────────────────────────────
-function suscribirRealtime() {
-  sb.channel(`portal-ev-${EV_ID}`)
-    .on("postgres_changes", {
-      event: "UPDATE", schema: "public", table: "eventos",
-      filter: `id=eq.${EV_ID}`
-    }, async (payload) => {
-      evData = { ...evData, ...payload.new };
-      await Promise.all([cargarPreguntas(), cargarStatsParticipacion()]);
-    })
-    .on("postgres_changes", {
-      event: "*", schema: "public", table: "preguntas",
-      filter: `id_evento=eq.${EV_ID}`
-    }, async () => {
-      await cargarPreguntas();
-    })
-    .on("postgres_changes", {
-      event: "*", schema: "public", table: "votos",
-      filter: `id_evento=eq.${EV_ID}`
-    }, async () => {
-      await cargarStatsParticipacion();
-      // Actualizar stats in-place (NO outerHTML → sin salto en móvil)
-      actualizarStatsInPlace();
-      // Actualizar charts ya visibles sin reconstruir DOM
-      if (!evData?.ocultar_graficos) {
-        const allPregIds = Object.keys(portalChartCache);
-        allPregIds.forEach(pregId => { cargarResultados(pregId); });
-        Object.keys(misVotos).forEach(pregId => {
-          if (!portalChartCache[pregId]) cargarResultados(pregId);
-        });
-      }
-    })
-    .subscribe();
+  // Actualizar tabla
+  const tablaEl = document.getElementById(`chartabla-${pregId}`);
+  if (tablaEl) tablaEl.innerHTML = buildTablaRows(pregId, cache.resData, cache.miVoto, metrica);
 }
 
 // ── TOAST ─────────────────────────────────────────────
@@ -1173,20 +1143,34 @@ let _tt;
 function toast(msg, tipo="ok") {
   const t = document.getElementById("toast");
   t.textContent = msg;
-  t.style.background = tipo==="err" ? "#dc2626" : tipo==="warn" ? "#b45309" : "#4f0599";
+  t.style.background = tipo==="err"?"#dc2626":tipo==="warn"?"#b45309":"#4f0599";
   t.className = "show";
   clearTimeout(_tt);
-  _tt = setTimeout(() => t.className = "", 3500);
+  _tt = setTimeout(()=>t.className="", 3500);
 }
 
-// Re-render on resize (mobile ↔ desktop)
+// Re-render on resize
 let _resizeTimer;
 window.addEventListener("resize", () => {
   clearTimeout(_resizeTimer);
-  _resizeTimer = setTimeout(() => { if (evData) renderMain(); }, 200);
+  _resizeTimer = setTimeout(() => { if (evData) renderMain(); }, 300);
+});
+
+// Detener polling cuando la página pierde foco
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && pollingInt) {
+    // Actualizar inmediatamente al volver
+    cargarStatsParticipacion().then(() => {
+      actualizarStatsInPlace();
+      if (!evData?.ocultar_graficos) {
+        Object.keys(portalCharts).forEach(pregId => cargarYActualizarGrafica(pregId));
+      }
+    });
+  }
 });
 
 init();
+
 </script>
 </body>
 </html>
