@@ -773,8 +773,7 @@ function actualizarSidebar() {
   const sidebar = document.getElementById("sidebar-content");
   if (!sidebar) return;
   // Re-render sidebar stats y progreso
-  const statsEl = sidebar.querySelector(".stats-bar");
-  if (statsEl) statsEl.outerHTML = renderStatsBar();
+  actualizarStatsInPlace();
   const progEl = sidebar.querySelector("[data-prog]");
   // Simplest: just re-render the whole sidebar (it's fast)
   renderMain();
@@ -836,8 +835,8 @@ async function votar(pregId) {
   }
 
   // Actualizar barra de stats
-  const statsEl = document.querySelector(".stats-bar");
-  if (statsEl) statsEl.outerHTML = renderStatsBar();
+  // Actualizar stats in-place
+  actualizarStatsInPlace();
 
   // Actualizar gráfica (se reconstruye si no existe, actualiza datos si ya existe)
   if (!evData?.ocultar_graficos) {
@@ -1073,6 +1072,67 @@ function toggleTipoGrafica(pregId, tipo) {
   renderPortalChart(pregId, cache, tipo);
 }
 
+// ── ACTUALIZAR STATS SIN TOCAR DOM PRINCIPAL ─────────
+// Actualiza los números de stats sin destruir/recrear el elemento
+// → evita el salto/parpadeo en móvil
+function actualizarStatsInPlace() {
+  // Calcular valores del renderStatsBar
+  const total   = statsGlobal.totalPart || 0;
+  const votaron = statsGlobal.totalVotaron || 0;
+  const coefVot = statsGlobal.coefVotado || 0;
+  const quorumMin = parseFloat(evData?.quorum_minimo || 0);
+  const pctNom  = total > 0 ? Math.round(votaron / total * 100) : 0;
+  const coefPct = (coefVot * 100).toFixed(2);
+  const quorumAlc = quorumMin > 0 ? (coefVot / quorumMin * 100).toFixed(1) : null;
+
+  // Intentar actualizar los elementos del stats-bar in-place
+  // Si no existen (primera carga) → renderizar desde cero
+  const statVals = document.querySelectorAll(".stat-val");
+  if (!statVals.length) {
+    // Primer render — necesita crear el elemento
+    const statsEl = document.querySelector(".stats-bar");
+    if (statsEl) statsEl.outerHTML = renderStatsBar();
+    return;
+  }
+
+  // Actualizar texto in-place en cada .stat-val/.stat-pct
+  const allStatItems = document.querySelectorAll(".stat-item");
+  if (allStatItems.length >= 2) {
+    // Ítem 0: unidades votando
+    const v0 = allStatItems[0].querySelector(".stat-val");
+    if (v0) v0.innerHTML = `${votaron}<span class="stat-of">/${total}</span>`;
+    const f0 = allStatItems[0].querySelector(".stat-fill");
+    if (f0) f0.style.width = pctNom + "%";
+    const p0 = allStatItems[0].querySelector(".stat-pct");
+    if (p0) p0.textContent = pctNom + "%";
+
+    // Ítem 1: coeficiente
+    const v1 = allStatItems[1].querySelector(".stat-val");
+    if (v1) v1.textContent = coefPct + "%";
+    const p1 = allStatItems[1].querySelector(".stat-pct");
+    if (p1 && quorumAlc !== null) p1.textContent = quorumAlc + "% del quórum";
+    const f1 = allStatItems[1].querySelector(".stat-fill");
+    if (f1 && quorumMin > 0) f1.style.width = Math.min(parseFloat(quorumAlc||0), 100) + "%";
+  }
+
+  // Badge quórum
+  const badge = document.querySelector(".quorum-badge");
+  if (quorumAlc !== null && parseFloat(quorumAlc) >= 100) {
+    if (!badge) {
+      const sb2 = document.querySelector(".stats-bar");
+      if (sb2) sb2.insertAdjacentHTML("beforeend", `<div class="quorum-badge">✓ Quórum alcanzado</div>`);
+    }
+  } else if (badge) {
+    badge.remove();
+  }
+
+  // Sidebar desktop: actualizar progreso si existe
+  if (esDesktop()) {
+    const progEl = document.querySelector("[data-sidebar-prog]");
+    if (progEl) progEl.outerHTML = renderProgresoPreguntas();
+  }
+}
+
 // ── REALTIME ──────────────────────────────────────────
 function suscribirRealtime() {
   sb.channel(`portal-ev-${EV_ID}`)
@@ -1094,15 +1154,12 @@ function suscribirRealtime() {
       filter: `id_evento=eq.${EV_ID}`
     }, async () => {
       await cargarStatsParticipacion();
-      // Actualizar barra stats
-      const statsEl = document.querySelector(".stats-bar");
-      if (statsEl) statsEl.outerHTML = renderStatsBar();
-      // Actualizar charts ya visibles sin reconstruir DOM (para todos, no solo los míos)
+      // Actualizar stats in-place (NO outerHTML → sin salto en móvil)
+      actualizarStatsInPlace();
+      // Actualizar charts ya visibles sin reconstruir DOM
       if (!evData?.ocultar_graficos) {
         const allPregIds = Object.keys(portalChartCache);
-        // Preguntas donde el chart ya existe → actualizar solo datos
         allPregIds.forEach(pregId => { cargarResultados(pregId); });
-        // Preguntas donde voté pero el chart aún no está construido
         Object.keys(misVotos).forEach(pregId => {
           if (!portalChartCache[pregId]) cargarResultados(pregId);
         });
