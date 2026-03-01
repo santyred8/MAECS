@@ -240,10 +240,20 @@ const EV_ID  = params.get("ev");
 const ORG_ID = params.get("org");
 let evData = null, orgData = null;
 
+// Generar o recuperar device_id único para este dispositivo
+function getDeviceId() {
+  let did = localStorage.getItem("maecs_device_id");
+  if (!did) {
+    did = crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2));
+    localStorage.setItem("maecs_device_id", did);
+  }
+  return did;
+}
+
 async function init() {
   if (!EV_ID || !ORG_ID) return;
   const [ev, org] = await Promise.all([
-    sb.from("eventos").select("nombre,estado").eq("id",EV_ID).single(),
+    sb.from("eventos").select("nombre,estado,fecha,permitir_registro_iniciado,restringir_acceso").eq("id",EV_ID).single(),
     sb.from("organizaciones").select("nombre,nit,telefono").eq("id",ORG_ID).single()
   ]);
   if (ev.data) {
@@ -299,27 +309,73 @@ async function doLogin() {
     return;
   }
 
+  // ── Verificar si ya está registrado (para las validaciones) ──
+  const { data: partExist } = await sb.from("participantes")
+    .select("hora_registro,device_id")
+    .eq("id_evento", EV_ID).eq("id_unidad", unidad.id).maybeSingle();
+
+  const yaRegistrado    = !!partExist?.hora_registro;
+  const deviceIdActual  = getDeviceId();
+
+  // ── VALIDACIÓN: Solo un dispositivo ──
+  if (evData?.restringir_acceso && yaRegistrado && partExist?.device_id) {
+    if (partExist.device_id !== deviceIdActual) {
+      setBtnLoad(false);
+      showErr("⚠️ Esta unidad ya está registrada en otro dispositivo. Solo se permite un dispositivo por unidad.");
+      return;
+    }
+  }
+
+  // ── VALIDACIÓN: Registro tardío ──
+  if (!evData?.permitir_registro_iniciado && !yaRegistrado && evData?.fecha) {
+    const horaEvento = new Date(evData.fecha);
+    const ahora      = new Date();
+    if (ahora > horaEvento) {
+      setBtnLoad(false);
+      const horaStr = horaEvento.toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"});
+      showErr(`⏰ El tiempo de registro ya cerró. El evento inició a las ${horaStr}. Comunícate con la Administración.`);
+      return;
+    }
+  }
+
+  // ── Guardar sesión ──
   sessionStorage.setItem("part_unidad_id", unidad.id);
   sessionStorage.setItem("part_codigo",    unidad.codigo||"");
   sessionStorage.setItem("part_nombre",    unidad.propietario_1||"");
   sessionStorage.setItem("part_ev_id",     EV_ID);
   sessionStorage.setItem("part_org_id",    ORG_ID);
 
-  await sb.from("participantes").upsert({
-    id_evento:EV_ID, id_unidad:unidad.id, activo:true,
-    estado:"Registrado", hora_registro:new Date().toISOString()
-  }, {onConflict:"id_evento,id_unidad"});
+  // ── Upsert participante — solo actualizar hora_registro si es nuevo ──
+  const upsertData = {
+    id_evento:    EV_ID,
+    id_unidad:    unidad.id,
+    activo:       true,
+    estado:       "Registrado",
+    device_id:    deviceIdActual,
+  };
+  // Solo setear hora_registro si es la primera vez
+  if (!yaRegistrado) {
+    upsertData.hora_registro = new Date().toISOString();
+  }
+
+  await sb.from("participantes").upsert(upsertData, {onConflict:"id_evento,id_unidad"});
 
   setBtnLoad(false);
 
   const hora = new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
   document.getElementById("suc-nombre").textContent = unidad.propietario_1||"Propietario";
   document.getElementById("suc-unidad").textContent = "Unidad "+(unidad.codigo||"—");
-  document.getElementById("suc-hora").textContent   = "✓ Registrado a las "+hora;
+  document.getElementById("suc-hora").textContent   = yaRegistrado
+    ? "✓ Bienvenido de nuevo — " + hora
+    : "✓ Registrado a las " + hora;
   document.getElementById("login-screen").style.display = "none";
   document.getElementById("logo-sec").style.display     = "none";
   document.getElementById("ev-banner").style.display    = "none";
   document.getElementById("suc").classList.add("show");
+  // Redirigir al portal automáticamente tras 2 segundos
+  setTimeout(() => {
+    location.href = `Portal_Participante.html?ev=${EV_ID}&org=${ORG_ID}`;
+  }, 2000);
   confeti();
 }
 
