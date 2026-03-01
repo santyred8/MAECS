@@ -564,8 +564,11 @@ async function pollPreguntas() {
   // También detectar preguntas que cambiaron de Cerrada a Activa (re-apertura)
   const reabiertas = activas.filter(a => {
     const enCard = document.getElementById(`preg-${a.id}`);
-    // Existe en DOM pero está en modo historial (no tiene ops ni btnv activos)
-    return enCard && enCard.dataset.estado === "cerrada";
+    // Caso 1: existe en DOM pero en modo historial cerrado
+    if (enCard && enCard.dataset.estado === "cerrada") return true;
+    // Caso 2: no existe en DOM pero ya estuvo activa antes (tenía voto o estaba en preguntas previas)
+    // → lo maneja "nuevasCards" más abajo, no aquí
+    return false;
   });
 
   // Sin ningún cambio → salir
@@ -583,16 +586,15 @@ async function pollPreguntas() {
     // Destruir chart
     if (portalCharts[p.id]) { portalCharts[p.id].destroy(); delete portalCharts[p.id]; }
     delete portalChartCache[p.id];
-    // Eliminar voto del historial local (la pregunta fue invalidada)
-    delete misVotos[p.id];
+    // NO borrar misVotos[p.id] — si la pregunta se reactiva necesitamos saber si ya votó
+    // El voto en BD sigue ahí; el admin decide si lo borra desde su panel
     // Quitar card del DOM
     const card = document.getElementById(`preg-${p.id}`);
     if (card) card.remove();
-    // Si no quedan preguntas activas ni cards visibles → mostrar "esperando"
+    // Si no quedan cards activos → mostrar "esperando"
     const main = document.getElementById("main");
     const tieneCards = main && main.querySelector(".pregunta-card");
     if (!tieneCards && activas.length === 0) {
-      // Solo mostrar esperando si no hay ningún card activo
       const esperandoExiste = main && main.querySelector(".esperando");
       if (!esperandoExiste && main) {
         const div = document.createElement("div");
@@ -640,17 +642,23 @@ async function pollPreguntas() {
     if (head) head.style.paddingBottom = "10px";
   });
 
-  // ── Preguntas Re-abiertas (Cerrada → Activa): restaurar UI completa
-  reabiertas.forEach(p => {
+  // ── Preguntas Re-abiertas (Cerrada/Inactiva → Activa): restaurar UI completa
+  reabiertas.forEach(async p => {
     const pregData = activas.find(a => a.id === p.id);
     if (!pregData) return;
     const card = document.getElementById(`preg-${p.id}`);
     if (!card) return;
+
+    // Re-sincronizar voto desde BD (por si cambió mientras estaba inactiva/cerrada)
+    const { data: votoFresh } = await sb.from("votos")
+      .select("respuesta").eq("id_pregunta", p.id).eq("id_unidad", SS.unidadId).maybeSingle();
+    if (votoFresh) misVotos[p.id] = votoFresh.respuesta;
+    else delete misVotos[p.id];
+
     card.dataset.estado = "activa";
     card.style.marginBottom = "16px";
     const head = card.querySelector(".preg-head");
     if (head) head.style.paddingBottom = "";
-    // Reconstruir body completo con opciones frescas
     const body = document.getElementById(`preg-body-${p.id}`);
     if (body) {
       const tempDiv = document.createElement("div");
@@ -658,7 +666,6 @@ async function pollPreguntas() {
       const nuevoBody = tempDiv.firstElementChild?.querySelector(`#preg-body-${p.id}`);
       if (nuevoBody) body.innerHTML = nuevoBody.innerHTML;
     }
-    // Cargar gráfica si corresponde
     if (!evData?.ocultar_graficos && misVotos[p.id]) {
       setTimeout(() => cargarYActualizarGrafica(p.id), 80);
     }
