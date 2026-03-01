@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>BALCAM — Portal de Votación</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --p:#4f0599;--p2:#7c3aed;--pink:#d946ef;
+  --dark:#0f0a1e;--card:#1a1030;--card2:#221540;
+  --text:#f1eeff;--muted:#9d8ec0;--border:rgba(124,58,237,.25);
+  --green:#10b981;--red:#f43f5e;--gold:#f59e0b;
+}
+html{height:100%;}
+body{
+  font-family:'Outfit',system-ui,sans-serif;
+  background:var(--dark);color:var(--text);
+  min-height:100vh;
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(79,5,153,.35) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(217,70,239,.2) 0%, transparent 40%),
+    radial-gradient(ellipse at 60% 80%, rgba(124,58,237,.2) 0%, transparent 40%);
+}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-thumb{background:#4f0599;border-radius:4px;}
+
+/* ── NAV ── */
+.nav{
+  position:sticky;top:0;z-index:100;
+  background:rgba(15,10,30,.85);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  padding:0 20px;height:56px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.nav-brand{font-size:16px;font-weight:900;letter-spacing:-.5px;color:#fff;}
+.nav-brand span{color:var(--pink);}
+.nav-user{text-align:right;}
+.nav-nombre{font-size:13px;font-weight:700;color:#fff;}
+.nav-unidad{font-size:11px;color:var(--muted);}
+.nav-ev{
+  background:rgba(124,58,237,.15);border:1px solid var(--border);
+  border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;
+  color:#c4b5fd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  max-width:200px;
+}
+
+/* ── MAIN ── */
+.main{max-width:540px;margin:0 auto;padding:20px 16px 40px;}
+
+/* ── ESPERANDO ── */
+.esperando{
+  text-align:center;padding:60px 20px;
+}
+.esp-anim{
+  width:90px;height:90px;margin:0 auto 24px;position:relative;
+}
+.esp-ring{
+  position:absolute;inset:0;border-radius:50%;
+  border:3px solid transparent;
+  border-top-color:var(--p2);border-right-color:var(--pink);
+  animation:spin-ring 2s linear infinite;
+}
+.esp-ring2{
+  position:absolute;inset:8px;border-radius:50%;
+  border:2px solid transparent;
+  border-bottom-color:var(--pink);
+  animation:spin-ring 1.5s linear infinite reverse;
+}
+.esp-dot{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;}
+@keyframes spin-ring{to{transform:rotate(360deg);}}
+.esp-title{font-size:20px;font-weight:800;margin-bottom:8px;}
+.esp-sub{font-size:14px;color:var(--muted);line-height:1.6;}
+.esp-ev{
+  margin-top:20px;background:rgba(124,58,237,.12);border:1px solid var(--border);
+  border-radius:14px;padding:14px 16px;
+}
+.esp-ev-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:4px;}
+.esp-ev-nombre{font-size:15px;font-weight:800;color:#fff;}
+
+/* ── PREGUNTA ── */
+.pregunta-card{
+  background:var(--card);border-radius:22px;
+  border:1px solid var(--border);
+  overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,.4);
+  animation:slide-in .4s ease;
+}
+@keyframes slide-in{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+.preg-head{
+  background:linear-gradient(135deg,var(--p),var(--pink));
+  padding:20px 22px;
+}
+.preg-num{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.6);margin-bottom:6px;}
+.preg-titulo{font-size:18px;font-weight:800;color:#fff;line-height:1.3;}
+.preg-desc{font-size:13px;color:rgba(255,255,255,.7);margin-top:6px;line-height:1.5;}
+.preg-body{padding:20px;}
+
+/* Opciones */
+.opciones{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
+.opcion{
+  display:flex;align-items:center;gap:14px;
+  padding:14px 16px;border-radius:14px;cursor:pointer;
+  border:2px solid rgba(124,58,237,.2);background:rgba(124,58,237,.05);
+  transition:all .2s;position:relative;overflow:hidden;
+}
+.opcion:hover{border-color:var(--p2);background:rgba(124,58,237,.12);}
+.opcion.selected{border-color:var(--p2);background:rgba(124,58,237,.2);}
+.opcion.selected::before{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(124,58,237,.15),transparent);
+}
+.op-radio{
+  width:22px;height:22px;border-radius:50%;border:2px solid rgba(124,58,237,.4);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.2s;
+}
+.opcion.selected .op-radio{border-color:var(--p2);background:var(--p2);}
+.op-check{display:none;width:10px;height:10px;border-radius:50%;background:#fff;}
+.opcion.selected .op-check{display:block;}
+.op-text{font-size:15px;font-weight:600;color:#fff;}
+.op-letra{
+  width:28px;height:28px;border-radius:8px;
+  background:rgba(124,58,237,.2);color:#c4b5fd;
+  font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+
+/* Botón votar */
+.btn-votar{
+  width:100%;padding:15px;
+  background:linear-gradient(135deg,var(--p),var(--p2));
+  color:#fff;border:none;border-radius:14px;
+  font-size:16px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  box-shadow:0 4px 20px rgba(79,5,153,.4);transition:.25s;
+  letter-spacing:.02em;
+}
+.btn-votar:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(79,5,153,.5);}
+.btn-votar:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+
+/* ── RESULTADO / GRÁFICA ── */
+.resultado-card{
+  background:var(--card);border-radius:22px;border:1px solid var(--border);
+  padding:22px;margin-top:16px;
+  box-shadow:0 8px 32px rgba(0,0,0,.4);
+  animation:slide-in .4s ease;
+}
+.res-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:16px;}
+.res-barra-wrap{margin-bottom:10px;}
+.res-label{display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:5px;}
+.res-label .pct{color:var(--p2);font-weight:800;}
+.res-barra-bg{background:rgba(124,58,237,.15);border-radius:20px;height:10px;overflow:hidden;}
+.res-barra{height:100%;border-radius:20px;transition:width 1s ease;min-width:4px;}
+.res-barra.mi-voto{background:linear-gradient(90deg,var(--p2),var(--pink));}
+.res-barra.otro{background:rgba(124,58,237,.3);}
+.mi-voto-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  background:rgba(124,58,237,.2);border:1px solid var(--border);
+  border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;color:#c4b5fd;
+  margin-left:6px;
+}
+
+/* ── VOTADO ── */
+.votado-badge{
+  background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);
+  border-radius:14px;padding:12px 16px;
+  display:flex;align-items:center;gap:10px;
+  font-size:13px;font-weight:700;color:#6ee7b7;margin-bottom:16px;
+}
+
+/* ── ESTADO DEL EVENTO ── */
+.ev-estado-bar{
+  background:var(--card);border-radius:16px;border:1px solid var(--border);
+  padding:14px 18px;margin-bottom:16px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.ev-nombre-bar{font-size:14px;font-weight:800;color:#fff;}
+.estado-chip{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:800;}
+.chip-creado{background:rgba(148,163,184,.15);color:#94a3b8;}
+.chip-registro{background:rgba(245,158,11,.15);color:#fbbf24;}
+.chip-curso{background:rgba(16,185,129,.15);color:#6ee7b7;}
+.chip-cerrado{background:rgba(244,63,94,.15);color:#fb7185;}
+
+/* Sin preguntas */
+.sin-preg{text-align:center;padding:48px 20px;color:var(--muted);}
+.sin-preg svg{margin-bottom:16px;opacity:.4;}
+.sin-preg h3{font-size:16px;font-weight:700;color:#fff;margin-bottom:6px;}
+
+/* Spin */
+.spin{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0;}
+.spin-dark{width:32px;height:32px;border:3px solid rgba(124,58,237,.2);border-top-color:var(--p2);border-radius:50%;animation:sp .7s linear infinite;margin:40px auto;}
+@keyframes sp{to{transform:rotate(360deg);}}
+
+/* Toast */
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);padding:12px 20px;border-radius:12px;font-size:13px;font-weight:700;color:#fff;opacity:0;pointer-events:none;transition:all .3s;z-index:999;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.3);}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div>
+    <div class="nav-brand">BAL<span>CAM</span></div>
+  </div>
+  <div id="nav-ev" class="nav-ev">Cargando…</div>
+  <div class="nav-user">
+    <div id="nav-nombre" class="nav-nombre">—</div>
+    <div id="nav-unidad" class="nav-unidad">Unidad —</div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main" id="main">
+  <div style="display:flex;justify-content:center;padding:60px 0;">
+    <div class="spin-dark"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const sb = supabase.createClient(
+  "https://gwvqttdjevogjvldzspf.supabase.co",
+  "sb_publishable_e1x6gdl3QHjwdKa5UIjYxQ_eMkUaTad"
+);
+
+// Recuperar sesión del participante
+const SS = {
+  unidadId: sessionStorage.getItem("part_unidad_id"),
+  codigo:   sessionStorage.getItem("part_codigo"),
+  nombre:   sessionStorage.getItem("part_nombre"),
+  evId:     sessionStorage.getItem("part_ev_id"),
+  orgId:    sessionStorage.getItem("part_org_id"),
+};
+
+const params = new URLSearchParams(location.search);
+const EV_ID  = SS.evId  || params.get("ev");
+const ORG_ID = SS.orgId || params.get("org");
+
+let evData      = null;
+let preguntas   = [];
+let misVotos    = {};  // id_pregunta -> respuesta
+let realtimeCh  = null;
+
+// ── INIT ─────────────────────────────────────────────
+async function init() {
+  // Si no hay sesión, volver al login
+  if (!SS.unidadId || !EV_ID) {
+    location.href = `Login_Participante.html?ev=${EV_ID||""}&org=${ORG_ID||""}`;
+    return;
+  }
+  // Poblar nav
+  document.getElementById("nav-nombre").textContent = SS.nombre || "Participante";
+  document.getElementById("nav-unidad").textContent = "Unidad " + (SS.codigo || "—");
+
+  await Promise.all([cargarEvento(), cargarMisVotos()]);
+  suscribirRealtime();
+}
+
+// ── CARGAR EVENTO ─────────────────────────────────────
+async function cargarEvento() {
+  const { data } = await sb.from("eventos")
+    .select("id,nombre,estado,tipo,ocultar_graficos")
+    .eq("id", EV_ID).single();
+  if (!data) return;
+  evData = data;
+  document.title = data.nombre + " — Portal";
+  document.getElementById("nav-ev").textContent = data.nombre;
+  await cargarPreguntas();
+}
+
+// ── CARGAR MIS VOTOS ──────────────────────────────────
+async function cargarMisVotos() {
+  const { data } = await sb.from("votos")
+    .select("id_pregunta,respuesta")
+    .eq("id_evento", EV_ID)
+    .eq("id_unidad", SS.unidadId);
+  (data||[]).forEach(v => { misVotos[v.id_pregunta] = v.respuesta; });
+}
+
+// ── CARGAR PREGUNTAS ──────────────────────────────────
+async function cargarPreguntas() {
+  const { data } = await sb.from("preguntas")
+    .select("*")
+    .eq("id_evento", EV_ID)
+    .eq("estado", "activa")
+    .order("orden");
+  preguntas = data || [];
+  renderMain();
+}
+
+// ── RENDER PRINCIPAL ──────────────────────────────────
+function renderMain() {
+  const main = document.getElementById("main");
+
+  // Estado del evento
+  const estadoMap = {
+    "Creado":      ["chip-creado",   "Creado"],
+    "En registro": ["chip-registro", "En registro"],
+    "En curso":    ["chip-curso",    "En curso"],
+    "Cerrado":     ["chip-cerrado",  "Cerrado"],
+  };
+  const [chipClass, chipLabel] = estadoMap[evData?.estado] || ["chip-creado","—"];
+
+  let html = `
+    <div class="ev-estado-bar">
+      <div id="ev-nombre-bar" class="ev-nombre-bar">${evData?.nombre||"—"}</div>
+      <div class="estado-chip ${chipClass}">${chipLabel}</div>
+    </div>
+  `;
+
+  // Si el evento no está en curso, mostrar espera
+  if (!evData || evData.estado !== "En curso") {
+    const msgs = {
+      "Creado":      { ico:"📋", t:"Evento no iniciado",   s:"El administrador aún no ha iniciado el evento. Por favor espera." },
+      "En registro": { ico:"📝", t:"Registro en proceso",  s:"El registro está abierto. El evento comenzará pronto." },
+      "Cerrado":     { ico:"🔒", t:"Evento finalizado",    s:"Este evento ya ha concluido. Gracias por participar." },
+    };
+    const m = msgs[evData?.estado] || { ico:"⏳", t:"Esperando…", s:"Por favor espera las instrucciones." };
+    html += `
+      <div class="esperando">
+        <div class="esp-anim">
+          <div class="esp-ring"></div>
+          <div class="esp-ring2"></div>
+          <div class="esp-dot">${m.ico}</div>
+        </div>
+        <div class="esp-title">${m.t}</div>
+        <div class="esp-sub">${m.s}</div>
+        <div class="esp-ev">
+          <div class="esp-ev-label">Evento</div>
+          <div class="esp-ev-nombre">${evData?.nombre||"—"}</div>
+        </div>
+      </div>`;
+    main.innerHTML = html;
+    return;
+  }
+
+  // Evento en curso — mostrar preguntas
+  if (!preguntas.length) {
+    html += `
+      <div class="sin-preg">
+        <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <h3>Sin preguntas activas</h3>
+        <p>El administrador aún no ha activado preguntas para votar.</p>
+      </div>`;
+    main.innerHTML = html;
+    return;
+  }
+
+  // Renderizar cada pregunta
+  preguntas.forEach((preg, idx) => {
+    const yaVote = misVotos[preg.id];
+    const opciones = Array.isArray(preg.opciones) ? preg.opciones : [];
+    html += renderPregunta(preg, idx, yaVote, opciones);
+  });
+
+  main.innerHTML = html;
+}
+
+function renderPregunta(preg, idx, yaVote, opciones) {
+  const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  let html = `<div class="pregunta-card" id="preg-${preg.id}" style="margin-bottom:16px;">
+    <div class="preg-head">
+      <div class="preg-num">Pregunta ${idx+1} de ${preguntas.length}</div>
+      <div class="preg-titulo">${preg.titulo||"Sin título"}</div>
+      ${preg.descripcion ? `<div class="preg-desc">${preg.descripcion}</div>` : ""}
+    </div>
+    <div class="preg-body">`;
+
+  if (yaVote) {
+    // Ya votó — mostrar badge + resultados si están habilitados
+    html += `<div class="votado-badge">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      Tu voto: <strong>${yaVote}</strong>
+    </div>`;
+
+    if (!evData?.ocultar_graficos) {
+      html += `<div id="res-${preg.id}"><div class="spin-dark" style="width:24px;height:24px;margin:8px auto;"></div></div>`;
+    }
+  } else {
+    // Mostrar opciones para votar
+    html += `<div class="opciones" id="ops-${preg.id}">`;
+    opciones.forEach((op, i) => {
+      const texto = typeof op === "object" ? op.texto : op;
+      html += `<div class="opcion" id="op-${preg.id}-${i}" onclick="seleccionar('${preg.id}',${i},'${texto.replace(/'/g,"\\'")}')">
+        <div class="op-radio"><div class="op-check"></div></div>
+        <div class="op-letra">${letras[i]}</div>
+        <div class="op-text">${texto}</div>
+      </div>`;
+    });
+    html += `</div>
+    <button class="btn-votar" id="btnv-${preg.id}" onclick="votar('${preg.id}')" disabled>
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      Confirmar voto
+    </button>`;
+  }
+
+  html += `</div></div>`;
+  return html;
+}
+
+// Selección temporal en el DOM
+const selecciones = {};
+function seleccionar(pregId, idx, texto) {
+  selecciones[pregId] = { idx, texto };
+  // Visual
+  document.querySelectorAll(`#ops-${pregId} .opcion`).forEach(el => el.classList.remove("selected"));
+  document.getElementById(`op-${pregId}-${idx}`)?.classList.add("selected");
+  document.getElementById(`btnv-${pregId}`)?.removeAttribute("disabled");
+}
+
+// ── VOTAR ─────────────────────────────────────────────
+async function votar(pregId) {
+  const sel = selecciones[pregId];
+  if (!sel) return;
+
+  const btn = document.getElementById(`btnv-${pregId}`);
+  btn.disabled = true;
+  btn.innerHTML = `<div class="spin"></div>Enviando…`;
+
+  // Obtener coeficiente de la unidad
+  const { data: unidadData } = await sb.from("unidades")
+    .select("coeficiente").eq("id", SS.unidadId).single();
+  const coef = unidadData?.coeficiente || 0;
+
+  // Upsert — si ya votó, actualiza; si no, inserta
+  const { error } = await sb.from("votos").upsert({
+    id_pregunta:  pregId,
+    id_evento:    EV_ID,
+    id_unidad:    SS.unidadId,
+    respuesta:    sel.texto,
+    coeficiente:  coef,
+  }, { onConflict: "id_pregunta,id_unidad" });
+
+  if (error) {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Confirmar voto`;
+    toast("Error al votar. Intenta de nuevo.", "err");
+    return;
+  }
+
+  misVotos[pregId] = sel.texto;
+  toast("✓ Voto registrado correctamente", "ok");
+
+  // Cargar resultados si no están ocultos
+  if (!evData?.ocultar_graficos) {
+    await cargarResultados(pregId);
+  }
+
+  // Re-render solo esta pregunta
+  const idx = preguntas.findIndex(p => p.id === pregId);
+  const preg = preguntas[idx];
+  const opciones = Array.isArray(preg.opciones) ? preg.opciones : [];
+  const card = document.getElementById(`preg-${pregId}`);
+  if (card) {
+    card.outerHTML = renderPregunta(preg, idx, sel.texto, opciones);
+    if (!evData?.ocultar_graficos) cargarResultados(pregId);
+  }
+}
+
+// ── RESULTADOS ────────────────────────────────────────
+async function cargarResultados(pregId) {
+  const { data: votos } = await sb.from("votos")
+    .select("respuesta,coeficiente")
+    .eq("id_pregunta", pregId);
+
+  if (!votos?.length) return;
+
+  // Agrupar por respuesta y sumar coeficientes
+  const totales = {};
+  let sumTotal = 0;
+  votos.forEach(v => {
+    const r = v.respuesta || "—";
+    const c = parseFloat(String(v.coeficiente||0).replace(",",".")) || 0;
+    totales[r] = (totales[r] || 0) + c;
+    sumTotal += c;
+  });
+
+  const preg = preguntas.find(p => p.id === pregId);
+  const opciones = Array.isArray(preg?.opciones) ? preg.opciones : [];
+  const miVoto = misVotos[pregId];
+
+  let html = `<div class="resultado-card">
+    <div class="res-title">📊 Resultados en tiempo real — ${votos.length} voto${votos.length!==1?"s":""}</div>`;
+
+  // Ordenar opciones de mayor a menor
+  const resOrdenados = opciones.map(op => {
+    const texto = typeof op === "object" ? op.texto : op;
+    const coef = totales[texto] || 0;
+    const pct = sumTotal > 0 ? (coef / sumTotal) * 100 : 0;
+    return { texto, coef, pct };
+  }).sort((a,b) => b.pct - a.pct);
+
+  resOrdenados.forEach(r => {
+    const esMiVoto = r.texto === miVoto;
+    html += `<div class="res-barra-wrap">
+      <div class="res-label">
+        <span>${r.texto}${esMiVoto ? '<span class="mi-voto-badge">✓ Mi voto</span>' : ''}</span>
+        <span class="pct">${r.pct.toFixed(1)}%</span>
+      </div>
+      <div class="res-barra-bg">
+        <div class="res-barra ${esMiVoto?"mi-voto":"otro"}" style="width:${r.pct}%"></div>
+      </div>
+    </div>`;
+  });
+
+  html += `</div>`;
+
+  const resEl = document.getElementById(`res-${pregId}`);
+  if (resEl) resEl.outerHTML = html;
+}
+
+// ── REALTIME ──────────────────────────────────────────
+function suscribirRealtime() {
+  // Escuchar cambios en el evento (estado, ocultar_graficos)
+  sb.channel(`portal-ev-${EV_ID}`)
+    .on("postgres_changes", {
+      event: "UPDATE", schema: "public", table: "eventos",
+      filter: `id=eq.${EV_ID}`
+    }, async (payload) => {
+      evData = { ...evData, ...payload.new };
+      await cargarPreguntas();
+    })
+    // Escuchar nuevas preguntas activas
+    .on("postgres_changes", {
+      event: "*", schema: "public", table: "preguntas",
+      filter: `id_evento=eq.${EV_ID}`
+    }, async () => {
+      await cargarPreguntas();
+    })
+    // Escuchar nuevos votos para actualizar gráficas en vivo
+    .on("postgres_changes", {
+      event: "*", schema: "public", table: "votos",
+      filter: `id_evento=eq.${EV_ID}`
+    }, () => {
+      // Refrescar resultados de preguntas ya votadas
+      Object.keys(misVotos).forEach(pregId => {
+        if (!evData?.ocultar_graficos) cargarResultados(pregId);
+      });
+    })
+    .subscribe();
+}
+
+// ── TOAST ─────────────────────────────────────────────
+let _tt;
+function toast(msg, tipo="ok") {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.style.background = tipo==="err" ? "#dc2626" : tipo==="warn" ? "#b45309" : "#4f0599";
+  t.className = "show";
+  clearTimeout(_tt);
+  _tt = setTimeout(() => t.className = "", 3500);
+}
+
+init();
+</script>
+</body>
+</html>

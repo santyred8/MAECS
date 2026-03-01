@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Usuarios — BALCAM</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+
+<style>
+* { font-family: 'DM Sans', sans-serif; box-sizing: border-box; }
+.mono { font-family: 'Space Mono', monospace; }
+body { background: #0d0d1a; color: #e2e8f0; min-height: 100vh; }
+
+/* ─── Sidebar ─── */
+.nav-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 10px;
+  font-size: 14px; font-weight: 500;
+  color: rgba(255,255,255,0.5);
+  transition: all 0.2s; text-decoration: none;
+  border: 1px solid transparent;
+}
+.nav-link:hover { color: #fff; background: rgba(255,255,255,0.07); }
+.nav-link.active {
+  color: #fff;
+  background: linear-gradient(135deg,rgba(124,58,237,.35),rgba(79,70,229,.35));
+  border-color: rgba(124,58,237,.45);
+}
+
+/* ─── Tabla ─── */
+.tbl { width:100%; border-collapse:collapse; }
+.tbl thead tr { border-bottom: 1px solid rgba(255,255,255,0.08); }
+.tbl th {
+  padding: 10px 12px; font-size: 11px; font-weight:700;
+  text-transform: uppercase; letter-spacing:.07em;
+  color: rgba(255,255,255,.4); text-align:left;
+  cursor: pointer; user-select:none; white-space:nowrap;
+}
+.tbl th:hover { color: rgba(255,255,255,.7); }
+.tbl th.sort-asc::after  { content:" ↑"; color:#a78bfa; }
+.tbl th.sort-desc::after { content:" ↓"; color:#a78bfa; }
+.tbl tbody tr { border-bottom:1px solid rgba(255,255,255,.05); transition:background .15s; }
+.tbl tbody tr:hover { background:rgba(255,255,255,.04); }
+.tbl td { padding:10px 12px; font-size:13px; vertical-align:middle; }
+
+/* ─── Badges ─── */
+.badge { padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap; }
+.badge-on  { background:rgba(34,197,94,.15);  color:#4ade80; border:1px solid rgba(34,197,94,.3); }
+.badge-off { background:rgba(148,163,184,.1); color:#94a3b8; border:1px solid rgba(148,163,184,.2); }
+.badge-rol { background:rgba(139,92,246,.15); color:#a78bfa; border:1px solid rgba(139,92,246,.3); }
+
+/* ─── Botones acción ─── */
+.btn-edit, .btn-del {
+  width:30px; height:30px; border-radius:8px;
+  display:inline-flex; align-items:center; justify-content:center;
+  transition:.15s; cursor:pointer; border:1px solid transparent;
+}
+.btn-edit { color:#818cf8; border-color:rgba(129,140,248,.2); }
+.btn-edit:hover { background:rgba(129,140,248,.15); }
+.btn-del  { color:#f87171; border-color:rgba(248,113,113,.2); }
+.btn-del:hover  { background:rgba(248,113,113,.15); }
+
+/* ─── Card ─── */
+.card {
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:16px;
+}
+
+/* ─── Inputs ─── */
+.inp {
+  width:100%; background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:10px; padding:9px 12px; font-size:14px;
+  color:#fff; outline:none; transition:.2s;
+}
+.inp:focus { border-color:#7c3aed; background:rgba(124,58,237,.1); }
+.inp::placeholder { color:rgba(255,255,255,.3); }
+select.inp option { background:#1e1b4b; color:#fff; }
+
+/* ─── Modal backdrop ─── */
+#modalBg {
+  position:fixed; inset:0; background:rgba(0,0,0,.7);
+  backdrop-filter:blur(6px);
+  display:flex; align-items:center; justify-content:center;
+  z-index:100; opacity:0; pointer-events:none; transition:opacity .25s;
+}
+#modalBg.open { opacity:1; pointer-events:all; }
+#modalBox {
+  background:#131325; border:1px solid rgba(255,255,255,.1);
+  border-radius:20px; padding:28px; width:100%; max-width:680px;
+  max-height:90vh; overflow-y:auto;
+  transform:translateY(20px); transition:transform .25s;
+}
+#modalBg.open #modalBox { transform:translateY(0); }
+
+/* ─── Confirm dialog ─── */
+#confirmBg {
+  position:fixed; inset:0; background:rgba(0,0,0,.75);
+  backdrop-filter:blur(4px);
+  display:flex; align-items:center; justify-content:center;
+  z-index:200; opacity:0; pointer-events:none; transition:opacity .2s;
+}
+#confirmBg.open { opacity:1; pointer-events:all; }
+
+/* ─── Animaciones ─── */
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(10px) }
+  to   { opacity:1; transform:translateY(0) }
+}
+.fade-in { animation:fadeUp .35s ease; }
+
+/* ─── Scroll ─── */
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-thumb { background:rgba(255,255,255,.1); border-radius:10px; }
+
+/* ─── Paginación ─── */
+.page-btn {
+  min-width:32px; height:32px; border-radius:8px;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:600; cursor:pointer;
+  color:rgba(255,255,255,.5); border:1px solid rgba(255,255,255,.1);
+  transition:.15s; background:transparent;
+}
+.page-btn:hover { color:#fff; background:rgba(255,255,255,.07); }
+.page-btn.active {
+  color:#fff; background:#7c3aed;
+  border-color:#7c3aed;
+}
+.page-btn:disabled { opacity:.3; cursor:default; }
+
+/* ─── Toast ─── */
+#toast {
+  position:fixed; bottom:24px; right:24px;
+  padding:12px 20px; border-radius:12px; font-size:14px;
+  backdrop-filter:blur(12px); z-index:999;
+  transform:translateY(60px); opacity:0; transition:all .3s;
+}
+#toast.show { transform:translateY(0); opacity:1; }
+#toast.ok  { background:rgba(34,197,94,.15); border:1px solid rgba(34,197,94,.35); color:#4ade80; }
+#toast.err { background:rgba(239,68,68,.15); border:1px solid rgba(239,68,68,.4);  color:#fca5a5; }
+
+/* ─── Spinner ─── */
+.spin {
+  display:inline-block; width:18px; height:18px;
+  border:2px solid rgba(139,92,246,.3); border-top-color:#7c3aed;
+  border-radius:50%; animation:s .7s linear infinite;
+}
+@keyframes s { to{transform:rotate(360deg)} }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════ NAVBAR ══════════════════════════════ -->
+<header style="border-bottom:1px solid rgba(255,255,255,.07);background:rgba(13,13,26,.95);backdrop-filter:blur(20px);position:sticky;top:0;z-index:50;"
+  class="flex items-center justify-between px-8 py-4">
+
+  <a href="https://balcam.co/" target="_blank" class="mono text-xl font-bold"
+     style="background:linear-gradient(135deg,#a78bfa,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">
+    BALCAM
+  </a>
+
+  <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:4px 6px 4px 14px;border-radius:12px;"
+       class="flex items-center gap-3">
+    <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2" viewBox="0 0 24 24">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+    </svg>
+    <span id="userEmail" style="font-size:13px;color:rgba(255,255,255,.5);"></span>
+    <button onclick="logout()" style="background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.25);padding:6px 14px;border-radius:8px;font-size:13px;cursor:pointer;">
+      Cerrar sesión
+    </button>
+  </div>
+</header>
+
+<div class="flex">
+
+<!-- ══════════════════════════════ SIDEBAR ══════════════════════════════ -->
+<aside style="width:200px;min-height:calc(100vh - 61px);border-right:1px solid rgba(255,255,255,.07);padding:20px 10px;position:sticky;top:61px;height:calc(100vh - 61px);"
+       class="space-y-1">
+  <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.2);padding:0 8px;margin-bottom:14px;">Navegación</p>
+
+  <a href="Usuarios.html" class="nav-link active">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Usuarios
+  </a>
+  <a href="Logs.html" class="nav-link">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    Logs
+  </a>
+  <a href="Organizaciones.html" class="nav-link">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+    Organizaciones
+  </a>
+  <a href="Unidades.html" class="nav-link">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Unidades
+  </a>
+  <a href="Eventos.html" class="nav-link">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    Eventos
+  </a>
+  <a href="Preguntas.html" class="nav-link">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    Preguntas
+  </a>
+  <a href="Delegaciones.html" class="nav-link">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+    Delegaciones
+  </a>
+  <a href="CodigosQR.html" class="nav-link">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/></svg>
+    Códigos QR
+  </a>
+</aside>
+
+<!-- ══════════════════════════════ MAIN ══════════════════════════════ -->
+<main class="flex-1 p-8 fade-in" style="min-width:0;">
+
+  <!-- Header de sección -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold">Usuarios</h1>
+      <p style="font-size:13px;color:rgba(255,255,255,.4);margin-top:2px;">
+        <span id="totalCount">—</span> usuario(s) en total
+      </p>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <!-- Nuevo -->
+      <button onclick="abrirModal()"
+        style="background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;padding:9px 18px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nuevo
+      </button>
+      <!-- Recargar -->
+      <button onclick="cargarTodo()"
+        style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#fff;padding:9px 16px;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:8px;">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Recargar
+      </button>
+      <!-- Exportar -->
+      <button onclick="exportarCSV()"
+        style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:#4ade80;padding:9px 16px;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:8px;">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Exportar
+      </button>
+    </div>
+  </div>
+
+  <!-- Controles de tabla -->
+  <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center gap-2" style="font-size:14px;color:rgba(255,255,255,.5);">
+      Mostrar
+      <select id="pageSize" onchange="cambiarPagina(1)" class="inp" style="width:70px;padding:6px 10px;font-size:13px;">
+        <option value="10">10</option>
+        <option value="25">25</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
+      registros
+    </div>
+
+    <div style="position:relative;">
+      <svg width="15" height="15" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2" viewBox="0 0 24 24"
+           style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input id="buscador" oninput="filtrar()" type="text" placeholder="Buscar..." class="inp"
+             style="width:240px;padding-left:38px;padding-top:8px;padding-bottom:8px;font-size:13px;">
+    </div>
+  </div>
+
+  <!-- Tabla -->
+  <div class="card" style="overflow-x:auto;">
+
+    <div id="loadingRow" style="display:flex;align-items:center;gap:12px;padding:30px 20px;">
+      <div class="spin"></div>
+      <span style="font-size:14px;color:rgba(255,255,255,.35);">Cargando usuarios...</span>
+    </div>
+
+    <table class="tbl" id="tablaUsuarios" style="display:none;">
+      <thead>
+        <tr>
+          <th style="width:40px;">#</th>
+          <th onclick="ordenar('correo_electronico')">Correo Electrónico</th>
+          <th onclick="ordenar('primer_nombre')">Primer Nombre</th>
+          <th onclick="ordenar('segundo_nombre')">Segundo Nombre</th>
+          <th onclick="ordenar('primer_apellido')">Primer Apellido</th>
+          <th onclick="ordenar('segundo_apellido')">Segundo Apellido</th>
+          <th onclick="ordenar('telefono')">Teléfono</th>
+          <th onclick="ordenar('activo')">Activo</th>
+          <th onclick="ordenar('rol')">Rol</th>
+          <th>Organización</th>
+          <th>Evento</th>
+          <th style="text-align:center;">Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyUsuarios"></tbody>
+    </table>
+
+    <div id="emptyRow" style="display:none;padding:50px;text-align:center;color:rgba(255,255,255,.25);">
+      <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 12px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      <p style="font-size:14px;">Sin resultados</p>
+    </div>
+  </div>
+
+  <!-- Pie de tabla: info + paginación -->
+  <div class="flex items-center justify-between mt-4">
+    <p id="paginfoText" style="font-size:13px;color:rgba(255,255,255,.35);"></p>
+    <div id="paginacion" class="flex items-center gap-1.5"></div>
+  </div>
+
+</main>
+</div>
+
+<!-- ══════════════════════════════ MODAL CREAR / EDITAR ══════════════════════════════ -->
+<div id="modalBg" onclick="cerrarModalSiClickAfuera(event)">
+<div id="modalBox">
+  <div class="flex items-center justify-between mb-6">
+    <h2 id="modalTitulo" class="text-xl font-bold">Nuevo usuario</h2>
+    <button onclick="cerrarModal()" style="color:rgba(255,255,255,.4);background:rgba(255,255,255,.07);width:32px;height:32px;border-radius:8px;font-size:18px;line-height:1;cursor:pointer;">×</button>
+  </div>
+
+  <form onsubmit="guardarUsuario(event)">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+
+      <div>
+        <label style="font-size:12px;font-weight:600;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Correo electrónico *</label>
+        <input id="f_correo" type="email" required class="inp" placeholder="usuario@correo.com">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Teléfono</label>
+        <input id="f_telefono" type="text" class="inp" placeholder="300 000 0000">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Primer nombre *</label>
+        <input id="f_primer_nombre" type="text" required class="inp" placeholder="Ej: Carlos">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Segundo nombre</label>
+        <input id="f_segundo_nombre" type="text" class="inp" placeholder="Ej: Andrés">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Primer apellido *</label>
+        <input id="f_primer_apellido" type="text" required class="inp" placeholder="Ej: González">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Segundo apellido</label>
+        <input id="f_segundo_apellido" type="text" class="inp" placeholder="Ej: Pérez">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Rol *</label>
+        <select id="f_rol" required class="inp">
+          <option value="">— Seleccionar —</option>
+          <option value="Administrador General">Administrador General</option>
+          <option value="Administrador Organización">Administrador Organización</option>
+          <option value="Administrador Evento">Administrador Evento</option>
+          <option value="Propietario">Propietario</option>
+          <option value="Delegado">Delegado</option>
+          <option value="Invitado">Invitado</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Organización</label>
+        <select id="f_organizacion" class="inp">
+          <option value="">— Sin organización —</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Evento</label>
+        <select id="f_evento" class="inp">
+          <option value="">— Sin evento —</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:12px;">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;width:100%;">
+          <input id="f_activo" type="checkbox" style="width:16px;height:16px;accent-color:#7c3aed;cursor:pointer;">
+          <label for="f_activo" style="font-size:14px;color:rgba(255,255,255,.7);cursor:pointer;">Usuario activo</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Separador -->
+    <div style="border-top:1px solid rgba(255,255,255,.07);margin:24px 0;"></div>
+
+    <div class="flex items-center justify-end gap-3">
+      <button type="button" onclick="cerrarModal()"
+        style="padding:9px 20px;border-radius:10px;font-size:14px;font-weight:500;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);cursor:pointer;">
+        Cancelar
+      </button>
+      <button type="submit" id="btnGuardar"
+        style="padding:9px 24px;border-radius:10px;font-size:14px;font-weight:600;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;cursor:pointer;display:flex;align-items:center;gap:8px;">
+        <span id="btnGuardarIcon">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        </span>
+        <span id="btnGuardarText">Guardar</span>
+      </button>
+    </div>
+  </form>
+</div>
+</div>
+
+<!-- ══════════════════════════════ CONFIRM DELETE ══════════════════════════════ -->
+<div id="confirmBg">
+  <div style="background:#131325;border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:28px;max-width:380px;width:90%;text-align:center;">
+    <div style="width:52px;height:52px;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+      <svg width="22" height="22" fill="none" stroke="#f87171" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+    </div>
+    <h3 style="font-size:18px;font-weight:700;margin-bottom:8px;">¿Eliminar usuario?</h3>
+    <p id="confirmNombre" style="font-size:14px;color:rgba(255,255,255,.45);margin-bottom:24px;"></p>
+    <div class="flex gap-3 justify-center">
+      <button onclick="cerrarConfirm()"
+        style="padding:9px 24px;border-radius:10px;font-size:14px;font-weight:500;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);cursor:pointer;">
+        Cancelar
+      </button>
+      <button onclick="confirmarEliminar()"
+        style="padding:9px 24px;border-radius:10px;font-size:14px;font-weight:600;background:rgba(239,68,68,.85);color:#fff;cursor:pointer;">
+        Eliminar
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+
+<script>
+// ─── SUPABASE ──────────────────────────────────────────────────────────────────
+const sb = window.supabase.createClient(
+  "https://gwvqttdjevogjvldzspf.supabase.co",
+  "sb_publishable_e1x6gdl3QHjwdKa5UIjYxQ_eMkUaTad"
+);
+
+// ─── ESTADO ───────────────────────────────────────────────────────────────────
+let todosLosUsuarios = [];   // datos crudos de supabase
+let datosFiltrados   = [];   // después de búsqueda/orden
+let paginaActual     = 1;
+let sortKey          = "";
+let sortDir          = "asc";
+let editandoId       = null; // null = crear, uuid = editar
+let eliminarId       = null;
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = "index.html"; return; }
+  document.getElementById("userEmail").innerText = session.user.email;
+  await cargarTodo();
+})();
+
+// ─── CARGAR TODO ──────────────────────────────────────────────────────────────
+async function cargarTodo() {
+  mostrarLoading(true);
+
+  // Usuarios
+  const { data, error } = await sb
+    .from("usuarios")
+    .select("*, organizaciones(nombre), eventos(nombre)")
+    .order("primer_nombre");
+
+  if (error) {
+    mostrarLoading(false);
+    showToast("Error: " + error.message, "err");
+    console.error(error);
+    return;
+  }
+
+  todosLosUsuarios = data || [];
+  document.getElementById("totalCount").textContent = todosLosUsuarios.length;
+
+  // Cargar dropdowns del modal
+  cargarDropdowns();
+
+  datosFiltrados = [...todosLosUsuarios];
+  renderTabla();
+  mostrarLoading(false);
+}
+
+// ─── CARGAR DROPDOWNS ─────────────────────────────────────────────────────────
+async function cargarDropdowns() {
+  const { data: orgs }    = await sb.from("organizaciones").select("id, nombre").order("nombre");
+  const { data: eventos } = await sb.from("eventos").select("id, nombre").order("nombre");
+
+  const selOrg = document.getElementById("f_organizacion");
+  const selEv  = document.getElementById("f_evento");
+
+  // Limpiar y rellenar organizaciones
+  selOrg.innerHTML = '<option value="">— Sin organización —</option>';
+  (orgs || []).forEach(o => {
+    selOrg.innerHTML += `<option value="${o.id}">${o.nombre}</option>`;
+  });
+
+  // Limpiar y rellenar eventos
+  selEv.innerHTML = '<option value="">— Sin evento —</option>';
+  (eventos || []).forEach(e => {
+    selEv.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
+  });
+}
+
+// ─── RENDER TABLA ─────────────────────────────────────────────────────────────
+function renderTabla() {
+  const pageSize = parseInt(document.getElementById("pageSize").value);
+  const total    = datosFiltrados.length;
+  const totalPag = Math.ceil(total / pageSize) || 1;
+  if (paginaActual > totalPag) paginaActual = totalPag;
+
+  const inicio = (paginaActual - 1) * pageSize;
+  const slice  = datosFiltrados.slice(inicio, inicio + pageSize);
+
+  const tbody = document.getElementById("tbodyUsuarios");
+  tbody.innerHTML = "";
+
+  if (slice.length === 0) {
+    document.getElementById("tablaUsuarios").style.display = "none";
+    document.getElementById("emptyRow").style.display = "block";
+    document.getElementById("paginfoText").textContent = "";
+    document.getElementById("paginacion").innerHTML = "";
+    return;
+  }
+
+  document.getElementById("tablaUsuarios").style.display = "table";
+  document.getElementById("emptyRow").style.display = "none";
+
+  slice.forEach((u, i) => {
+    const fila = document.createElement("tr");
+    const org   = u.organizaciones?.nombre ?? u.id_organizacion ?? "—";
+    const evento = u.eventos?.nombre ?? u.id_evento ?? "—";
+
+    fila.innerHTML = `
+      <td style="color:rgba(255,255,255,.3);font-size:12px;">${inicio + i + 1}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${u.correo_electronico ?? ''}">
+        ${u.correo_electronico ?? "—"}
+      </td>
+      <td>${u.primer_nombre  ?? "—"}</td>
+      <td style="color:rgba(255,255,255,.55);">${u.segundo_nombre  ?? "—"}</td>
+      <td>${u.primer_apellido ?? "—"}</td>
+      <td style="color:rgba(255,255,255,.55);">${u.segundo_apellido ?? "—"}</td>
+      <td style="font-size:12px;color:rgba(255,255,255,.6);">${u.telefono ?? "—"}</td>
+      <td>${u.activo
+        ? '<span class="badge badge-on">Sí</span>'
+        : '<span class="badge badge-off">No</span>'}</td>
+      <td><span class="badge badge-rol">${u.rol ?? "—"}</span></td>
+      <td style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${org}">${org}</td>
+      <td style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${evento}">${evento}</td>
+      <td>
+        <div style="display:flex;align-items:center;justify-content:center;gap:6px;">
+          <button class="btn-edit" onclick="abrirEditar('${u.id}')" title="Editar">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="btn-del" onclick="pedirEliminar('${u.id}','${(u.primer_nombre ?? '') + ' ' + (u.primer_apellido ?? '')}')" title="Eliminar">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(fila);
+  });
+
+  // Info paginación
+  document.getElementById("paginfoText").textContent =
+    `Mostrando ${inicio + 1} a ${Math.min(inicio + pageSize, total)} de ${total} registro${total !== 1 ? "s" : ""}`;
+
+  renderPaginacion(totalPag);
+}
+
+// ─── PAGINACIÓN ───────────────────────────────────────────────────────────────
+function renderPaginacion(totalPag) {
+  const cont = document.getElementById("paginacion");
+  cont.innerHTML = "";
+
+  const btn = (label, page, disabled, active) => {
+    const b = document.createElement("button");
+    b.className = "page-btn" + (active ? " active" : "");
+    b.disabled = disabled;
+    b.innerHTML = label;
+    if (!disabled) b.onclick = () => cambiarPagina(page);
+    return b;
+  };
+
+  cont.appendChild(btn("«", 1, paginaActual === 1));
+  cont.appendChild(btn("‹", paginaActual - 1, paginaActual === 1));
+
+  // Ventana de páginas
+  let start = Math.max(1, paginaActual - 2);
+  let end   = Math.min(totalPag, start + 4);
+  if (end - start < 4) start = Math.max(1, end - 4);
+
+  if (start > 1) {
+    cont.appendChild(btn("1", 1, false, false));
+    if (start > 2) cont.appendChild(Object.assign(document.createElement("span"), { textContent: "…", style: "padding:0 6px;color:rgba(255,255,255,.3);font-size:13px;" }));
+  }
+  for (let p = start; p <= end; p++) {
+    cont.appendChild(btn(p, p, false, p === paginaActual));
+  }
+  if (end < totalPag) {
+    if (end < totalPag - 1) cont.appendChild(Object.assign(document.createElement("span"), { textContent: "…", style: "padding:0 6px;color:rgba(255,255,255,.3);font-size:13px;" }));
+    cont.appendChild(btn(totalPag, totalPag, false, false));
+  }
+
+  cont.appendChild(btn("›", paginaActual + 1, paginaActual === totalPag));
+  cont.appendChild(btn("»", totalPag, paginaActual === totalPag));
+}
+
+function cambiarPagina(p) {
+  paginaActual = p;
+  renderTabla();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// ─── BÚSQUEDA ─────────────────────────────────────────────────────────────────
+function filtrar() {
+  const q = document.getElementById("buscador").value.toLowerCase().trim();
+  if (!q) {
+    datosFiltrados = [...todosLosUsuarios];
+  } else {
+    datosFiltrados = todosLosUsuarios.filter(u =>
+      [u.correo_electronico, u.primer_nombre, u.segundo_nombre,
+       u.primer_apellido, u.segundo_apellido, u.telefono, u.rol,
+       u.organizaciones?.nombre, u.eventos?.nombre]
+        .some(v => (v ?? "").toLowerCase().includes(q))
+    );
+  }
+  aplicarOrden();
+  paginaActual = 1;
+  renderTabla();
+}
+
+// ─── ORDEN ────────────────────────────────────────────────────────────────────
+function ordenar(key) {
+  if (sortKey === key) {
+    sortDir = sortDir === "asc" ? "desc" : "asc";
+  } else {
+    sortKey = key; sortDir = "asc";
+  }
+  // Actualizar clases de encabezados
+  document.querySelectorAll(".tbl th").forEach(th => {
+    th.classList.remove("sort-asc", "sort-desc");
+    if (th.getAttribute("onclick") === `ordenar('${key}')`) {
+      th.classList.add(sortDir === "asc" ? "sort-asc" : "sort-desc");
+    }
+  });
+  aplicarOrden();
+  renderTabla();
+}
+
+function aplicarOrden() {
+  if (!sortKey) return;
+  datosFiltrados.sort((a, b) => {
+    const va = (a[sortKey] ?? "").toString().toLowerCase();
+    const vb = (b[sortKey] ?? "").toString().toLowerCase();
+    return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+  });
+}
+
+// ─── MODAL CREAR ─────────────────────────────────────────────────────────────
+function abrirModal() {
+  editandoId = null;
+  document.getElementById("modalTitulo").textContent = "Nuevo usuario";
+  document.getElementById("btnGuardarText").textContent = "Guardar";
+  limpiarForm();
+  document.getElementById("modalBg").classList.add("open");
+}
+
+// ─── MODAL EDITAR ─────────────────────────────────────────────────────────────
+function abrirEditar(id) {
+  const u = todosLosUsuarios.find(x => x.id === id);
+  if (!u) return;
+  editandoId = id;
+
+  document.getElementById("modalTitulo").textContent = "Editar usuario";
+  document.getElementById("btnGuardarText").textContent = "Actualizar";
+
+  document.getElementById("f_correo").value          = u.correo_electronico ?? "";
+  document.getElementById("f_primer_nombre").value   = u.primer_nombre      ?? "";
+  document.getElementById("f_segundo_nombre").value  = u.segundo_nombre     ?? "";
+  document.getElementById("f_primer_apellido").value = u.primer_apellido    ?? "";
+  document.getElementById("f_segundo_apellido").value= u.segundo_apellido   ?? "";
+  document.getElementById("f_telefono").value        = u.telefono           ?? "";
+  document.getElementById("f_rol").value             = u.rol                ?? "";
+  document.getElementById("f_activo").checked        = u.activo             ?? false;
+
+  // Seleccionar organización y evento si tienen id
+  if (u.id_organizacion) document.getElementById("f_organizacion").value = u.id_organizacion;
+  if (u.id_evento)       document.getElementById("f_evento").value       = u.id_evento;
+
+  document.getElementById("modalBg").classList.add("open");
+}
+
+function cerrarModal() {
+  document.getElementById("modalBg").classList.remove("open");
+}
+function cerrarModalSiClickAfuera(e) {
+  if (e.target === document.getElementById("modalBg")) cerrarModal();
+}
+
+function limpiarForm() {
+  ["f_correo","f_primer_nombre","f_segundo_nombre","f_primer_apellido",
+   "f_segundo_apellido","f_telefono"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("f_rol").value = "";
+  document.getElementById("f_organizacion").value = "";
+  document.getElementById("f_evento").value = "";
+  document.getElementById("f_activo").checked = true;
+}
+
+// ─── GUARDAR (crear o editar) ─────────────────────────────────────────────────
+async function guardarUsuario(e) {
+  e.preventDefault();
+  setBtnLoading(true);
+
+  const payload = {
+    correo_electronico: document.getElementById("f_correo").value.trim()          || null,
+    primer_nombre:      document.getElementById("f_primer_nombre").value.trim()   || null,
+    segundo_nombre:     document.getElementById("f_segundo_nombre").value.trim()  || null,
+    primer_apellido:    document.getElementById("f_primer_apellido").value.trim() || null,
+    segundo_apellido:   document.getElementById("f_segundo_apellido").value.trim()|| null,
+    telefono:           document.getElementById("f_telefono").value.trim()        || null,
+    rol:                document.getElementById("f_rol").value                    || null,
+    activo:             document.getElementById("f_activo").checked,
+    id_organizacion:    document.getElementById("f_organizacion").value           || null,
+    id_evento:          document.getElementById("f_evento").value                 || null,
+  };
+
+  let error;
+  if (editandoId) {
+    ({ error } = await sb.from("usuarios").update(payload).eq("id", editandoId));
+  } else {
+    ({ error } = await sb.from("usuarios").insert(payload));
+  }
+
+  setBtnLoading(false);
+
+  if (error) {
+    showToast("Error: " + error.message, "err");
+    console.error(error);
+    return;
+  }
+
+  showToast(editandoId ? "✓ Usuario actualizado" : "✓ Usuario creado", "ok");
+  cerrarModal();
+  await cargarTodo();
+}
+
+function setBtnLoading(loading) {
+  const icon = document.getElementById("btnGuardarIcon");
+  const text = document.getElementById("btnGuardarText");
+  if (loading) {
+    icon.innerHTML = '<div class="spin" style="width:14px;height:14px;"></div>';
+    text.textContent = "Guardando...";
+  } else {
+    icon.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+    text.textContent = editandoId ? "Actualizar" : "Guardar";
+  }
+}
+
+// ─── ELIMINAR ─────────────────────────────────────────────────────────────────
+function pedirEliminar(id, nombre) {
+  eliminarId = id;
+  document.getElementById("confirmNombre").textContent = `Se eliminará a "${nombre.trim()}". Esta acción no se puede deshacer.`;
+  document.getElementById("confirmBg").classList.add("open");
+}
+function cerrarConfirm() {
+  document.getElementById("confirmBg").classList.remove("open");
+  eliminarId = null;
+}
+async function confirmarEliminar() {
+  if (!eliminarId) return;
+  const { error } = await sb.from("usuarios").delete().eq("id", eliminarId);
+  cerrarConfirm();
+  if (error) { showToast("Error: " + error.message, "err"); return; }
+  showToast("✓ Usuario eliminado", "ok");
+  await cargarTodo();
+}
+
+// ─── EXPORTAR CSV ─────────────────────────────────────────────────────────────
+function exportarCSV() {
+  if (datosFiltrados.length === 0) { showToast("No hay datos para exportar", "err"); return; }
+
+  const cols = ["correo_electronico","primer_nombre","segundo_nombre",
+                "primer_apellido","segundo_apellido","telefono","rol","activo"];
+  const header = cols.join(",");
+  const rows = datosFiltrados.map(u =>
+    cols.map(c => {
+      const v = u[c] ?? "";
+      return typeof v === "string" && v.includes(",") ? `"${v}"` : v;
+    }).join(",")
+  );
+
+  const blob = new Blob([header + "\n" + rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement("a"), { href: url, download: "usuarios_" + new Date().toISOString().split("T")[0] + ".csv" });
+  a.click(); URL.revokeObjectURL(url);
+  showToast("✓ CSV descargado", "ok");
+}
+
+// ─── LOADING ──────────────────────────────────────────────────────────────────
+function mostrarLoading(show) {
+  document.getElementById("loadingRow").style.display   = show ? "flex" : "none";
+  document.getElementById("tablaUsuarios").style.display = show ? "none" : "";
+  if (show) document.getElementById("emptyRow").style.display = "none";
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, tipo = "ok") {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "show " + tipo;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = "", 3500);
+}
+
+// ─── LOGOUT ───────────────────────────────────────────────────────────────────
+async function logout() {
+  await sb.auth.signOut();
+  window.location.href = "index.html";
+}
+</script>
+
+</body>
+</html>

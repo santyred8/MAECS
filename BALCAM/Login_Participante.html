@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f0520">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Ingreso al Evento</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0f0520;--p:#a855f7;--p2:#7c3aed;--pink:#e879f9;
+  --text:#fff;--muted:rgba(255,255,255,.5);
+  --card:rgba(255,255,255,.06);--border:rgba(255,255,255,.1);
+  --inp:rgba(255,255,255,.07);--inp-border:rgba(255,255,255,.12);
+  --green:#4ade80;
+}
+html{height:100%;}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;overflow-x:hidden;}
+
+/* FONDO */
+.bg-orbs{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.35;animation:float 8s ease-in-out infinite;}
+.orb1{width:320px;height:320px;background:#7c3aed;top:-100px;right:-80px;animation-delay:0s;}
+.orb2{width:280px;height:280px;background:#c026d3;bottom:80px;left:-100px;animation-delay:-3s;}
+.orb3{width:200px;height:200px;background:#4f46e5;top:45%;right:-60px;animation-delay:-5s;}
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-28px);}}
+
+/* WRAP */
+.wrap{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;padding:20px 20px 32px;max-width:420px;margin:0 auto;width:100%;}
+
+/* BANNER */
+.ev-banner{display:none;background:linear-gradient(135deg,rgba(124,58,237,.35),rgba(192,38,211,.25));border:1px solid rgba(168,85,247,.3);border-radius:16px;padding:11px 16px;margin-bottom:20px;margin-top:12px;align-items:center;gap:10px;backdrop-filter:blur(12px);}
+.ev-banner.show{display:flex;}
+.ev-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;box-shadow:0 0 0 3px rgba(74,222,128,.25);animation:pdot 2s ease infinite;}
+@keyframes pdot{0%,100%{box-shadow:0 0 0 3px rgba(74,222,128,.25);}50%{box-shadow:0 0 0 7px rgba(74,222,128,.08);}}
+.ev-nombre{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ev-org{font-size:11px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* LOGO */
+.logo-sec{text-align:center;padding:28px 0 24px;}
+.logo-mark{width:68px;height:68px;margin:0 auto 12px;background:linear-gradient(135deg,#7c3aed,#c026d3);border-radius:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 32px rgba(124,58,237,.4);animation:pop .6s cubic-bezier(.34,1.56,.64,1);}
+@keyframes pop{from{opacity:0;transform:scale(.4) rotate(-15deg);}to{opacity:1;transform:scale(1) rotate(0);}}
+.logo-mark svg{width:34px;height:34px;}
+.logo-nombre{font-size:20px;font-weight:900;letter-spacing:-.5px;animation:fin .5s .2s both ease;}
+.logo-nombre span{background:linear-gradient(90deg,#a855f7,#e879f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.logo-sub{font-size:12px;color:var(--muted);margin-top:3px;font-weight:500;animation:fin .5s .3s both ease;}
+@keyframes fin{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+/* CARD */
+.card{background:var(--card);border:1px solid var(--border);border-radius:22px;backdrop-filter:blur(20px);overflow:hidden;animation:fin .4s .1s both ease;}
+
+/* POLITICA */
+.pol-head{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);user-select:none;-webkit-tap-highlight-color:transparent;}
+.pol-head-l{display:flex;align-items:center;gap:10px;}
+.pol-ico{width:30px;height:30px;border-radius:9px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.pol-t{font-size:13px;font-weight:700;}
+.pol-s{font-size:11px;color:var(--muted);margin-top:1px;}
+.pol-chev{color:var(--muted);transition:.3s;flex-shrink:0;}
+.pol-chev.open{transform:rotate(180deg);}
+.pol-body{padding:0 18px;max-height:0;overflow:hidden;transition:max-height .35s ease,padding .35s ease;}
+.pol-body.open{max-height:400px;padding:14px 18px;}
+.pol-txt{font-size:12px;color:rgba(255,255,255,.55);line-height:1.75;}
+.pol-txt a{color:var(--p);font-weight:600;text-decoration:none;}
+.pol-row{display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:11px 14px;background:rgba(255,255,255,.04);border-radius:11px;border:1px solid rgba(255,255,255,.05);}
+.pol-label{font-size:13px;font-weight:600;color:rgba(255,255,255,.8);}
+.pol-label small{display:block;font-size:11px;font-weight:400;color:var(--muted);margin-top:2px;}
+
+/* SWITCH */
+.sw{position:relative;width:46px;height:25px;flex-shrink:0;}
+.sw input{opacity:0;width:0;height:0;position:absolute;}
+.sw-sl{position:absolute;inset:0;background:rgba(255,255,255,.14);border-radius:25px;cursor:pointer;transition:.25s;border:1px solid rgba(255,255,255,.08);}
+.sw-sl::before{content:"";position:absolute;width:19px;height:19px;top:2px;left:2px;background:#fff;border-radius:50%;transition:.25s;box-shadow:0 2px 6px rgba(0,0,0,.3);}
+.sw input:checked+.sw-sl{background:linear-gradient(135deg,var(--p2),var(--p));}
+.sw input:checked+.sw-sl::before{transform:translateX(21px);}
+
+/* FORM */
+.form-body{padding:18px;}
+.field{margin-bottom:15px;}
+.field label{display:block;font-size:11px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:7px;text-transform:uppercase;letter-spacing:.06em;}
+.inp-wrap{position:relative;}
+.inp{width:100%;padding:14px 16px;background:var(--inp);border:1.5px solid var(--inp-border);border-radius:13px;font-size:16px;color:#fff;outline:none;font-family:'Plus Jakarta Sans',sans-serif;font-weight:500;transition:.2s;-webkit-appearance:none;appearance:none;}
+.inp::placeholder{color:rgba(255,255,255,.22);}
+.inp:focus{border-color:rgba(168,85,247,.6);background:rgba(168,85,247,.08);box-shadow:0 0 0 4px rgba(168,85,247,.1);}
+.inp-eye{position:absolute;right:13px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);padding:6px;display:flex;align-items:center;-webkit-tap-highlight-color:transparent;}
+
+/* ERROR */
+.err{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);border-radius:11px;padding:10px 13px;font-size:13px;font-weight:600;color:#fca5a5;display:none;align-items:center;gap:8px;margin-bottom:13px;}
+.err.show{display:flex;}
+
+/* BTN */
+.btn-main{width:100%;padding:15px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:13px;font-size:15px;font-weight:800;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 4px 20px rgba(124,58,237,.4);transition:all .15s;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+.btn-main:active{transform:scale(.97);}
+.btn-main:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.btn-wp{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;margin-top:9px;background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.18);border-radius:13px;color:#4ade80;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;-webkit-tap-highlight-color:transparent;}
+.btn-wp:active{background:rgba(37,211,102,.18);}
+
+/* FOOTER */
+.footer{text-align:center;padding:18px 0 6px;color:rgba(255,255,255,.2);font-size:11px;}
+
+/* ÉXITO */
+.suc{display:none;flex-direction:column;align-items:center;padding:16px;animation:fin .4s ease;}
+.suc.show{display:flex;}
+.suc-ring{width:90px;height:90px;border-radius:50%;background:rgba(74,222,128,.12);border:2px solid rgba(74,222,128,.3);display:flex;align-items:center;justify-content:center;margin:28px auto 18px;box-shadow:0 0 40px rgba(74,222,128,.15);animation:pop .5s cubic-bezier(.34,1.56,.64,1);}
+.suc-nombre{font-size:21px;font-weight:900;text-align:center;margin-bottom:4px;}
+.suc-unidad{font-size:13px;color:var(--muted);margin-bottom:14px;}
+.suc-hora{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2);border-radius:20px;padding:7px 16px;font-size:13px;font-weight:700;color:var(--green);margin-bottom:20px;}
+.suc-ev{width:100%;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:20px;text-align:left;}
+.suc-ev small{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);display:block;margin-bottom:3px;}
+.suc-ev-n{font-size:14px;font-weight:700;}
+.suc-desc{font-size:13px;color:var(--muted);text-align:center;line-height:1.65;margin-bottom:22px;}
+.btn-otra{width:100%;padding:13px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:13px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;-webkit-tap-highlight-color:transparent;}
+
+/* SPIN */
+.spin{width:17px;height:17px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0;}
+@keyframes sp{to{transform:rotate(360deg);}}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:0;}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+</style>
+</head>
+<body>
+
+<div class="bg-orbs">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+</div>
+
+<div class="wrap">
+
+  <div class="ev-banner" id="ev-banner">
+    <div class="ev-dot"></div>
+    <div style="flex:1;min-width:0;">
+      <div id="ev-banner-nombre" class="ev-nombre">Cargando…</div>
+      <div id="ev-banner-org" class="ev-org">—</div>
+    </div>
+  </div>
+
+  <div class="logo-sec" id="logo-sec">
+    <div class="logo-mark">
+      <svg viewBox="0 0 34 34" fill="none">
+        <rect x="2" y="2" width="13" height="13" rx="3.5" fill="white" opacity=".95"/>
+        <rect x="19" y="2" width="13" height="13" rx="3.5" fill="white" opacity=".7"/>
+        <rect x="2" y="19" width="13" height="13" rx="3.5" fill="white" opacity=".7"/>
+        <rect x="19" y="19" width="13" height="13" rx="3.5" fill="white" opacity=".5"/>
+      </svg>
+    </div>
+    <div class="logo-nombre" id="logo-org">BAL<span>CAM</span></div>
+    <div class="logo-sub">Ingreso al evento</div>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="login-screen">
+    <div class="card">
+
+      <!-- Política -->
+      <div class="pol-head" onclick="togglePol()">
+        <div class="pol-head-l">
+          <div class="pol-ico">
+            <svg width="14" height="14" fill="none" stroke="#a855f7" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div>
+            <div class="pol-t">Política de datos</div>
+            <div class="pol-s" id="pol-sub">Toca para leer y aceptar</div>
+          </div>
+        </div>
+        <svg id="pol-chev" class="pol-chev" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+
+      <div class="pol-body" id="pol-body">
+        <div class="pol-txt">De acuerdo con la ley 1581 de 2012 y el decreto 1377 de 2013, tus datos serán incorporados en una base de datos según nuestra <a href="#">Política de Datos</a>. Al aceptar, confirmas haber leído y estar de acuerdo.</div>
+        <div class="pol-row">
+          <div class="pol-label">Acepto la política<small>Requerido para continuar</small></div>
+          <label class="sw"><input type="checkbox" id="politica-check" onchange="polChange()"><span class="sw-sl"></span></label>
+        </div>
+      </div>
+
+      <div class="form-body">
+        <div class="field">
+          <label>Usuario</label>
+          <input id="f-usuario" class="inp" type="text" placeholder="Ej: 201"
+            autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+            inputmode="text"
+            oninput="this.value=this.value.toUpperCase()"
+            onkeydown="if(event.key==='Enter')document.getElementById('f-pass').focus()">
+        </div>
+        <div class="field">
+          <label>Contraseña</label>
+          <div class="inp-wrap">
+            <input id="f-pass" class="inp" type="password" placeholder="••••••••"
+              autocomplete="off" style="padding-right:46px;"
+              onkeydown="if(event.key==='Enter')doLogin()">
+            <button class="inp-eye" onclick="toggleEye()" type="button" tabindex="-1">
+              <svg id="eye-icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div id="form-error" class="err">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span id="err-txt"></span>
+        </div>
+
+        <button id="btn-login" class="btn-main" onclick="doLogin()">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+          Ingresar al evento
+        </button>
+        <button class="btn-wp" onclick="abrirSoporte()">
+          <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          Soporte
+        </button>
+      </div>
+    </div>
+    <div class="footer">Versión 1.0 · © 2026 BALCAM · maecs</div>
+  </div>
+
+  <!-- ÉXITO -->
+  <div class="suc" id="suc">
+    <div class="suc-ring"><svg width="38" height="38" fill="none" stroke="#4ade80" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+    <div id="suc-nombre" class="suc-nombre">—</div>
+    <div id="suc-unidad" class="suc-unidad">—</div>
+    <div id="suc-hora" class="suc-hora">—</div>
+    <div class="suc-ev"><small>Evento</small><div id="suc-ev-n" class="suc-ev-n">—</div></div>
+    <div class="suc-desc">Registro exitoso.<br>Espera las instrucciones del administrador.</div>
+    <button class="btn-otra" onclick="resetLogin()">Registrar otra unidad</button>
+  </div>
+
+</div>
+
+<script>
+const sb = supabase.createClient(
+  "https://gwvqttdjevogjvldzspf.supabase.co",
+  "sb_publishable_e1x6gdl3QHjwdKa5UIjYxQ_eMkUaTad"
+);
+const params = new URLSearchParams(location.search);
+const EV_ID  = params.get("ev");
+const ORG_ID = params.get("org");
+let evData = null, orgData = null;
+
+async function init() {
+  if (!EV_ID || !ORG_ID) return;
+  const [ev, org] = await Promise.all([
+    sb.from("eventos").select("nombre,estado").eq("id",EV_ID).single(),
+    sb.from("organizaciones").select("nombre,nit,telefono").eq("id",ORG_ID).single()
+  ]);
+  if (ev.data) {
+    evData = ev.data;
+    document.getElementById("ev-banner").classList.add("show");
+    document.getElementById("ev-banner-nombre").textContent = ev.data.nombre||"—";
+    document.getElementById("suc-ev-n").textContent = ev.data.nombre||"—";
+    document.title = (ev.data.nombre||"Evento")+" — Ingreso";
+  }
+  if (org.data) {
+    orgData = org.data;
+    document.getElementById("logo-org").innerHTML = (org.data.nombre||"BAL")+'<span style="background:linear-gradient(90deg,#a855f7,#e879f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">CAM</span>';
+    document.getElementById("ev-banner-org").textContent = (org.data.nombre||"—")+"  ·  NIT "+(org.data.nit||"—");
+  }
+}
+
+function togglePol() {
+  document.getElementById("pol-body").classList.toggle("open");
+  document.getElementById("pol-chev").classList.toggle("open");
+}
+function polChange() {
+  const ok = document.getElementById("politica-check").checked;
+  const s  = document.getElementById("pol-sub");
+  s.textContent = ok ? "✓ Aceptada" : "Toca para leer y aceptar";
+  s.style.color = ok ? "#4ade80" : "";
+}
+
+function limpiar(s){ return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().trim(); }
+
+async function doLogin() {
+  document.getElementById("form-error").classList.remove("show");
+  if (!document.getElementById("politica-check").checked) {
+    showErr("Debes aceptar la política de datos.");
+    if (!document.getElementById("pol-body").classList.contains("open")) togglePol();
+    return;
+  }
+  const usuario  = limpiar(document.getElementById("f-usuario").value);
+  const password = limpiar(document.getElementById("f-pass").value);
+  if (!usuario||!password) { showErr("Ingresa tu usuario y contraseña."); return; }
+
+  setBtnLoad(true);
+  const { data:unidades, error } = await sb.from("unidades")
+    .select("id,codigo,propietario_1,usuario,contrasena")
+    .eq("id_organizacion", String(ORG_ID)).eq("usuario", usuario);
+
+  if (error) { setBtnLoad(false); showErr("Error de conexión. Intenta de nuevo."); return; }
+
+  const unidad = (unidades||[]).find(u => limpiar(u.contrasena)===password);
+  if (!unidad) {
+    setBtnLoad(false); showErr("Usuario o contraseña incorrectos.");
+    const c = document.querySelector(".card");
+    c.style.animation="shake .4s ease"; setTimeout(()=>c.style.animation="",500);
+    return;
+  }
+
+  sessionStorage.setItem("part_unidad_id", unidad.id);
+  sessionStorage.setItem("part_codigo",    unidad.codigo||"");
+  sessionStorage.setItem("part_nombre",    unidad.propietario_1||"");
+  sessionStorage.setItem("part_ev_id",     EV_ID);
+  sessionStorage.setItem("part_org_id",    ORG_ID);
+
+  await sb.from("participantes").upsert({
+    id_evento:EV_ID, id_unidad:unidad.id, activo:true,
+    estado:"Registrado", hora_registro:new Date().toISOString()
+  }, {onConflict:"id_evento,id_unidad"});
+
+  setBtnLoad(false);
+
+  const hora = new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  document.getElementById("suc-nombre").textContent = unidad.propietario_1||"Propietario";
+  document.getElementById("suc-unidad").textContent = "Unidad "+(unidad.codigo||"—");
+  document.getElementById("suc-hora").textContent   = "✓ Registrado a las "+hora;
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("logo-sec").style.display     = "none";
+  document.getElementById("ev-banner").style.display    = "none";
+  document.getElementById("suc").classList.add("show");
+  confeti();
+}
+
+function resetLogin() {
+  document.getElementById("login-screen").style.display = "";
+  document.getElementById("logo-sec").style.display     = "";
+  document.getElementById("ev-banner").classList.add("show");
+  document.getElementById("suc").classList.remove("show");
+  document.getElementById("f-usuario").value="";
+  document.getElementById("f-pass").value="";
+  document.getElementById("politica-check").checked=false;
+  polChange();
+  document.getElementById("form-error").classList.remove("show");
+}
+function showErr(m){ document.getElementById("err-txt").textContent=m; document.getElementById("form-error").classList.add("show"); }
+function setBtnLoad(on){
+  const b=document.getElementById("btn-login"); b.disabled=on;
+  b.innerHTML=on?`<div class="spin"></div>Verificando…`:`<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>Ingresar al evento`;
+}
+function toggleEye(){
+  const i=document.getElementById("f-pass"); i.type=i.type==="password"?"text":"password";
+  document.getElementById("eye-icon").innerHTML=i.type==="text"
+    ?`<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`
+    :`<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+}
+function abrirSoporte(){
+  const tel=(orgData?.telefono||"").replace(/\D/g,"");
+  window.open("https://wa.me/57"+tel+"?text="+encodeURIComponent("Hola, necesito ayuda para ingresar al evento."),"_blank");
+}
+function confeti(){
+  const c=["#a855f7","#e879f9","#4ade80","#fbbf24","#60a5fa"];
+  for(let i=0;i<50;i++){
+    const d=document.createElement("div"),s=Math.random()*8+4;
+    d.style.cssText=`position:fixed;top:-10px;left:${Math.random()*100}vw;width:${s}px;height:${s}px;background:${c[Math.floor(Math.random()*c.length)]};border-radius:${Math.random()>.5?"50%":"3px"};pointer-events:none;z-index:999;animation:fall ${Math.random()*2+1.5}s linear ${Math.random()*.5}s forwards;`;
+    document.body.appendChild(d); setTimeout(()=>d.remove(),4000);
+  }
+}
+init();
+</script>
+</body>
+</html>
