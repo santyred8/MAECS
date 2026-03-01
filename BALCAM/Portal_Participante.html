@@ -515,26 +515,18 @@ function aplicarCambiarRespuestas(permitir) {
 // Mostrar u ocultar gráficas sin reconstruir las preguntas
 function aplicarOcultarGraficos(ocultar) {
   preguntas.forEach(p => {
-    const resCard = document.getElementById(`rescard-${p.id}`) || document.getElementById(`res-${p.id}`);
+    const resEl = document.getElementById(`rescard-${p.id}`) || document.getElementById(`res-${p.id}`);
     if (ocultar) {
-      // Ocultar gráfica
-      if (resCard) resCard.style.display = "none";
-      // Destruir chart para liberar memoria
+      if (resEl) resEl.style.display = "none";
       if (portalCharts[p.id]) { portalCharts[p.id].destroy(); delete portalCharts[p.id]; }
       delete portalChartCache[p.id];
     } else {
-      // Mostrar — si tenía gráfica, restaurarla
-      if (resCard) {
-        resCard.style.display = "";
-      } else if (misVotos[p.id]) {
-        // No existía el div → crearlo y cargar
-        const body = document.getElementById(`preg-body-${p.id}`);
-        if (body && !document.getElementById(`res-${p.id}`)) {
-          const div = document.createElement("div");
-          div.id = `res-${p.id}`;
-          div.style.marginTop = "12px";
-          body.appendChild(div);
-        }
+      // Al reactivar: si el chart fue destruido, siempre recargarlo
+      const chartVivo = !!portalCharts[p.id];
+      if (resEl) resEl.style.display = "";
+      if (!chartVivo && misVotos[p.id]) {
+        // Chart no existe (fue destruido) → recargar desde cero
+        if (resEl) resEl.innerHTML = ""; // limpiar contenido vacío
         cargarYActualizarGrafica(p.id);
       }
     }
