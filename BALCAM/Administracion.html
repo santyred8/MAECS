@@ -741,18 +741,28 @@ nav{
 
         <!-- Gráfica GRANDE -->
         <div class="card" style="padding:22px 24px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
             <div>
               <div style="font-size:14px;font-weight:800;color:var(--text);">Distribución de votos</div>
-              <div style="font-size:12px;color:var(--muted);margin-top:2px;">Coeficiente · Quórum · Nominal</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px;">Clic en los botones para mostrar/ocultar métricas</div>
             </div>
-            <div style="display:flex;gap:16px;flex-wrap:wrap;">
-              <div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#7c3aed;"><div style="width:10px;height:10px;border-radius:3px;background:#7c3aed;"></div>Coeficiente %</div>
-              <div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#0891b2;"><div style="width:10px;height:10px;border-radius:3px;background:#0891b2;"></div>Quórum %</div>
-              <div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#d97706;"><div style="width:10px;height:10px;border-radius:3px;background:#d97706;"></div>Nominal</div>
+            <!-- Leyenda interactiva clickeable -->
+            <div style="display:flex;gap:8px;flex-wrap:wrap;" id="chart-legend">
+              <button onclick="toggleDataset(0)" id="leg-0"
+                style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:2px solid #7c3aed;background:#f3f0ff;font-size:12px;font-weight:700;color:#7c3aed;cursor:pointer;transition:all .2s;">
+                <div style="width:10px;height:10px;border-radius:3px;background:#7c3aed;"></div>Coeficiente %
+              </button>
+              <button onclick="toggleDataset(1)" id="leg-1"
+                style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:2px solid #0891b2;background:#e0f2fe;font-size:12px;font-weight:700;color:#0891b2;cursor:pointer;transition:all .2s;">
+                <div style="width:10px;height:10px;border-radius:3px;background:#0891b2;"></div>Quórum %
+              </button>
+              <button onclick="toggleDataset(2)" id="leg-2"
+                style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:2px solid #d97706;background:#fef3c7;font-size:12px;font-weight:700;color:#d97706;cursor:pointer;transition:all .2s;">
+                <div style="width:10px;height:10px;border-radius:3px;background:#d97706;"></div>Nominal
+              </button>
             </div>
           </div>
-          <div style="position:relative;height:340px;">
+          <div style="position:relative;height:clamp(240px,40vw,400px);">
             <canvas id="adm-preg-chart"></canvas>
           </div>
         </div>
@@ -1766,6 +1776,37 @@ async function cargarParticipAdmin() {
 
 function toNumAdmin(v) { return parseFloat(String(v||0).replace(",",".")) || 0; }
 
+// ── TOGGLE DATASETS EN GRÁFICA ────────────────────────
+const LEGEND_STYLES = [
+  { on:{ border:"#7c3aed", bg:"#f3f0ff", color:"#7c3aed" }, off:{ border:"#cbd5e1", bg:"#f8fafc", color:"#94a3b8" } },
+  { on:{ border:"#0891b2", bg:"#e0f2fe", color:"#0891b2" }, off:{ border:"#cbd5e1", bg:"#f8fafc", color:"#94a3b8" } },
+  { on:{ border:"#d97706", bg:"#fef3c7", color:"#d97706" }, off:{ border:"#cbd5e1", bg:"#f8fafc", color:"#94a3b8" } },
+];
+function toggleDataset(idx) {
+  if (!admChart) return;
+  const meta = admChart.getDatasetMeta(idx);
+  meta.hidden = !meta.hidden;
+  admChart.update();
+  syncLegendButtons();
+}
+function syncLegendButtons() {
+  if (!admChart) return;
+  [0,1,2].forEach(i => {
+    const btn = document.getElementById("leg-"+i);
+    if (!btn) return;
+    const hidden = admChart.getDatasetMeta(i).hidden;
+    const s = LEGEND_STYLES[i];
+    const style = hidden ? s.off : s.on;
+    btn.style.borderColor = style.border;
+    btn.style.background  = style.bg;
+    btn.style.color       = style.color;
+    btn.style.opacity     = hidden ? "0.55" : "1";
+    // Actualizar dot color
+    const dot = btn.querySelector("div");
+    if (dot) dot.style.background = hidden ? "#cbd5e1" : style.border;
+  });
+}
+
 // Paleta de colores por opción (hasta 8 opciones)
 const CHART_COLORS = [
   {bg:"rgba(124,58,237,.85)", border:"#7c3aed"},
@@ -1821,6 +1862,10 @@ function renderResultados() {
 
   if (admChart) admChart.destroy();
   const ctx = document.getElementById("adm-preg-chart").getContext("2d");
+
+  // Dataset quórum: cuánto % del quórum aporta cada opción
+  const quorumVals = labels.map(l => quorumMin>0 ? +((porResp[l].coef/quorumMin)*100).toFixed(2) : 0);
+
   admChart = new Chart(ctx, {
     type: "bar",
     data: {
@@ -1832,9 +1877,21 @@ function renderResultados() {
           backgroundColor: bgColors,
           borderColor: bdrColors,
           borderWidth: 2,
-          borderRadius: 6,
+          borderRadius: 8,
+          borderSkipped: false,
           yAxisID: "y",
-          order: 1,
+          order: 2,
+        },
+        {
+          label: "Quórum %",
+          data: quorumVals,
+          backgroundColor: labels.map(()=>"rgba(8,145,178,.55)"),
+          borderColor: "#0891b2",
+          borderWidth: 2,
+          borderRadius: 8,
+          borderSkipped: false,
+          yAxisID: "y",
+          order: 3,
         },
         {
           label: "Nominal",
@@ -1843,10 +1900,12 @@ function renderResultados() {
           backgroundColor: "rgba(0,0,0,0)",
           borderColor: "#d97706",
           borderWidth: 2.5,
-          pointBackgroundColor: "#d97706",
+          pointBackgroundColor: "#fff",
+          pointBorderColor: "#d97706",
+          pointBorderWidth: 2,
           pointRadius: 5,
-          pointHoverRadius: 7,
-          tension: 0.3,
+          pointHoverRadius: 8,
+          tension: 0.4,
           yAxisID: "y2",
           order: 0,
         }
@@ -1861,45 +1920,51 @@ function renderResultados() {
         tooltip: {
           backgroundColor: "#fff",
           titleColor: "#1e1b4b",
+          titleFont: { size:13, weight:"800" },
           bodyColor: "#64748b",
+          bodyFont: { size:12 },
           borderColor: "#e8e3ff",
           borderWidth: 1,
-          padding: 12,
+          padding: 14,
           callbacks: {
-            label: c => c.dataset.label === "Nominal"
-              ? `Votos: ${c.raw}`
-              : `Coeficiente: ${c.raw}%`
+            label: c => {
+              if (c.dataset.label === "Nominal")    return `  Votos: ${c.raw}`;
+              if (c.dataset.label === "Quórum %")   return `  Quórum: ${c.raw}%`;
+              return `  Coeficiente: ${c.raw}%`;
+            }
           }
         }
       },
       scales: {
         y: {
           position: "left",
-          grid: { color:"rgba(124,58,237,.07)", drawBorder:false },
-          ticks: { color:"#64748b", font:{size:11}, callback: v=>v+"%" },
-          title: { display:true, text:"Coeficiente %", color:"#7c3aed", font:{size:11,weight:"700"} }
+          grid: { color:"rgba(124,58,237,.06)", drawBorder:false },
+          ticks: { color:"#64748b", font:{size:10}, callback: v=>v+"%" },
+          title: { display:true, text:"Coeficiente / Quórum %", color:"#64748b", font:{size:10,weight:"700"} }
         },
         y2: {
           position: "right",
           grid: { drawOnChartArea:false },
-          ticks: { color:"#d97706", font:{size:11} },
-          title: { display:true, text:"Votos nominales", color:"#d97706", font:{size:11,weight:"700"} }
+          ticks: { color:"#d97706", font:{size:10}, stepSize:1 },
+          title: { display:true, text:"Votos", color:"#d97706", font:{size:10,weight:"700"} }
         },
         x: {
-          grid: { color:"rgba(0,0,0,.04)", drawBorder:false },
+          grid: { color:"rgba(0,0,0,.03)", drawBorder:false },
           ticks: {
             color:"#1e1b4b",
-            font:{size:11, weight:"600"},
-            maxRotation: 25,
+            font:{size:10, weight:"600"},
+            maxRotation: 30,
             callback: (val, i) => {
               const lbl = labels[i] || "";
-              return lbl.length > 22 ? lbl.slice(0,20)+"…" : lbl;
+              return lbl.length > 18 ? lbl.slice(0,16)+"…" : lbl;
             }
           }
         }
       }
     }
   });
+  // Sincronizar estado visual de los botones de leyenda
+  syncLegendButtons();
 
   // ── TABLA TOTALIZADA ──
   const tbody = document.getElementById("adm-total-tbody");
