@@ -311,19 +311,26 @@ async function doLogin() {
 
   // ── Verificar si ya está registrado (para las validaciones) ──
   const { data: partExist } = await sb.from("participantes")
-    .select("hora_registro,device_id")
+    .select("hora_registro,device_id,session_ping")
     .eq("id_evento", EV_ID).eq("id_unidad", unidad.id).maybeSingle();
 
   const yaRegistrado    = !!partExist?.hora_registro;
   const deviceIdActual  = getDeviceId();
 
-  // ── VALIDACIÓN: Solo un dispositivo ──
-  if (evData?.restringir_acceso && yaRegistrado && partExist?.device_id) {
-    if (partExist.device_id !== deviceIdActual) {
+  // ── VALIDACIÓN: Solo un dispositivo activo simultáneo ──
+  // La sesión se considera "activa" si hubo un ping en los últimos 90 segundos
+  // Si no hay ping reciente → la sesión anterior se cerró (browser cerrado, etc.)
+  if (yaRegistrado && partExist?.device_id && partExist?.device_id !== deviceIdActual) {
+    const ultimoPing = partExist?.session_ping ? new Date(partExist.session_ping) : null;
+    const segsDesdeUltimoPing = ultimoPing ? (Date.now() - ultimoPing.getTime()) / 1000 : 999;
+    if (segsDesdeUltimoPing < 90) {
+      // Sesión activa en otro dispositivo
       setBtnLoad(false);
-      showErr("⚠️ Esta unidad ya está registrada en otro dispositivo. Solo se permite un dispositivo por unidad.");
+      const mins = Math.ceil((90 - segsDesdeUltimoPing) / 60);
+      showErr(`⚠️ Esta unidad ya tiene una sesión activa en otro dispositivo. Cerrá esa sesión primero o esperá ${mins > 0 ? mins + " min" : "unos segundos"}.`);
       return;
     }
+    // Sesión expirada → permitir login y tomar el dispositivo
   }
 
   // ── VALIDACIÓN: Registro tardío ──
@@ -358,6 +365,8 @@ async function doLogin() {
     upsertData.hora_registro = new Date().toISOString();
   }
 
+  // Limpiar session_ping del dispositivo anterior al tomar la sesión
+  upsertData.session_ping = null;
   await sb.from("participantes").upsert(upsertData, {onConflict:"id_evento,id_unidad"});
 
   setBtnLoad(false);
