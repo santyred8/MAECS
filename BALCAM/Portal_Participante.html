@@ -408,6 +408,7 @@ async function init() {
   try {
     await Promise.all([cargarEvento(), cargarMisVotos(), cargarUnidadInfo()]);
     iniciarPolling();
+    iniciarHeartbeat();
   } catch(e) {
     mostrarError("Error al cargar el portal. Recarga la página.");
   }
@@ -425,6 +426,40 @@ function mostrarError(msg) {
 // ── POLLING INTELIGENTE ───────────────────────────────
 // Cada 6s revisa: config del evento, estado de preguntas, stats y gráficas
 // Aplica cambios quirúrgicamente sin reconstruir el DOM
+// ── HEARTBEAT — mantiene la sesión activa ────────────
+// Actualiza session_ping cada 30s en Supabase
+// Si el browser se cierra, el ping se detiene → otra sesión puede entrar tras 90s
+let _heartbeatInt = null;
+function iniciarHeartbeat() {
+  // Ping inmediato al entrar
+  pingSession();
+  // Luego cada 30s
+  _heartbeatInt = setInterval(pingSession, 30000);
+  // Al cerrar/salir: intentar marcar sesión como inactiva
+  window.addEventListener("beforeunload", () => {
+    // Usar sendBeacon para garantizar que se envíe aunque el browser esté cerrando
+    // Como Supabase no soporta sendBeacon directamente, actualizamos sync
+    pingSession(true);
+  });
+  // En móvil, pagehide es más confiable que beforeunload
+  window.addEventListener("pagehide", () => {
+    pingSession(true);
+  });
+}
+
+async function pingSession(esLimpieza = false) {
+  if (!SS.unidadId || !EV_ID) return;
+  try {
+    await sb.from("participantes").update({
+      session_ping: esLimpieza ? null : new Date().toISOString()
+    })
+    .eq("id_evento", EV_ID)
+    .eq("id_unidad", SS.unidadId);
+  } catch(e) {
+    // Silencioso — no interrumpir la UX si falla el ping
+  }
+}
+
 let _pollingBusy = false;
 function iniciarPolling() {
   if (pollingInt) clearInterval(pollingInt);
@@ -1561,6 +1596,7 @@ window.addEventListener("resize", () => {
 // Actualizar al volver a la pestaña — solo stats y charts, NO renderMain
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden && evData) {
+    pingSession(); // ping inmediato al volver
     cargarStatsParticipacion().then(() => {
       actualizarStatsInPlace();
       if (!evData?.ocultar_graficos) {
