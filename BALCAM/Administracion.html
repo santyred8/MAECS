@@ -7,6 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -593,6 +594,10 @@ nav{
           <button onclick="exportarParticipantesCSV()" style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);color:#059669;border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             Exportar
+          </button>
+          <button onclick="exportarInformeAsamblea()" id="btn-informe" style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.4);color:#16a34a;border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Informe Asamblea
           </button>
           <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#64748b;">
             Mostrar
@@ -2293,6 +2298,194 @@ function regConfeti() {
 const _regStyle=document.createElement("style");
 _regStyle.textContent=`@keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:0;}}@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}`;
 document.head.appendChild(_regStyle);
+
+// ══════════════════════════════════════════════════════
+// INFORME ASAMBLEA — Excel multi-hoja
+// ══════════════════════════════════════════════════════
+async function exportarInformeAsamblea() {
+  const btn = document.getElementById("btn-informe");
+  if (btn) { btn.disabled = true; btn.innerHTML = `<div style="width:12px;height:12px;border:2px solid #16a34a;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;"></div> Generando…`; }
+  try {
+    const { data: org }   = await sb.from("organizaciones").select("*").eq("id", ORG_ID).single();
+    const { data: ev }    = await sb.from("eventos").select("*").eq("id", EV_ID).single();
+    const { data: unis }  = await sb.from("unidades").select("*").eq("id_organizacion", String(ORG_ID)).order("codigo");
+    const { data: parts } = await sb.from("participantes").select("*").eq("id_evento", EV_ID);
+    const { data: pregs } = await sb.from("preguntas").select("*").eq("id_evento", EV_ID).in("estado",["Activa","Cerrada"]).order("orden");
+    const { data: votosTodos } = await sb.from("votos").select("*").eq("id_evento", EV_ID);
+    if (!ev || !unis) { toast("Error cargando datos","err"); return; }
+
+    const partMap = {};
+    (parts||[]).forEach(p => { partMap[p.id_unidad] = p; });
+    const votoMap = {};
+    (votosTodos||[]).forEach(v => {
+      if (!votoMap[v.id_pregunta]) votoMap[v.id_pregunta] = {};
+      votoMap[v.id_pregunta][v.id_unidad] = v;
+    });
+
+    const unisReg    = unis.filter(u => partMap[u.id]?.activo);
+    const quorumFinal = unisReg.reduce((s,u) => s + toNum(u.coeficiente), 0);
+    const quorumMin   = toNum(ev.quorum_minimo);
+
+    const fP  = (v,d=2) => { const n=parseFloat((v*100).toFixed(d)); return (n%1===0?n.toFixed(0):n.toFixed(d).replace(/0+$/,""))+"%"; };
+    const fH  = (iso) => { if(!iso) return ""; try{return new Date(iso).toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit",second:"2-digit"});}catch(e){return "";} };
+
+    const wb = XLSX.utils.book_new();
+
+    // Estilos base
+    const s = (v,bold,bg,fg,align,sz,border) => {
+      const st = { font:{name:"Arial",sz:sz||10,bold:!!bold,color:{rgb:fg||"1E1B4B"}}, alignment:{horizontal:align||"left",vertical:"center"} };
+      if (bg) st.fill = {fgColor:{rgb:bg},patternType:"solid"};
+      if (border) st.border = {top:{style:"thin",color:{rgb:"D1D5DB"}},bottom:{style:"thin",color:{rgb:"D1D5DB"}},left:{style:"thin",color:{rgb:"D1D5DB"}},right:{style:"thin",color:{rgb:"D1D5DB"}}};
+      return {v, t:typeof v==="number"?"n":"s", s:st};
+    };
+    const MORADO="7C3AED", MORADO2="EDE9FE", WHITE="FFFFFF", HEADER="4C1D95", VERDE="DCFCE7", VERDE2="166534", ROJO="FEF2F2", ROJO2="991B1B", GRIS="F1F5F9", GRIS2="94A3B8", AZUL2="1D4ED8";
+
+    function infoRows(extraCols) {
+      const ec = Array(extraCols||0).fill(s(""));
+      return [
+        [s(""),s(""),s(""),s("BALCAM",true,MORADO,WHITE,"center",18),...Array(Math.max(0,(extraCols||0)-1)).fill(s("")),s("Organización",true,MORADO,WHITE),s(org?.nombre||"—",false,MORADO2)],
+        [s(""),s(""),s(""),s("GRUPO EMPRESARIAL",false,MORADO,WHITE,"center",9),...Array(Math.max(0,(extraCols||0)-1)).fill(s("")),s("NIT",true,MORADO,WHITE),s(org?.nit||"—",false,MORADO2)],
+        [s(""),s(""),s(""),s(""),s(""),s("Evento",true,MORADO,WHITE),s(ev?.nombre||"—",false,MORADO2),...ec],
+        [s(""),s(""),s(""),s(""),s(""),s("Fecha",true,MORADO,WHITE),s(ev?.fecha?new Date(ev.fecha).toLocaleString("es-CO"):"—",false,MORADO2),...ec],
+        [s(""),s(""),s(""),s(""),s(""),s("Lugar",true,MORADO,WHITE),s(ev?.lugar||"—",false,MORADO2),...ec],
+        [s(""),s(""),s(""),s(""),s(""),s("Quórum Mínimo",true,MORADO,WHITE),s(fP(quorumMin),false,MORADO2),...ec],
+        [s(""),s(""),s(""),s(""),s(""),s("Quórum Final",true,MORADO,WHITE),s(fP(quorumFinal),false,MORADO2),...ec],
+        Array(7+(extraCols||0)).fill(s("",false,GRIS)),
+      ];
+    }
+
+    // ── HOJA QUÓRUM ───────────────────────────────────
+    const camposAd = ["campo_adicional_1","campo_adicional_2","campo_adicional_3","campo_adicional_4"];
+    const camposAct = camposAd.filter(c => unis.some(u => u[c]));
+    const wQ = [...infoRows(camposAct.length)];
+
+    wQ.push([
+      s("Contenedor",true,HEADER,WHITE,"center",10,true),
+      s("Código",true,HEADER,WHITE,"center",10,true),
+      s("Tipo",true,HEADER,WHITE,"center",10,true),
+      s("Propietario 1",true,HEADER,WHITE,"left",10,true),
+      s("Coeficiente",true,HEADER,WHITE,"center",10,true),
+      s("Nominal",true,HEADER,WHITE,"center",10,true),
+      s("Estado",true,HEADER,WHITE,"center",10,true),
+      s("Hora Registro",true,HEADER,WHITE,"center",10,true),
+      ...camposAct.map((_,i)=>s(`Campo Adicional ${i+1}`,true,HEADER,WHITE,"center",10,true)),
+    ]);
+
+    const unisOrd = [...unis].sort((a,b) => (partMap[b.id]?.activo?1:0)-(partMap[a.id]?.activo?1:0));
+    unisOrd.forEach(u => {
+      const reg = partMap[u.id]?.activo;
+      wQ.push([
+        s(u.contenedor||"—",false,null,null,"center",10,true),
+        s(u.codigo||"—",false,null,null,"center",10,true),
+        s(u.tipo||"—",false,null,null,"left",10,true),
+        s(u.propietario_1||"—",false,null,null,"left",10,true),
+        s(fP(toNum(u.coeficiente)),false,null,null,"center",10,true),
+        s("100.00%",false,null,null,"center",10,true),
+        s(reg?"Registrado":"No Registrado",true,reg?VERDE:ROJO,reg?VERDE2:ROJO2,"center",10,true),
+        s(fH(partMap[u.id]?.hora_registro),false,null,GRIS2,"center",10,true),
+        ...camposAct.map(c=>s(u[c]||"",false,null,null,"center",10,true)),
+      ]);
+    });
+    const totReg = unisReg.length;
+    wQ.push([s("TOTAL",true,HEADER,WHITE,"center",10),s(""),s(""),s(""),s(fP(quorumFinal),true,HEADER,WHITE,"center",10),{v:totReg,t:"n",s:s(totReg,true,HEADER,WHITE,"center",10).s},s(""),s(""),...camposAct.map(()=>s(""))]);
+
+    const wsQ = XLSX.utils.aoa_to_sheet(wQ);
+    wsQ["!cols"] = [{wch:12},{wch:8},{wch:14},{wch:30},{wch:12},{wch:10},{wch:16},{wch:14},...camposAct.map(()=>({wch:18}))];
+    wsQ["!merges"] = [{s:{r:0,c:3},e:{r:1,c:4}}];
+    XLSX.utils.book_append_sheet(wb, wsQ, "Quórum");
+
+    // ── HOJAS PREGUNTAS ───────────────────────────────
+    (pregs||[]).forEach((preg, pi) => {
+      const votosP = votoMap[preg.id] || {};
+      const opciones = Array.isArray(preg.opciones) ? preg.opciones.map(o=>typeof o==="object"?o.texto:o) : [];
+      const porResp = {};
+      opciones.forEach(o => { porResp[o]={coef:0,nominal:0}; });
+      Object.values(votosP).forEach(v => {
+        if (!porResp[v.respuesta]) porResp[v.respuesta]={coef:0,nominal:0};
+        porResp[v.respuesta].coef += toNum(v.coeficiente);
+        porResp[v.respuesta].nominal += 1;
+      });
+      const totVotCoef = Object.values(porResp).reduce((a,b)=>a+b.coef,0);
+      const sinVotNom  = unisReg.length - Object.keys(votosP).length;
+      const sinVotCoef = quorumFinal - totVotCoef;
+
+      const wP = [...infoRows(5)];
+      wP.push([s("Pregunta",true,MORADO,WHITE,"center",11),s(preg.titulo||"",true,null,HEADER,"left",12),s(""),s(""),s(""),s(""),s(""),s(""),s(""),s(""),s(""),s(""),s("")]);
+      wP.push(Array(13).fill(s("",false,GRIS)));
+      wP.push([
+        s("#",true,HEADER,WHITE,"center",10,true),
+        s("Contenedor",true,HEADER,WHITE,"center",10,true),
+        s("Código",true,HEADER,WHITE,"center",10,true),
+        s("Tipo",true,HEADER,WHITE,"center",10,true),
+        s("Propietario 1",true,HEADER,WHITE,"left",10,true),
+        s("Coeficiente",true,HEADER,WHITE,"center",10,true),
+        s("Quórum",true,HEADER,WHITE,"center",10,true),
+        s("Nominal",true,HEADER,WHITE,"center",10,true),
+        s("Respuesta",true,HEADER,WHITE,"center",10,true),
+        s("Hora Respuesta",true,HEADER,WHITE,"center",10,true),
+        s("",false,WHITE),
+        s("Respuesta",true,HEADER,WHITE,"center",10,true),
+        s("Coeficiente",true,HEADER,WHITE,"center",10,true),
+        s("Nominal",true,HEADER,WHITE,"center",10,true),
+        s("Quórum %",true,HEADER,WHITE,"center",10,true),
+      ]);
+
+      const votaron  = unisReg.filter(u=>votosP[u.id]);
+      const sinVotar = unisReg.filter(u=>!votosP[u.id]);
+      const todas    = [...votaron,...sinVotar];
+      const resKeys  = Object.keys(porResp);
+
+      todas.forEach((u,idx) => {
+        const v    = votosP[u.id];
+        const coef = toNum(u.coeficiente);
+        const qPct = quorumFinal>0 ? coef/quorumFinal : 0;
+        const rowBg = v ? (idx%2===0?null:"EFF6FF") : GRIS;
+        const rowFg = v ? null : GRIS2;
+
+        let resLat = [s(""),s(""),s(""),s(""),s("")];
+        if (idx < resKeys.length) {
+          const rk=resKeys[idx]; const rd=porResp[rk];
+          resLat=[s(""),s(rk,false,MORADO2,HEADER,"center",10,true),s(fP(rd.coef),false,MORADO2,null,"center",10,true),{v:rd.nominal,t:"n",s:s(rd.nominal,false,MORADO2,null,"center",10,true).s},s(fP(quorumFinal>0?rd.coef/quorumFinal:0),false,MORADO2,null,"center",10,true)];
+        } else if (idx===resKeys.length) {
+          resLat=[s(""),s("Sin Votar",false,GRIS,GRIS2,"center",10,true),s(fP(sinVotCoef>0?sinVotCoef:0),false,GRIS,GRIS2,"center",10,true),{v:sinVotNom,t:"n",s:s(sinVotNom,false,GRIS,GRIS2,"center",10,true).s},s(fP(quorumFinal>0&&sinVotCoef>0?sinVotCoef/quorumFinal:0),false,GRIS,GRIS2,"center",10,true)];
+        } else if (idx===resKeys.length+1) {
+          resLat=[s(""),s("Total",true,HEADER,WHITE,"center",10,true),s(fP(quorumFinal),true,HEADER,WHITE,"center",10,true),{v:unisReg.length,t:"n",s:s(unisReg.length,true,HEADER,WHITE,"center",10,true).s},s("100%",true,HEADER,WHITE,"center",10,true)];
+        }
+
+        wP.push([
+          {v:idx+1,t:"n",s:s(idx+1,false,rowBg,rowFg,"center",10,true).s},
+          s(u.contenedor||"—",false,rowBg,rowFg,"center",10,true),
+          s(u.codigo||"—",false,rowBg,rowFg,"center",10,true),
+          s(u.tipo||"—",false,rowBg,rowFg,"left",10,true),
+          s(u.propietario_1||"—",false,rowBg,rowFg,"left",10,true),
+          s(fP(coef),false,rowBg,rowFg,"center",10,true),
+          s(fP(qPct),false,rowBg,rowFg,"center",10,true),
+          s("100%",false,rowBg,rowFg,"center",10,true),
+          v ? s(v.respuesta,true,null,AZUL2,"center",10,true) : s("—",false,GRIS,GRIS2,"center",10,true),
+          s(fH(v?.created_at),false,rowBg,GRIS2,"center",10,true),
+          ...resLat,
+        ]);
+      });
+
+      wP.push([s(""),s(""),s(""),s(""),s("TOTAL VOTARON",true,HEADER,WHITE,"center",10),s(fP(totVotCoef),true,HEADER,WHITE,"center",10),s(fP(quorumFinal>0?totVotCoef/quorumFinal:0),true,HEADER,WHITE,"center",10),{v:votaron.length,t:"n",s:s(votaron.length,true,HEADER,WHITE,"center",10).s},s(""),s(""),s(""),s(""),s(""),s(""),s("")]);
+
+      const wsP = XLSX.utils.aoa_to_sheet(wP);
+      wsP["!cols"] = [{wch:5},{wch:12},{wch:8},{wch:14},{wch:30},{wch:12},{wch:10},{wch:10},{wch:16},{wch:14},{wch:3},{wch:16},{wch:12},{wch:10},{wch:10}];
+      wsP["!merges"] = [{s:{r:0,c:3},e:{r:1,c:4}},{s:{r:8,c:1},e:{r:8,c:9}}];
+      XLSX.utils.book_append_sheet(wb, wsP, `Pregunta ${pi+1}`.substring(0,31));
+    });
+
+    const nEv = (ev?.nombre||"Asamblea").replace(/[^\w\s]/g,"").replace(/\s+/g,"_").substring(0,30);
+    const fech = new Date().toLocaleDateString("es-CO").replace(/\//g,"-");
+    XLSX.writeFile(wb, `Informe_${nEv}_${fech}.xlsx`, {bookType:"xlsx",type:"binary",cellStyles:true});
+    toast("✓ Informe generado correctamente","ok");
+  } catch(e) {
+    console.error("Error generando informe:",e);
+    toast("Error al generar informe: "+e.message,"err");
+  } finally {
+    if (btn) { btn.disabled=false; btn.innerHTML=`<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Informe Asamblea`; }
+  }
+}
 
 init();
 </script>
