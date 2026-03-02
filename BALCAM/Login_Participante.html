@@ -318,19 +318,16 @@ async function doLogin() {
   const deviceIdActual  = getDeviceId();
 
   // ── VALIDACIÓN: Solo un dispositivo activo simultáneo ──
-  // La sesión se considera "activa" si hubo un ping en los últimos 90 segundos
-  // Si no hay ping reciente → la sesión anterior se cerró (browser cerrado, etc.)
-  if (yaRegistrado && partExist?.device_id && partExist?.device_id !== deviceIdActual) {
+  // Solo aplica si el evento tiene restringir_acceso activado
+  if (evData?.restringir_acceso && yaRegistrado && partExist?.device_id && partExist?.device_id !== deviceIdActual) {
     const ultimoPing = partExist?.session_ping ? new Date(partExist.session_ping) : null;
     const segsDesdeUltimoPing = ultimoPing ? (Date.now() - ultimoPing.getTime()) / 1000 : 999;
     if (segsDesdeUltimoPing < 90) {
-      // Sesión activa en otro dispositivo
       setBtnLoad(false);
       const mins = Math.ceil((90 - segsDesdeUltimoPing) / 60);
       showErr(`⚠️ Esta unidad ya tiene una sesión activa en otro dispositivo. Cerrá esa sesión primero o esperá ${mins > 0 ? mins + " min" : "unos segundos"}.`);
       return;
     }
-    // Sesión expirada → permitir login y tomar el dispositivo
   }
 
   // ── VALIDACIÓN: Registro tardío ──
