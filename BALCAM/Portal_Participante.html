@@ -390,6 +390,7 @@ const ORG_ID = SS.orgId;
 
 let evData      = null;
 let preguntas   = [];
+let preguntasCerradas = [];  // historial de cerradas
 let misVotos    = {};
 let unidadInfo  = null;
 let statsGlobal = { totalPart:0, totalVotaron:0, coefVotado:0 };
@@ -727,6 +728,7 @@ async function pollPreguntas() {
 
   // Actualizar lista global de activas
   preguntas = activas;
+  preguntasCerradas = cerradas;
   actualizarNumeracionPreguntas();
 }
 
@@ -767,11 +769,15 @@ async function cargarMisVotos() {
   (data||[]).forEach(v => { misVotos[v.id_pregunta] = v.respuesta; });
 }
 
-// ── CARGAR PREGUNTAS ACTIVAS ──────────────────────────
+// ── CARGAR PREGUNTAS ACTIVAS + CERRADAS ──────────────
 async function cargarPreguntas() {
   const { data } = await sb.from("preguntas")
-    .select("*").eq("id_evento", EV_ID).eq("estado", "Activa").order("orden");
-  preguntas = data || [];
+    .select("*").eq("id_evento", EV_ID)
+    .in("estado", ["Activa", "Cerrada"])
+    .order("orden");
+  const todas = data || [];
+  preguntas = todas.filter(p => p.estado === "Activa");
+  preguntasCerradas = todas.filter(p => p.estado === "Cerrada");
   await cargarStatsParticipacion();
   renderMain();
 }
@@ -853,10 +859,19 @@ function renderMain() {
   } else if (evData?.estado === "En curso") {
     if (unidadInfo?.en_mora && !evData?.permitir_voto_mora) {
       html += renderMoraBloqueo();
-    } else if (!preguntas.length) {
-      html += `<div id="esp-wrap">${renderEsperando("⏳","Esperando preguntas","El administrador activará las preguntas pronto.")}</div>`;
     } else {
-      html += preguntas.map((p,i) => renderPregunta(p, i, misVotos[p.id], Array.isArray(p.opciones)?p.opciones:[])).join("");
+      // Preguntas cerradas primero (historial compacto)
+      preguntasCerradas.forEach(p => {
+        html += renderHistorialCerrada(p);
+      });
+      // Luego las activas
+      if (!preguntas.length && !preguntasCerradas.length) {
+        html += `<div id="esp-wrap">${renderEsperando("⏳","Esperando preguntas","El administrador activará las preguntas pronto.")}</div>`;
+      } else if (!preguntas.length) {
+        html += `<div id="esp-wrap">${renderEsperando("⏳","Esperando siguiente pregunta","El administrador activará la próxima pregunta pronto.")}</div>`;
+      } else {
+        html += preguntas.map((p,i) => renderPregunta(p, i, misVotos[p.id], Array.isArray(p.opciones)?p.opciones:[])).join("");
+      }
     }
   }
 
@@ -884,6 +899,33 @@ function renderMain() {
 function renderEsperando(icon, titulo, sub) {
   return `<div class="esperando"><div class="esp-ring"><div class="esp-icon">${icon}</div></div>
     <div class="esp-titulo">${titulo}</div><div class="esp-sub">${sub}</div></div>`;
+}
+
+function renderHistorialCerrada(p) {
+  const miVoto = misVotos[p.id];
+  return `<div class="pregunta-card" id="preg-${p.id}" data-estado="cerrada" style="margin-bottom:8px;">
+    <div class="preg-head" style="padding-bottom:10px;">
+      <div class="preg-num">Pregunta cerrada</div>
+      <div class="preg-titulo">${p.titulo||"Sin título"}</div>
+    </div>
+    <div class="preg-body" id="preg-body-${p.id}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:28px;height:28px;border-radius:8px;background:rgba(220,38,38,.15);border:1px solid rgba(220,38,38,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="13" height="13" fill="none" stroke="#f87171" stroke-width="2.5" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <span style="font-size:12px;font-weight:700;color:#f87171;">Cerrada</span>
+        </div>
+        ${miVoto
+          ? `<div style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.25);">
+              <svg width="12" height="12" fill="none" stroke="#4ade80" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              <span style="font-size:12px;font-weight:700;color:#4ade80;">Tu voto: ${miVoto}</span>
+             </div>`
+          : `<span style="font-size:12px;color:var(--muted);font-style:italic;">Sin voto registrado</span>`
+        }
+      </div>
+    </div>
+  </div>`;
 }
 
 // ── STATS BAR ─────────────────────────────────────────
