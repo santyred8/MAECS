@@ -858,7 +858,14 @@ function renderMain() {
     html += renderEsperando("🔒","Evento finalizado","La asamblea ha concluido. Gracias por participar.");
   } else if (evData?.estado === "En curso") {
     if (unidadInfo?.en_mora && !evData?.permitir_voto_mora) {
-      html += renderMoraBloqueo();
+      // Mora: mostrar aviso fijo + historial cerradas + preguntas en modo solo lectura
+      html += renderMoraAviso();
+      preguntasCerradas.forEach(p => { html += renderHistorialCerrada(p); });
+      if (preguntas.length) {
+        html += preguntas.map((p,i) => renderPreguntaMora(p, i)).join("");
+      } else if (!preguntasCerradas.length) {
+        html += `<div id="esp-wrap">${renderEsperando("⏳","Esperando preguntas","El administrador activará las preguntas pronto.")}</div>`;
+      }
     } else {
       // Preguntas cerradas primero (historial compacto)
       preguntasCerradas.forEach(p => {
@@ -868,7 +875,7 @@ function renderMain() {
       if (!preguntas.length && !preguntasCerradas.length) {
         html += `<div id="esp-wrap">${renderEsperando("⏳","Esperando preguntas","El administrador activará las preguntas pronto.")}</div>`;
       } else if (!preguntas.length) {
-        html += `<div id="esp-wrap">${renderEsperando("⏳","Esperando siguiente pregunta","El administrador activará la próxima pregunta pronto.")}</div>`;
+        html += `<div id="esp-wrap">${renderEsperando("⏳","Esperando siguiente pregunta","El administrador activará la próxima pregunta pronto.", true)}</div>`;
       } else {
         html += preguntas.map((p,i) => renderPregunta(p, i, misVotos[p.id], Array.isArray(p.opciones)?p.opciones:[])).join("");
       }
@@ -886,18 +893,27 @@ function renderMain() {
 
   main.innerHTML = html;
 
-  // Cargar gráficas para preguntas ya votadas
+  // Cargar gráficas para preguntas ya votadas (y mora: mostrar a todos)
   if (!evData?.ocultar_graficos && evData?.estado === "En curso") {
     requestAnimationFrame(() => {
       preguntas.forEach(p => {
-        if (misVotos[p.id]) cargarYActualizarGrafica(p.id);
+        const enMora = unidadInfo?.en_mora && !evData?.permitir_voto_mora;
+        if (misVotos[p.id] || enMora) cargarYActualizarGrafica(p.id);
       });
     });
   }
 }
 
-function renderEsperando(icon, titulo, sub) {
-  return `<div class="esperando"><div class="esp-ring"><div class="esp-icon">${icon}</div></div>
+function renderEsperando(icon, titulo, sub, sinAnim=false) {
+  if (sinAnim) {
+    // Sin anillo giratorio — solo icono estático
+    return `<div class="esperando" style="padding:32px 20px;">
+      <div style="font-size:36px;margin-bottom:12px;">${icon}</div>
+      <div class="esp-titulo" style="font-size:16px;">${titulo}</div>
+      <div class="esp-sub">${sub}</div>
+    </div>`;
+  }
+  return `<div class="esperando"><div class="esp-anim"><div class="esp-ring"></div><div class="esp-ring2"></div><div class="esp-dot">${icon}</div></div>
     <div class="esp-titulo">${titulo}</div><div class="esp-sub">${sub}</div></div>`;
 }
 
@@ -998,12 +1014,42 @@ function actualizarStatsInPlace() {
 }
 
 // ── MORA ──────────────────────────────────────────────
-function renderMoraBloqueo() {
-  return `<div class="mora-bloqueo">
-    <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
-    <div class="mora-titulo">Unidad en mora</div>
-    <div class="mora-sub">La unidad <strong>${SS.codigo}</strong> tiene cartera pendiente.<br>Para participar debes ponerte al día.</div>
-    <div class="mora-contacto">Comunícate con la Administración.</div>
+function renderMoraAviso() {
+  return `<div style="background:rgba(220,38,38,.1);border:1.5px solid rgba(220,38,38,.35);border-radius:16px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px;">
+    <div style="font-size:24px;flex-shrink:0;">⚠️</div>
+    <div>
+      <div style="font-size:14px;font-weight:800;color:#f87171;margin-bottom:4px;">Unidad en mora — solo lectura</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.65);line-height:1.5;">La unidad <strong style="color:#fff;">${SS.codigo}</strong> tiene cartera pendiente. Podés ver las preguntas y gráficas, pero <strong style="color:#fca5a5;">no podés emitir votos</strong> hasta ponerte al día.<br><span style="opacity:.6;font-size:11px;">Comunícate con la Administración para regularizar tu situación.</span></div>
+    </div>
+  </div>`;
+}
+
+function renderPreguntaMora(preg, idx) {
+  // Pregunta en modo solo lectura para unidades en mora
+  const opciones = Array.isArray(preg.opciones) ? preg.opciones : [];
+  const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  return `<div class="pregunta-card" id="preg-${preg.id}" style="opacity:.85;">
+    <div class="preg-head">
+      <div class="preg-num">Pregunta ${idx+1} de ${preguntas.length}</div>
+      <div class="preg-titulo">${preg.titulo||"Sin título"}</div>
+      ${preg.descripcion ? `<div class="preg-desc">${preg.descripcion}</div>` : ""}
+    </div>
+    <div class="preg-body" id="preg-body-${preg.id}">
+      <div class="opciones" style="pointer-events:none;opacity:.5;">
+        ${opciones.map((op,i) => {
+          const texto = typeof op==="object"?op.texto:op;
+          return `<div class="opcion" id="op-${preg.id}-${i}">
+            <div class="op-radio"></div>
+            <div class="op-letra">${letras[i]}</div>
+            <div class="op-text">${texto}</div>
+          </div>`;
+        }).join("")}
+      </div>
+      <div style="background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.25);border-radius:10px;padding:10px 14px;text-align:center;font-size:12px;font-weight:700;color:#f87171;margin-top:8px;">
+        🔒 No podés votar — unidad en mora
+      </div>
+      ${!evData?.ocultar_graficos ? `<div id="res-${preg.id}" style="margin-top:12px;"></div>` : ""}
+    </div>
   </div>`;
 }
 
