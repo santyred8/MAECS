@@ -1838,6 +1838,7 @@ function renderEventos() {
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
           </button>
           <!-- Administrar evento -->
+          <button onclick="exportarInformePanel('${r.id}','${r.id_organizacion}')" style="width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:#4ade80;border:1px solid rgba(74,222,128,.2);background:none;cursor:pointer;transition:.15s;" onmouseover="this.style.background='rgba(74,222,128,.1)'" onmouseout="this.style.background='none'" title="Descargar Informe Asamblea"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
           <a href="Administracion.html?ev=${r.id}&org=${r.id_organizacion}" target="_blank" style="width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:#f472b6;border:1px solid rgba(244,114,182,.2);background:none;cursor:pointer;transition:.15s;text-decoration:none;" onmouseover="this.style.background='rgba(244,114,182,.12)'" onmouseout="this.style.background='none'" title="Ir a administración del evento">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </a>
@@ -3476,6 +3477,439 @@ function exportarPregCSV() {
   s.textContent = "@keyframes snFadeIn{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}";
   document.head.appendChild(s);
 })();
+
+
+// ══════════════════════════════════════════════════════════
+// GENERADOR INFORME ASAMBLEA  — Excel multi-hoja con diseño BALCAM
+// ══════════════════════════════════════════════════════════
+async f
+Length: 20779
+
+// ══════════════════════════════════════════════════════════
+// GENERADOR INFORME ASAMBLEA  — Excel multi-hoja con diseño BALCAM
+// ══════════════════════════════════════════════════════════
+async function generarInformeXLSX(EV_ID, ORG_ID) {
+  const { data: org }   = await sb.from("organizaciones").select("*").eq("id", ORG_ID).single();
+  const { data: ev }    = await sb.from("eventos").select("*").eq("id", EV_ID).single();
+  const { data: unis }  = await sb.from("unidades").select("*").eq("id_organizacion", String(ORG_ID)).order("codigo");
+  const { data: parts } = await sb.from("participantes").select("*").eq("id_evento", EV_ID);
+  const { data: pregs } = await sb.from("preguntas").select("*").eq("id_evento", EV_ID).in("estado",["Activa","Cerrada"]).order("orden");
+  const { data: vTodos } = await sb.from("votos").select("*").eq("id_evento", EV_ID);
+  if (!ev || !unis) throw new Error("No se pudieron cargar los datos del evento");
+
+  const partMap = {};
+  (parts||[]).forEach(p => { partMap[p.id_unidad] = p; });
+  const votoMap = {};
+  (vTodos||[]).forEach(v => {
+    if (!votoMap[v.id_pregunta]) votoMap[v.id_pregunta] = {};
+    votoMap[v.id_pregunta][v.id_unidad] = v;
+  });
+
+  const unisReg     = unis.filter(u => partMap[u.id]?.activo);
+  const toN         = (v) => parseFloat(String(v||0).replace(",",".")) || 0;
+  const quorumFinal = unisReg.reduce((s,u) => s + toN(u.coeficiente), 0);
+  const quorumMin   = toN(ev.quorum_minimo);
+
+  const fP = (v, d=2) => {
+    if (isNaN(v) || v===null) return "0%";
+    const n = parseFloat((v*100).toFixed(d));
+    return (n%1===0 ? n.toFixed(0) : n.toFixed(d).replace(/0+$/,"")) + "%";
+  };
+  const fH = (iso) => { if(!iso) return ""; try { return new Date(iso).toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit",second:"2-digit"}); } catch(e) { return ""; } };
+
+  // ── PALETA DE COLORES BALCAM ───────────────────────
+  const PRP   = "6D28D9"; // morado principal
+  const PRP2  = "7C3AED"; // morado hover
+  const PRP3  = "EDE9FE"; // morado claro bg
+  const PRP4  = "4C1D95"; // morado oscuro texto
+  const PRP5  = "F5F3FF"; // morado muy claro
+  const WHITE = "FFFFFF";
+  const BLK   = "1E1B4B";
+  const GRIS1 = "F8FAFC"; // fondo alterno filas
+  const GRIS2 = "F1F5F9"; // separadores
+  const GRIS3 = "94A3B8"; // texto secundario
+  const GRIS4 = "CBD5E1"; // bordes
+  const VRD1  = "DCFCE7";
+  const VRD2  = "15803D";
+  const VRD3  = "F0FDF4";
+  const RJO1  = "FEF2F2";
+  const RJO2  = "DC2626";
+  const RJO3  = "FFF5F5";
+  const AZL1  = "EFF6FF";
+  const AZL2  = "1D4ED8";
+  const AMB1  = "FFFBEB";
+  const AMB2  = "92400E";
+  const PINK  = "EC4899";
+
+  // ── HELPER CELDA ──────────────────────────────────
+  function C(v, {bold=false, bg=null, fg=null, align="left", sz=10, border="none", italic=false, wrap=false}={}) {
+    const st = {
+      font: { name:"Arial", sz, bold, italic, color:{rgb: fg||BLK} },
+      alignment: { horizontal:align, vertical:"center", wrapText:!!wrap }
+    };
+    if (bg) st.fill = { fgColor:{rgb:bg}, patternType:"solid" };
+    const bLine = (c) => ({style:"thin", color:{rgb:c||GRIS4}});
+    const bNone = {style:"none"};
+    if (border==="all")   st.border = {top:bLine(),bottom:bLine(),left:bLine(),right:bLine()};
+    if (border==="tb")    st.border = {top:bLine(),bottom:bLine(),left:bNone,right:bNone};
+    if (border==="b")     st.border = {top:bNone,bottom:bLine(),left:bNone,right:bNone};
+    if (border==="head")  st.border = {top:bLine(PRP),bottom:bLine(PRP),left:bLine(PRP),right:bLine(PRP)};
+    const t = typeof v === "number" ? "n" : "s";
+    return {v: v==null?"":v, t, s:st};
+  }
+  const E = (bg=null) => C("", {bg});   // celda vacía
+  const SEP = (n, bg=GRIS2) => Array(n).fill(E(bg));
+
+  // ── BLOQUE DE ENCABEZADO BALCAM ───────────────────
+  // Retorna filas del header + merge info
+  function headerBlock(nCols) {
+    const extra = Math.max(0, nCols - 9);
+    // Fila 1: Logo BALCAM + datos org
+    const f1 = [
+      C("BALCAM", {bold:true, bg:PRP, fg:WHITE, align:"center", sz:22}),
+      E(PRP), E(PRP), E(PRP),
+      E(PRP),
+      C("Organización", {bold:true, bg:PRP4, fg:WHITE, sz:9}),
+      C(org?.nombre||"—", {bg:PRP3, fg:PRP4, sz:9, wrap:true}),
+      C("NIT", {bold:true, bg:PRP4, fg:WHITE, sz:9}),
+      C(org?.nit||"—", {bg:PRP3, fg:PRP4, sz:9}),
+      ...Array(extra).fill(E(PRP3)),
+    ];
+    // Fila 2: subtítulo + más datos
+    const f2 = [
+      C("GRUPO EMPRESARIAL", {bg:PRP, fg:"C4B5FD", align:"center", sz:8, italic:true}),
+      E(PRP), E(PRP), E(PRP),
+      E(PRP),
+      C("Evento", {bold:true, bg:PRP4, fg:WHITE, sz:9}),
+      C(ev?.nombre||"—", {bg:PRP3, fg:PRP4, sz:9, bold:true, wrap:true}),
+      C("Tipo", {bold:true, bg:PRP4, fg:WHITE, sz:9}),
+      C(ev?.tipo||"—", {bg:PRP3, fg:PRP4, sz:9}),
+      ...Array(extra).fill(E(PRP3)),
+    ];
+    const f3 = [E(PRP5),E(PRP5),E(PRP5),E(PRP5), E(),
+      C("Fecha", {bold:true, bg:PRP, fg:WHITE, sz:9}),
+      C(ev?.fecha ? new Date(ev.fecha).toLocaleString("es-CO") : "—", {bg:PRP3, fg:PRP4, sz:9}),
+      C("Lugar", {bold:true, bg:PRP, fg:WHITE, sz:9}),
+      C(ev?.lugar||"VIRTUAL", {bg:PRP3, fg:PRP4, sz:9}),
+      ...Array(extra).fill(E()),
+    ];
+    const f4 = [E(PRP5),E(PRP5),E(PRP5),E(PRP5), E(),
+      C("Quórum Mínimo", {bold:true, bg:PRP, fg:WHITE, sz:9}),
+      C(fP(quorumMin), {bg:AMB1, fg:AMB2, sz:9, bold:true}),
+      C("Quórum Final", {bold:true, bg:PRP, fg:WHITE, sz:9}),
+      C(fP(quorumFinal), {bg:quorumFinal>=quorumMin?VRD1:RJO1, fg:quorumFinal>=quorumMin?VRD2:RJO2, sz:9, bold:true}),
+      ...Array(extra).fill(E()),
+    ];
+    return [f1, f2, f3, f4, SEP(nCols)];
+  }
+
+  const wb = XLSX.utils.book_new();
+
+  // ════════════════════════════════════════════════════
+  // HOJA 1 — QUÓRUM
+  // ════════════════════════════════════════════════════
+  const camposAd  = ["campo_adicional_1","campo_adicional_2","campo_adicional_3","campo_adicional_4"];
+  const camposAct = camposAd.filter(c => unis.some(u => u[c]));
+  const NC_Q = 8 + camposAct.length;
+
+  const wQ = [...headerBlock(NC_Q)];
+
+  // Estadísticas rápidas
+  const regCount   = unisReg.length;
+  const noRegCount = unis.length - regCount;
+  wQ.push([
+    C("✓ Registrados", {bold:true, bg:VRD1, fg:VRD2, align:"center", sz:9}),
+    C(regCount, {bold:true, bg:VRD1, fg:VRD2, align:"center", sz:14}),
+    E(VRD1),
+    C("✗ No Registrados", {bold:true, bg:RJO1, fg:RJO2, align:"center", sz:9}),
+    C(noRegCount, {bold:true, bg:RJO1, fg:RJO2, align:"center", sz:14}),
+    E(RJO1),
+    C("Quórum Alcanzado", {bold:true, bg:quorumFinal>=quorumMin?VRD1:AMB1, fg:quorumFinal>=quorumMin?VRD2:AMB2, align:"center", sz:9}),
+    C(fP(quorumFinal), {bold:true, bg:quorumFinal>=quorumMin?VRD1:AMB1, fg:quorumFinal>=quorumMin?VRD2:AMB2, align:"center", sz:14}),
+    ...Array(camposAct.length).fill(E()),
+  ]);
+  wQ.push(SEP(NC_Q));
+
+  // Headers tabla
+  const hQ = [
+    C("Contenedor",   {bold:true, bg:PRP,  fg:WHITE, align:"center", border:"head"}),
+    C("Código",       {bold:true, bg:PRP,  fg:WHITE, align:"center", border:"head"}),
+    C("Tipo",         {bold:true, bg:PRP,  fg:WHITE, align:"center", border:"head"}),
+    C("Propietario 1",{bold:true, bg:PRP,  fg:WHITE, align:"left",   border:"head"}),
+    C("Coeficiente",  {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
+    C("Nominal",      {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
+    C("Estado",       {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
+    C("Hora Registro",{bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
+    ...camposAct.map((_,i) => C(`Campo ${i+1}`, {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"})),
+  ];
+  wQ.push(hQ);
+
+  // Filas — ordenadas: registradas primero
+  const unisOrd = [...unis].sort((a,b) => (partMap[b.id]?.activo?1:0)-(partMap[a.id]?.activo?1:0));
+  unisOrd.forEach((u, idx) => {
+    const reg = partMap[u.id]?.activo;
+    const alt = idx % 2 === 0;
+    const rowBg = reg ? (alt ? WHITE : VRD3) : (alt ? WHITE : RJO3);
+    wQ.push([
+      C(u.contenedor||"—", {bg:rowBg, align:"center", border:"all"}),
+      C(u.codigo||"—",     {bg:rowBg, align:"center", border:"all", bold:true}),
+      C(u.tipo||"—",       {bg:rowBg, align:"left",   border:"all"}),
+      C(u.propietario_1||"—", {bg:rowBg, align:"left", border:"all"}),
+      C(fP(toN(u.coeficiente)), {bg:rowBg, align:"center", border:"all"}),
+      C("100%",            {bg:rowBg, align:"center", border:"all", fg:GRIS3}),
+      C(reg?"Registrado":"No Registrado", {bold:true, bg:reg?VRD1:RJO1, fg:reg?VRD2:RJO2, align:"center", border:"all"}),
+      C(fH(partMap[u.id]?.hora_registro), {bg:rowBg, align:"center", fg:GRIS3, border:"all"}),
+      ...camposAct.map(c => C(u[c]||"—", {bg:rowBg, align:"center", border:"all"})),
+    ]);
+  });
+
+  // Fila totales
+  const totCoef = unisReg.reduce((s,u)=>s+toN(u.coeficiente),0);
+  wQ.push([
+    C("TOTAL", {bold:true, bg:PRP4, fg:WHITE, align:"center"}),
+    E(PRP4), E(PRP4),
+    C(`${regCount} de ${unis.length} registrados`, {bold:true, bg:PRP4, fg:"C4B5FD", align:"center"}),
+    C(fP(totCoef), {bold:true, bg:PRP4, fg:WHITE, align:"center"}),
+    C(regCount.toString(), {bold:true, bg:PRP4, fg:WHITE, align:"center"}),
+    E(PRP4), E(PRP4),
+    ...Array(camposAct.length).fill(E(PRP4)),
+  ]);
+
+  const wsQ = XLSX.utils.aoa_to_sheet(wQ);
+  wsQ["!cols"] = [
+    {wch:13},{wch:9},{wch:15},{wch:32},{wch:13},{wch:10},{wch:17},{wch:15},
+    ...camposAct.map(()=>({wch:18}))
+  ];
+  wsQ["!merges"] = [
+    {s:{r:0,c:0},e:{r:1,c:3}},  // BALCAM merge
+    {s:{r:5,c:0},e:{r:5,c:1}},  // Stat 1 label
+    {s:{r:5,c:2},e:{r:5,c:2}},
+    {s:{r:5,c:3},e:{r:5,c:4}},
+    {s:{r:5,c:5},e:{r:5,c:5}},
+    {s:{r:5,c:6},e:{r:5,c:6}},
+    {s:{r:5,c:7},e:{r:5,c:NC_Q-1}},
+  ];
+  wsQ["!rows"] = [{hpt:34},{hpt:18},{hpt:20},{hpt:20},{hpt:8},{hpt:28},{hpt:8},{hpt:22},...Array(unisOrd.length+1).fill({hpt:21})];
+  XLSX.utils.book_append_sheet(wb, wsQ, "Quórum");
+
+  // ════════════════════════════════════════════════════
+  // HOJAS PREGUNTAS
+  // ════════════════════════════════════════════════════
+  (pregs||[]).forEach((preg, pi) => {
+    const votosP  = votoMap[preg.id] || {};
+    const opcs    = Array.isArray(preg.opciones) ? preg.opciones.map(o=>typeof o==="object"?o.texto:o) : [];
+    const porResp = {};
+    opcs.forEach(o => { porResp[o]={coef:0,nominal:0}; });
+    Object.values(votosP).forEach(v => {
+      if (!porResp[v.respuesta]) porResp[v.respuesta]={coef:0,nominal:0};
+      porResp[v.respuesta].coef    += toN(v.coeficiente);
+      porResp[v.respuesta].nominal += 1;
+    });
+
+    const votaron   = unisReg.filter(u => votosP[u.id]);
+    const sinVotar  = unisReg.filter(u => !votosP[u.id]);
+    // Solo los que VOTARON cuentan para quórum de la pregunta
+    const totVotCoef = votaron.reduce((s,u) => s + toN(u.coeficiente), 0);
+    const NC_P = 15;
+    const wP   = [...headerBlock(NC_P)];
+
+    // Badge de la pregunta
+    const estadoPreg = preg.estado === "Cerrada" ? "🔒 Cerrada" : "▶ Activa";
+    const bgEstado   = preg.estado === "Cerrada" ? RJO1 : VRD1;
+    const fgEstado   = preg.estado === "Cerrada" ? RJO2 : VRD2;
+    wP.push([
+      C(estadoPreg, {bold:true, bg:bgEstado, fg:fgEstado, align:"center", sz:9}),
+      C(`PREGUNTA ${pi+1}`, {bold:true, bg:PRP, fg:WHITE, align:"center", sz:10}),
+      C(preg.titulo||"Sin título", {bold:true, fg:PRP4, sz:11, wrap:true}),
+      E(), E(), E(), E(), E(), E(), E(), E(), E(), E(), E(), E(),
+    ]);
+    wP.push([
+      E(), E(),
+      C(preg.descripcion||"", {fg:GRIS3, sz:9, italic:true, wrap:true}),
+      E(), E(), E(), E(), E(), E(), E(), E(), E(), E(), E(), E(),
+    ]);
+    wP.push(SEP(NC_P));
+
+    // Estadísticas de la pregunta
+    const pctQuorumVoto = quorumFinal > 0 ? totVotCoef / quorumFinal : 0;
+    wP.push([
+      C("Votaron", {bold:true, bg:VRD1, fg:VRD2, align:"center", sz:8}),
+      C(votaron.length.toString(), {bold:true, bg:VRD1, fg:VRD2, align:"center", sz:16}),
+      E(VRD1),
+      C("Sin Votar", {bold:true, bg:RJO1, fg:RJO2, align:"center", sz:8}),
+      C(sinVotar.length.toString(), {bold:true, bg:RJO1, fg:RJO2, align:"center", sz:16}),
+      E(RJO1),
+      C("Coef. Votado", {bold:true, bg:AZL1, fg:AZL2, align:"center", sz:8}),
+      C(fP(totVotCoef), {bold:true, bg:AZL1, fg:AZL2, align:"center", sz:14}),
+      E(AZL1),
+      C("% del Quórum", {bold:true, bg:PRP3, fg:PRP4, align:"center", sz:8}),
+      C(fP(pctQuorumVoto), {bold:true, bg:PRP3, fg:PRP4, align:"center", sz:14}),
+      E(PRP3), E(), E(), E(),
+    ]);
+    wP.push(SEP(NC_P));
+
+    // TABLA IZQUIERDA: headers votos
+    const hVotos = [
+      C("#",              {bold:true, bg:PRP,  fg:WHITE, align:"center", border:"head"}),
+      C("Contenedor",     {bold:true, bg:PRP,  fg:WHITE, align:"center", border:"head"}),
+      C("Código",         {bold:true, bg:PRP,  fg:WHITE, align:"center", border:"head"}),
+      C("Tipo",           {bold:true, bg:PRP,  fg:WHITE, align:"left",   border:"head"}),
+      C("Propietario 1",  {bold:true, bg:PRP,  fg:WHITE, align:"left",   border:"head"}),
+      C("Coeficiente",    {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
+      C("% Quórum",       {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
+      C("Nominal",        {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
+      C("Respuesta",      {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
+      C("Hora",           {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
+      // GAP
+      E(PRP5),
+      // TABLA DERECHA: resultados
+      C("RESULTADOS",     {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
+      C("Coeficiente",    {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
+      C("Nominal",        {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
+      C("% Quórum",       {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
+    ];
+    wP.push(hVotos);
+
+    // Colores por respuesta (ciclo de colores)
+    const resColors = [
+      {bg:"EDE9FE",fg:PRP4},{bg:"DBEAFE",fg:AZL2},{bg:"D1FAE5",fg:VRD2},
+      {bg:"FEF3C7",fg:AMB2},{bg:"FCE7F3",fg:"9D174D"},{bg:"F0FDF4",fg:"166534"},
+    ];
+    const resKeys = Object.keys(porResp);
+
+    const todas = [...votaron, ...sinVotar];
+    todas.forEach((u, idx) => {
+      const v      = votosP[u.id];
+      const coef   = toN(u.coeficiente);
+      // % quórum solo para los que votaron; sin votar es 0 en esa columna
+      const qPct   = v && quorumFinal > 0 ? coef / quorumFinal : 0;
+      const alt    = idx % 2 === 0;
+      const rowBg  = v ? (alt ? WHITE : GRIS1) : (alt ? RJO3 : RJO1);
+      const rowFg  = v ? BLK : GRIS3;
+
+      // Respuesta: color por opción
+      let respCell;
+      if (v) {
+        const ri = opcs.indexOf(v.respuesta);
+        const col = resColors[ri >= 0 ? ri % resColors.length : 0];
+        respCell = C(v.respuesta, {bold:true, bg:col.bg, fg:col.fg, align:"center", border:"all"});
+      } else {
+        respCell = C("Sin voto", {fg:GRIS3, bg:RJO1, align:"center", border:"all", italic:true});
+      }
+
+      // Columna derecha: resultado de esta opción
+      let resRight = [E(PRP5), E(), E(), E(), E()];
+      if (idx < resKeys.length) {
+        const rk  = resKeys[idx];
+        const rd  = porResp[rk];
+        const ri  = opcs.indexOf(rk);
+        const col = resColors[ri >= 0 ? ri % resColors.length : 0];
+        // % quórum = coef opción / quórum final (solo votantes)
+        const rQPct = quorumFinal > 0 && rd.coef > 0 ? rd.coef / quorumFinal : 0;
+        resRight = [
+          E(PRP5),
+          C(rk,           {bold:true, bg:col.bg, fg:col.fg, align:"center", border:"all"}),
+          C(fP(rd.coef),  {bg:col.bg, fg:col.fg, align:"center", border:"all"}),
+          {v:rd.nominal, t:"n", s:C(rd.nominal, {bg:col.bg, fg:col.fg, align:"center", border:"all"}).s},
+          C(fP(rQPct),    {bold:true, bg:col.bg, fg:col.fg, align:"center", border:"all"}),
+        ];
+      } else if (idx === resKeys.length) {
+        // Fila "Sin Votar" en tabla derecha
+        const svCoef = sinVotar.reduce((s,u) => s+toN(u.coeficiente), 0);
+        const svPct  = quorumFinal > 0 && svCoef > 0 ? svCoef / quorumFinal : 0;
+        resRight = [
+          E(PRP5),
+          C("Sin Votar",     {bg:GRIS2, fg:GRIS3, align:"center", border:"all", italic:true}),
+          C(fP(svCoef),      {bg:GRIS2, fg:GRIS3, align:"center", border:"all"}),
+          {v:sinVotar.length, t:"n", s:C(sinVotar.length, {bg:GRIS2, fg:GRIS3, align:"center", border:"all"}).s},
+          C("—",             {bg:GRIS2, fg:GRIS3, align:"center", border:"all"}),  // Sin votar NO suma al quórum
+        ];
+      } else if (idx === resKeys.length + 1) {
+        // Fila TOTAL derecha — solo cuenta quorum de quienes votaron
+        resRight = [
+          E(PRP5),
+          C("TOTAL VOTOS",   {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
+          C(fP(totVotCoef),  {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
+          {v:votaron.length, t:"n", s:C(votaron.length, {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}).s},
+          C(fP(pctQuorumVoto), {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
+        ];
+      }
+
+      wP.push([
+        {v:idx+1, t:"n", s:C(idx+1, {bg:rowBg, fg:rowFg, align:"center", border:"all"}).s},
+        C(u.contenedor||"—", {bg:rowBg, fg:rowFg, align:"center", border:"all"}),
+        C(u.codigo||"—",     {bg:rowBg, fg:v?BLK:GRIS3, align:"center", border:"all", bold:!!v}),
+        C(u.tipo||"—",       {bg:rowBg, fg:rowFg, align:"left",   border:"all"}),
+        C(u.propietario_1||"—", {bg:rowBg, fg:rowFg, align:"left", border:"all"}),
+        C(fP(coef),          {bg:rowBg, fg:rowFg, align:"center", border:"all"}),
+        C(v ? fP(qPct) : "—", {bg:rowBg, fg:rowFg, align:"center", border:"all"}),
+        C(v ? "100%" : "—",  {bg:rowBg, fg:rowFg, align:"center", border:"all", fg:GRIS3}),
+        respCell,
+        C(fH(v?.created_at), {bg:rowBg, fg:GRIS3, align:"center", border:"all"}),
+        ...resRight,
+      ]);
+    });
+
+    // Fila total izquierda
+    wP.push([
+      E(PRP4), E(PRP4), E(PRP4), E(PRP4),
+      C("TOTAL VOTARON", {bold:true, bg:PRP4, fg:WHITE, align:"right"}),
+      C(fP(totVotCoef),  {bold:true, bg:PRP4, fg:WHITE, align:"center"}),
+      C(fP(pctQuorumVoto), {bold:true, bg:PRP4, fg:WHITE, align:"center"}),
+      {v:votaron.length, t:"n", s:C(votaron.length, {bold:true, bg:PRP4, fg:WHITE, align:"center"}).s},
+      E(PRP4), E(PRP4),
+      E(), E(), E(), E(), E(),
+    ]);
+
+    const wsP = XLSX.utils.aoa_to_sheet(wP);
+    wsP["!cols"] = [{wch:5},{wch:12},{wch:9},{wch:13},{wch:28},{wch:12},{wch:10},{wch:9},{wch:18},{wch:12},{wch:3},{wch:18},{wch:12},{wch:9},{wch:11}];
+    wsP["!merges"] = [
+      {s:{r:0,c:0},e:{r:1,c:3}},            // BALCAM
+      {s:{r:5,c:0},e:{r:5,c:0}},
+      {s:{r:5,c:1},e:{r:5,c:14}},           // PREGUNTA N - título
+      {s:{r:6,c:2},e:{r:6,c:9}},            // descripción
+      {s:{r:8,c:0},e:{r:8,c:1}},            // stat votaron
+      {s:{r:8,c:3},e:{r:8,c:4}},
+      {s:{r:8,c:6},e:{r:8,c:7}},
+      {s:{r:8,c:9},e:{r:8,c:10}},
+    ];
+    wsP["!rows"] = [
+      {hpt:34},{hpt:18},{hpt:20},{hpt:20},{hpt:8},
+      {hpt:24},{hpt:16},{hpt:8},{hpt:28},{hpt:8},{hpt:22},
+      ...Array(todas.length+1).fill({hpt:21})
+    ];
+    XLSX.utils.book_append_sheet(wb, wsP, `Pregunta ${pi+1}`.substring(0,31));
+  });
+
+  const nEv  = (ev?.nombre||"Asamblea").replace(/[^\w\s]/g,"").replace(/\s+/g,"_").substring(0,30);
+  const fech = new Date().toLocaleDateString("es-CO").replace(/\//g,"-");
+  XLSX.writeFile(wb, `Informe_${nEv}_${fech}.xlsx`, {bookType:"xlsx", type:"binary", cellStyles:true});
+}
+
+async function exportarInformeAsamblea() {
+  const btn = document.getElementById("btn-informe");
+  if (btn) { btn.disabled=true; btn.innerHTML=`<div style="width:11px;height:11px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;margin-right:6px;"></div>Generando…`; }
+  try {
+    await generarInformeXLSX(EV_ID, ORG_ID);
+    toast("✓ Informe generado","ok");
+  } catch(e) {
+    console.error(e);
+    toast("Error: "+e.message,"err");
+  } finally {
+    if (btn) { btn.disabled=false; btn.innerHTML=`<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Informe Asamblea`; }
+  }
+}
+
+async function exportarInformePanel(evId, orgId) {
+  try {
+    toast("⏳ Generando informe…","ok");
+    await generarInformeXLSX(evId, orgId);
+    toast("✓ Informe generado","ok");
+  } catch(e) {
+    console.error(e);
+    toast("Error: "+e.message,"err");
+  }
+}
 
 async function logout(){await sb.auth.signOut();window.location.href="index.html";}
 
