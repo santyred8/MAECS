@@ -424,20 +424,28 @@ function mostrarError(msg) {
 // ── POLLING INTELIGENTE ───────────────────────────────
 // Cada 6s revisa: config del evento, estado de preguntas, stats y gráficas
 // Aplica cambios quirúrgicamente sin reconstruir el DOM
+let _pollingBusy = false;
 function iniciarPolling() {
   if (pollingInt) clearInterval(pollingInt);
   pollingInt = setInterval(async () => {
-    if (document.hidden) return;
-    await Promise.all([
-      pollEvento(),
-      pollPreguntas(),
-      cargarStatsParticipacion(),
-    ]);
-    actualizarStatsInPlace();
-    if (!evData?.ocultar_graficos) {
-      for (const pregId of Object.keys(portalCharts)) {
-        await cargarYActualizarGrafica(pregId);
+    if (document.hidden || _pollingBusy) return;
+    _pollingBusy = true;
+    try {
+      // Secuencial: evento primero, luego preguntas, luego stats
+      // Así evitamos que pollPreguntas modifique DOM mientras pollEvento lo lee
+      await pollEvento();
+      await pollPreguntas();
+      await cargarStatsParticipacion();
+      actualizarStatsInPlace();
+      if (!evData?.ocultar_graficos) {
+        for (const pregId of Object.keys(portalCharts)) {
+          await cargarYActualizarGrafica(pregId);
+        }
       }
+    } catch(e) {
+      console.warn("Poll error:", e);
+    } finally {
+      _pollingBusy = false;
     }
   }, 6000);
 }
@@ -450,11 +458,12 @@ async function pollEvento() {
   if (!data || !evData) return;
 
   const cambios = [];
-  if (data.ocultar_graficos      !== evData.ocultar_graficos)      cambios.push("graficos");
-  if (data.permitir_cambiar_respuestas !== evData.permitir_cambiar_respuestas) cambios.push("cambiar");
-  if (data.estado                !== evData.estado)                cambios.push("estado");
-  if (data.permitir_voto_mora    !== evData.permitir_voto_mora)    cambios.push("mora");
-  if (data.quorum_minimo         !== evData.quorum_minimo)         cambios.push("quorum");
+  // Usar !! para comparar booleanos — Supabase puede devolver true/1/"true"
+  if (!!data.ocultar_graficos           !== !!evData.ocultar_graficos)           cambios.push("graficos");
+  if (!!data.permitir_cambiar_respuestas !== !!evData.permitir_cambiar_respuestas) cambios.push("cambiar");
+  if (data.estado                       !== evData.estado)                        cambios.push("estado");
+  if (!!data.permitir_voto_mora         !== !!evData.permitir_voto_mora)          cambios.push("mora");
+  if (String(data.quorum_minimo||"")    !== String(evData.quorum_minimo||""))     cambios.push("quorum");
 
   if (!cambios.length) return; // sin cambios, no hacer nada
 
@@ -487,23 +496,41 @@ async function pollEvento() {
 function aplicarCambiarRespuestas(permitir) {
   preguntas.forEach(p => {
     const voto = misVotos[p.id];
-    if (!voto) return; // sin voto, no aplica
-    const btn  = document.getElementById(`btnv-${p.id}`);
-    const ops  = document.getElementById(`ops-${p.id}`);
+    if (!voto) return;
+    const body  = document.getElementById(`preg-body-${p.id}`);
+    if (!body) return;
+    const btn   = document.getElementById(`btnv-${p.id}`);
+    const ops   = document.getElementById(`ops-${p.id}`);
     const badge = document.getElementById(`vbadge-${p.id}`);
 
     if (permitir) {
-      // Mostrar opciones y botón cambiar
-      if (ops)  ops.style.display  = "";
-      if (btn)  { btn.style.display = ""; btn.disabled = true; }
+      // Si las ops no existen en el DOM → el card fue renderizado en modo "solo badge"
+      // Hay que reconstruir el body completo para incluir opciones + botón cambiar
+      if (!ops) {
+        const pregData = preguntas.find(x => x.id === p.id);
+        if (!pregData) return;
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = renderPregunta(pregData, preguntas.indexOf(pregData), voto, Array.isArray(pregData.opciones)?pregData.opciones:[]);
+        const nuevoBody = tempDiv.firstElementChild?.querySelector(`#preg-body-${p.id}`);
+        if (nuevoBody) body.innerHTML = nuevoBody.innerHTML;
+        // Cargar gráfica si corresponde
+        if (!evData?.ocultar_graficos) {
+          const resEl = document.getElementById(`res-${p.id}`);
+          if (resEl && !portalCharts[p.id]) cargarYActualizarGrafica(p.id);
+        }
+        return;
+      }
+      // ops existe → solo mostrar
+      ops.style.display = "";
+      if (btn) { btn.style.display = ""; btn.disabled = true; }
       if (badge) {
         badge.style.cssText = "background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#fcd34d;display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:12px;border:1px solid;margin-bottom:12px;font-size:14px;font-weight:600;";
         badge.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Votaste: <strong id="vtexto-${p.id}">${voto}</strong> — <span style="opacity:.7;font-size:12px;">puedes cambiar</span>`;
       }
     } else {
       // Ocultar opciones y botón
-      if (ops)  ops.style.display  = "none";
-      if (btn)  btn.style.display  = "none";
+      if (ops) ops.style.display = "none";
+      if (btn) btn.style.display = "none";
       if (badge) {
         badge.style.cssText = "";
         badge.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Tu voto: <strong id="vtexto-${p.id}">${voto}</strong>`;
@@ -515,20 +542,29 @@ function aplicarCambiarRespuestas(permitir) {
 // Mostrar u ocultar gráficas sin reconstruir las preguntas
 function aplicarOcultarGraficos(ocultar) {
   preguntas.forEach(p => {
-    const resEl = document.getElementById(`rescard-${p.id}`) || document.getElementById(`res-${p.id}`);
     if (ocultar) {
-      if (resEl) resEl.style.display = "none";
+      // Ocultar: destruir chart y esconder contenedor
       if (portalCharts[p.id]) { portalCharts[p.id].destroy(); delete portalCharts[p.id]; }
       delete portalChartCache[p.id];
+      const resEl = document.getElementById(`rescard-${p.id}`) || document.getElementById(`res-${p.id}`);
+      if (resEl) resEl.style.display = "none";
     } else {
-      // Al reactivar: si el chart fue destruido, siempre recargarlo
-      const chartVivo = !!portalCharts[p.id];
-      if (resEl) resEl.style.display = "";
-      if (!chartVivo && misVotos[p.id]) {
-        // Chart no existe (fue destruido) → recargar desde cero
-        if (resEl) resEl.innerHTML = ""; // limpiar contenido vacío
-        cargarYActualizarGrafica(p.id);
+      // Mostrar: solo aplica si el usuario ya votó esta pregunta
+      if (!misVotos[p.id]) return;
+      // Asegurar que el div contenedor exista
+      let resEl = document.getElementById(`rescard-${p.id}`) || document.getElementById(`res-${p.id}`);
+      if (!resEl) {
+        const body = document.getElementById(`preg-body-${p.id}`);
+        if (!body) return;
+        resEl = document.createElement("div");
+        resEl.id = `res-${p.id}`;
+        resEl.style.marginTop = "12px";
+        body.appendChild(resEl);
       }
+      resEl.style.display = "";
+      resEl.innerHTML = ""; // limpiar por si tiene contenido viejo
+      // Pequeño delay para que el DOM esté estable antes de dibujar el canvas
+      setTimeout(() => cargarYActualizarGrafica(p.id), 50);
     }
   });
 }
