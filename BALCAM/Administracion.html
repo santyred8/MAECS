@@ -53,7 +53,25 @@ nav{
 .btn-out:hover{color:var(--red);}
 
 /* ══ LAYOUT ══ */
-.layout{display:grid;grid-template-columns:280px 1fr;gap:20px;padding:20px 24px;max-width:1500px;margin:0 auto;}
+.layout{display:grid;grid-template-columns:280px 1fr;gap:20px;padding:20px 24px;max-width:1500px;margin:0 auto;transition:grid-template-columns .3s ease;}
+.layout.sidebar-collapsed{grid-template-columns:0px 1fr;}
+.layout.sidebar-collapsed .sidebar{opacity:0;pointer-events:none;overflow:hidden;}
+.sidebar{transition:opacity .25s ease;overflow-y:auto;}
+
+/* ── Botón toggle sidebar ── */
+#sidebar-toggle{
+  position:fixed;top:50%;left:280px;transform:translateY(-50%);
+  z-index:200;width:24px;height:56px;
+  background:var(--p);color:#fff;border:none;border-radius:0 12px 12px 0;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:14px;transition:left .3s ease, background .2s, box-shadow .2s;
+  box-shadow:4px 0 16px rgba(124,58,237,.4);
+}
+#sidebar-toggle:hover{background:#6d28d9;box-shadow:4px 0 20px rgba(124,58,237,.6);}
+.layout.sidebar-collapsed #sidebar-toggle{left:0px;}
+#sidebar-toggle .tog-icon{transition:transform .3s ease;}
+.layout.sidebar-collapsed #sidebar-toggle .tog-icon{transform:scaleX(-1);}
+
 
 /* ══ SIDEBAR ══ */
 .sidebar{display:flex;flex-direction:column;gap:14px;}
@@ -300,6 +318,11 @@ nav{
 <div class="layout">
 
   <!-- ══ SIDEBAR ══ -->
+  <!-- ── Botón colapsar/expandir sidebar ── -->
+  <button id="sidebar-toggle" onclick="toggleSidebar()" title="Mostrar/ocultar panel lateral">
+    <span class="tog-icon">◀</span>
+  </button>
+
   <aside class="sidebar">
 
     <!-- Org -->
@@ -1282,6 +1305,19 @@ function desactivarRealtime() {
   document.getElementById("t-live").checked = false;
   document.getElementById("cc-live").classList.remove("on");
 }
+
+// ── Toggle sidebar ──────────────────────────────────────
+function toggleSidebar() {
+  const layout = document.querySelector(".layout");
+  const collapsed = layout.classList.toggle("sidebar-collapsed");
+  localStorage.setItem("adm_sidebar_collapsed", collapsed ? "1" : "0");
+}
+// Restaurar estado al cargar
+(function(){
+  if (localStorage.getItem("adm_sidebar_collapsed") === "1") {
+    document.querySelector(".layout")?.classList.add("sidebar-collapsed");
+  }
+})();
 
 function toggleAutoRefresh() {
   const on = document.getElementById("t-live").checked;
@@ -2650,12 +2686,10 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
         setC(wsP,rP,15,"—",               {bg:GR2,fg:GR3,align:"center",border:true});
       } else if (idx === resKs.length+1) {
         // TOTAL VOTOS
-        const totalCoef = totVCoef + svCoef;
-const totalNom  = votaron.length + sinVotar.length;
-setC(wsP,rP,12,"Total",        {bold:true,bg:PRP_D,fg:WHT,align:"center",border:true});
-setC(wsP,rP,13,fP(totalCoef),  {bold:true,bg:PRP_D,fg:WHT,align:"center",border:true});
-setC(wsP,rP,14,totalNom,       {bold:true,bg:PRP_D,fg:WHT,align:"center",border:true});
-setC(wsP,rP,15,fP(pctVoto),    {bold:true,bg:PRP_D,fg:WHT,align:"center",border:true});
+        setC(wsP,rP,12,"TOTAL VOTOS",     {bold:true,bg:PRP_D,fg:WHT,align:"center",border:true});
+        setC(wsP,rP,13,fP(totVCoef),      {bold:true,bg:PRP_D,fg:WHT,align:"center",border:true});
+        setC(wsP,rP,14,votaron.length,    {bold:true,bg:PRP_D,fg:WHT,align:"center",border:true});
+        setC(wsP,rP,15,fP(pctVoto),       {bold:true,bg:PRP_D,fg:WHT,align:"center",border:true});
       } else {
         for(let c=12;c<=15;c++) fill(wsP,rP,c,WHT);
       }
