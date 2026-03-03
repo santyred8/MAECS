@@ -56,32 +56,14 @@ nav{
 .layout{display:grid;grid-template-columns:280px 1fr;gap:20px;padding:20px 24px;max-width:1500px;margin:0 auto;transition:grid-template-columns .3s ease;}
 .layout.sidebar-collapsed{grid-template-columns:0px 1fr;gap:0;}
 .layout.sidebar-collapsed .sidebar{opacity:0;pointer-events:none;overflow:hidden;width:0;min-width:0;}
-.sidebar{transition:opacity .25s ease;min-width:0;overflow:visible;}
+.sidebar{transition:opacity .25s ease;min-width:0;overflow:hidden;}
 
-/* ── Botón toggle sidebar ── */
-.sidebar{position:relative;}
-#sidebar-toggle{
-  position:absolute; top:50%; right:-20px; transform:translateY(-50%);
-  z-index:200; width:20px; height:56px;
-  background:var(--p); color:#fff; border:none; border-radius:0 10px 10px 0;
-  cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center;
-  font-size:10px; transition:background .2s, box-shadow .2s;
-  box-shadow:3px 0 10px rgba(124,58,237,.3);
-  padding:0; gap:3px;
-}
-#sidebar-toggle:hover{background:#6d28d9;}
-#sidebar-toggle .tog-icon{transition:transform .3s ease; display:block; line-height:1;}
-#sidebar-toggle .tog-label{
-  display:none; writing-mode:vertical-rl; text-orientation:mixed;
-  font-size:8px; font-weight:700; letter-spacing:.08em; color:rgba(255,255,255,.7);
-}
-/* Colapsado: fixed en borde izquierdo de la pantalla */
-.layout.sidebar-collapsed #sidebar-toggle{
-  position:fixed; top:50%; left:0; right:auto; transform:translateY(-50%);
-  height:72px; width:22px; border-radius:0 12px 12px 0;
-}
-.layout.sidebar-collapsed #sidebar-toggle .tog-icon{transform:scaleX(-1);}
-.layout.sidebar-collapsed #sidebar-toggle .tog-label{display:block;}
+/* ── Botón toggle sidebar — en navbar ── */
+.layout:not(.sidebar-collapsed) #sidebar-toggle .sb-tog-open{display:flex;}
+.layout:not(.sidebar-collapsed) #sidebar-toggle .sb-tog-closed{display:none;}
+.layout.sidebar-collapsed #sidebar-toggle .sb-tog-open{display:none;}
+.layout.sidebar-collapsed #sidebar-toggle .sb-tog-closed{display:flex;}
+#sidebar-toggle:hover{background:rgba(255,255,255,.2) !important;}
 
 
 /* ══ SIDEBAR ══ */
@@ -282,6 +264,13 @@ nav{
 <!-- ══ NAVBAR ══ -->
 <nav>
   <div style="display:flex;align-items:center;gap:12px;">
+    <button onclick="toggleSidebar()" id="sidebar-toggle" title="Mostrar/ocultar panel lateral"
+      style="background:rgba(255,255,255,.1);border:none;color:#fff;width:34px;height:34px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;transition:background .2s;">
+      <!-- Abierto: flecha izquierda para indicar que se puede cerrar -->
+      <span class="sb-tog-open" style="font-size:13px;">◀ ☰</span>
+      <!-- Cerrado: flecha derecha para indicar que se puede abrir -->
+      <span class="sb-tog-closed" style="font-size:13px;">☰ ▶</span>
+    </button>
     <a class="brand" href="Panel.html">
       <span class="brand-logo">BALCAM</span>
       <span class="brand-chip">maecs</span>
@@ -329,12 +318,6 @@ nav{
 <div class="layout">
 
   <!-- ══ SIDEBAR ══ -->
-  <!-- ── Botón colapsar/expandir sidebar ── -->
-  <button id="sidebar-toggle" onclick="toggleSidebar()" title="Mostrar/ocultar panel lateral">
-    <span class="tog-icon">◀</span>
-    <span class="tog-label">PANEL</span>
-  </button>
-
   <aside class="sidebar">
 
     <!-- Org -->
