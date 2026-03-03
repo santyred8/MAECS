@@ -224,8 +224,12 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
     <div id="suc-unidad" class="suc-unidad">—</div>
     <div id="suc-hora" class="suc-hora">—</div>
     <div class="suc-ev"><small>Evento</small><div id="suc-ev-n" class="suc-ev-n">—</div></div>
-    <div class="suc-desc">Registro exitoso.<br>Espera las instrucciones del administrador.</div>
-    <button class="btn-otra" onclick="resetLogin()">Registrar otra unidad</button>
+    <div class="suc-desc">Registro exitoso.<br>Redirigiendo al portal…</div>
+    <button onclick="location.replace(`Portal_Participante.html?ev=${EV_ID}&org=${ORG_ID}`)"
+      style="margin-top:4px;padding:14px 28px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;width:100%;">
+      Ir al Portal →
+    </button>
+    <button class="btn-otra" onclick="resetLogin()" style="margin-top:8px;">Registrar otra unidad</button>
   </div>
 
 </div>
@@ -252,6 +256,11 @@ function getDeviceId() {
 
 async function init() {
   if (!EV_ID || !ORG_ID) return;
+  // Si ya tiene sesion guardada para este evento ir directo sin pedir clave
+  if (localStorage.getItem("part_ev_id") === EV_ID && localStorage.getItem("part_unidad_id")) {
+    location.replace(`Portal_Participante.html?ev=${EV_ID}&org=${ORG_ID}`);
+    return;
+  }
   const [ev, org] = await Promise.all([
     sb.from("eventos").select("nombre,estado,fecha,permitir_registro_iniciado,restringir_acceso").eq("id",EV_ID).single(),
     sb.from("organizaciones").select("nombre,nit,telefono").eq("id",ORG_ID).single()
@@ -343,11 +352,11 @@ async function doLogin() {
   }
 
   // ── Guardar sesión ──
-  sessionStorage.setItem("part_unidad_id", unidad.id);
-  sessionStorage.setItem("part_codigo",    unidad.codigo||"");
-  sessionStorage.setItem("part_nombre",    unidad.propietario_1||"");
-  sessionStorage.setItem("part_ev_id",     EV_ID);
-  sessionStorage.setItem("part_org_id",    ORG_ID);
+  localStorage.setItem("part_unidad_id", unidad.id);
+  localStorage.setItem("part_codigo",    unidad.codigo||"");
+  localStorage.setItem("part_nombre",    unidad.propietario_1||"");
+  localStorage.setItem("part_ev_id",     EV_ID);
+  localStorage.setItem("part_org_id",    ORG_ID);
 
   // ── Upsert participante — solo actualizar hora_registro si es nuevo ──
   const upsertData = {
@@ -378,10 +387,15 @@ async function doLogin() {
   document.getElementById("logo-sec").style.display     = "none";
   document.getElementById("ev-banner").style.display    = "none";
   document.getElementById("suc").classList.add("show");
-  // Redirigir al portal automáticamente tras 2 segundos
-  setTimeout(() => {
-    location.href = `Portal_Participante.html?ev=${EV_ID}&org=${ORG_ID}`;
-  }, 2000);
+  // Redirigir con replace() — no deja Login en el historial del browser
+  const _rT = setTimeout(() => {
+    location.replace(`Portal_Participante.html?ev=${EV_ID}&org=${ORG_ID}`);
+  }, 1800);
+  // Toque en pantalla → redirigir ya (útil en móvil)
+  document.addEventListener("pointerdown", () => {
+    clearTimeout(_rT);
+    location.replace(`Portal_Participante.html?ev=${EV_ID}&org=${ORG_ID}`);
+  }, { once: true });
   confeti();
 }
 
