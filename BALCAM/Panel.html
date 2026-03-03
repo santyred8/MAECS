@@ -3482,12 +3482,6 @@ function exportarPregCSV() {
 // ══════════════════════════════════════════════════════════
 // GENERADOR INFORME ASAMBLEA  — Excel multi-hoja con diseño BALCAM
 // ══════════════════════════════════════════════════════════
-async f
-Length: 20779
-
-// ══════════════════════════════════════════════════════════
-// GENERADOR INFORME ASAMBLEA  — Excel multi-hoja con diseño BALCAM
-// ══════════════════════════════════════════════════════════
 async function generarInformeXLSX(EV_ID, ORG_ID) {
   const { data: org }   = await sb.from("organizaciones").select("*").eq("id", ORG_ID).single();
   const { data: ev }    = await sb.from("eventos").select("*").eq("id", EV_ID).single();
