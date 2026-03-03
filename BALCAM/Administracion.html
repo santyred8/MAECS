@@ -1004,9 +1004,7 @@ async function init() {
   document.getElementById("nav-email").textContent = session.user.email;
   if (!EV_ID||!ORG_ID) { toast("URL inválida","err"); return; }
   // Cerrar modal inactiva al hacer clic fuera
-  document.getElementById("modal-inactiva").addEventListener("click", function(e) {
-    if (e.target === this) cancelarInactiva();
-  });
+  // Modal listener se agrega en DOMContentLoaded
   iniciarReloj();
   await Promise.all([cargarOrg(), cargarEvento()]);
 }
@@ -2301,22 +2299,18 @@ document.head.appendChild(_regStyle);
 
 
 // ══════════════════════════════════════════════════════════
-// GENERADOR INFORME ASAMBLEA  — Excel multi-hoja con diseño BALCAM
+// GENERADOR INFORME ASAMBLEA — Excel BALCAM
 // ══════════════════════════════════════════════════════════
-async f
-Length: 20779
+const BALCAM_LOGO_B64 = "/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAGCAq4DASIAAhEBAxEB/8QAHQABAAEEAwEAAAAAAAAAAAAAAAgBBgcJAwQFAv/EAGQQAAEDAwICBgQHBRMGCwcFAAEAAgMEBREGEgchCBMiMUFRFDJhcRUjQlJygZFWYqGx0wkWFyQzNTdzdYKSlJWys8HS8PEYNEODotElJjY4RlNjZHSTtCdERVRVhIW1wsPh4v/EABoBAQACAwEAAAAAAAAAAAAAAAABAwIEBQb/xAAqEQEBAAIBBAICAQQDAQEAAAAAAQIRAwQSITEFQRNRIjIzUmEUI3FC8P/aAAwDAQACEQMRAD8AmWiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIThARMhUygqiplMoKoqZVUBERAREQEREBEVMoKoqZVcoCIiAiIgIiFARUymUFUVMqo7kBERAREQER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gIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIg//9k=";
 
-// ══════════════════════════════════════════════════════════
-// GENERADOR INFORME ASAMBLEA  — Excel multi-hoja con diseño BALCAM
-// ══════════════════════════════════════════════════════════
-async function generarInformeXLSX(EV_ID, ORG_ID) {
-  const { data: org }   = await sb.from("organizaciones").select("*").eq("id", ORG_ID).single();
-  const { data: ev }    = await sb.from("eventos").select("*").eq("id", EV_ID).single();
-  const { data: unis }  = await sb.from("unidades").select("*").eq("id_organizacion", String(ORG_ID)).order("codigo");
-  const { data: parts } = await sb.from("participantes").select("*").eq("id_evento", EV_ID);
-  const { data: pregs } = await sb.from("preguntas").select("*").eq("id_evento", EV_ID).in("estado",["Activa","Cerrada"]).order("orden");
-  const { data: vTodos } = await sb.from("votos").select("*").eq("id_evento", EV_ID);
-  if (!ev || !unis) throw new Error("No se pudieron cargar los datos del evento");
+async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
+  const { data: org }    = await sb.from("organizaciones").select("*").eq("id", ORG_ID_ARG).single();
+  const { data: ev }     = await sb.from("eventos").select("*").eq("id", EV_ID_ARG).single();
+  const { data: unis }   = await sb.from("unidades").select("*").eq("id_organizacion", String(ORG_ID_ARG)).order("codigo");
+  const { data: parts }  = await sb.from("participantes").select("*").eq("id_evento", EV_ID_ARG);
+  const { data: pregs }  = await sb.from("preguntas").select("*").eq("id_evento", EV_ID_ARG).in("estado",["Activa","Cerrada"]).order("orden");
+  const { data: vTodos } = await sb.from("votos").select("*").eq("id_evento", EV_ID_ARG);
+  if (!ev || !unis) throw new Error("No se pudieron cargar los datos");
 
   const partMap = {};
   (parts||[]).forEach(p => { partMap[p.id_unidad] = p; });
@@ -2326,379 +2320,341 @@ async function generarInformeXLSX(EV_ID, ORG_ID) {
     votoMap[v.id_pregunta][v.id_unidad] = v;
   });
 
+  const toN = v => parseFloat(String(v||0).replace(",",".")) || 0;
   const unisReg     = unis.filter(u => partMap[u.id]?.activo);
-  const toN         = (v) => parseFloat(String(v||0).replace(",",".")) || 0;
   const quorumFinal = unisReg.reduce((s,u) => s + toN(u.coeficiente), 0);
   const quorumMin   = toN(ev.quorum_minimo);
 
   const fP = (v, d=2) => {
-    if (isNaN(v) || v===null) return "0%";
+    if (!v && v!==0) return "0%";
     const n = parseFloat((v*100).toFixed(d));
     return (n%1===0 ? n.toFixed(0) : n.toFixed(d).replace(/0+$/,"")) + "%";
   };
-  const fH = (iso) => { if(!iso) return ""; try { return new Date(iso).toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit",second:"2-digit"}); } catch(e) { return ""; } };
+  const fH = iso => { if(!iso) return ""; try { return new Date(iso).toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit",second:"2-digit"}); } catch(e){ return ""; } };
 
-  // ── PALETA DE COLORES BALCAM ───────────────────────
-  const PRP   = "6D28D9"; // morado principal
-  const PRP2  = "7C3AED"; // morado hover
-  const PRP3  = "EDE9FE"; // morado claro bg
-  const PRP4  = "4C1D95"; // morado oscuro texto
-  const PRP5  = "F5F3FF"; // morado muy claro
-  const WHITE = "FFFFFF";
+  // ── Colores BALCAM ────────────────────────────────
+  const PRP   = "7C3AED";
+  const PRP_D = "4C1D95";
+  const PRP_L = "EDE9FE";
+  const PRP_XL= "F5F3FF";
+  const WHT   = "FFFFFF";
   const BLK   = "1E1B4B";
-  const GRIS1 = "F8FAFC"; // fondo alterno filas
-  const GRIS2 = "F1F5F9"; // separadores
-  const GRIS3 = "94A3B8"; // texto secundario
-  const GRIS4 = "CBD5E1"; // bordes
-  const VRD1  = "DCFCE7";
-  const VRD2  = "15803D";
-  const VRD3  = "F0FDF4";
-  const RJO1  = "FEF2F2";
-  const RJO2  = "DC2626";
-  const RJO3  = "FFF5F5";
-  const AZL1  = "EFF6FF";
-  const AZL2  = "1D4ED8";
-  const AMB1  = "FFFBEB";
-  const AMB2  = "92400E";
-  const PINK  = "EC4899";
+  const GR1   = "F8FAFC";
+  const GR2   = "F1F5F9";
+  const GR3   = "94A3B8";
+  const GR4   = "E2E8F0";
+  const VRD   = "DCFCE7"; const VRD_D = "15803D"; const VRD_XL = "F0FDF4";
+  const RJO   = "FEE2E2"; const RJO_D = "DC2626"; const RJO_XL = "FFF5F5";
+  const AMB   = "FEF3C7"; const AMB_D = "92400E";
+  const AZL   = "DBEAFE"; const AZL_D = "1D4ED8";
 
-  // ── HELPER CELDA ──────────────────────────────────
-  function C(v, {bold=false, bg=null, fg=null, align="left", sz=10, border="none", italic=false, wrap=false}={}) {
+  // ── Helper celda ─────────────────────────────────
+  function C(v, o={}) {
+    const {bold=false,bg=null,fg=null,align="left",sz=10,border=false,italic=false,wrap=false} = o;
     const st = {
       font: { name:"Arial", sz, bold, italic, color:{rgb: fg||BLK} },
       alignment: { horizontal:align, vertical:"center", wrapText:!!wrap }
     };
     if (bg) st.fill = { fgColor:{rgb:bg}, patternType:"solid" };
-    const bLine = (c) => ({style:"thin", color:{rgb:c||GRIS4}});
-    const bNone = {style:"none"};
-    if (border==="all")   st.border = {top:bLine(),bottom:bLine(),left:bLine(),right:bLine()};
-    if (border==="tb")    st.border = {top:bLine(),bottom:bLine(),left:bNone,right:bNone};
-    if (border==="b")     st.border = {top:bNone,bottom:bLine(),left:bNone,right:bNone};
-    if (border==="head")  st.border = {top:bLine(PRP),bottom:bLine(PRP),left:bLine(PRP),right:bLine(PRP)};
-    const t = typeof v === "number" ? "n" : "s";
-    return {v: v==null?"":v, t, s:st};
+    if (border) st.border = {
+      top:{style:"thin",color:{rgb:GR4}}, bottom:{style:"thin",color:{rgb:GR4}},
+      left:{style:"thin",color:{rgb:GR4}}, right:{style:"thin",color:{rgb:GR4}}
+    };
+    return { v: v==null ? "" : v, t: typeof v==="number" ? "n" : "s", s:st };
   }
-  const E = (bg=null) => C("", {bg});   // celda vacía
-  const SEP = (n, bg=GRIS2) => Array(n).fill(E(bg));
+  const E = (bg) => C("", bg?{bg}:{});
 
-  // ── BLOQUE DE ENCABEZADO BALCAM ───────────────────
-  // Retorna filas del header + merge info
-  function headerBlock(nCols) {
-    const extra = Math.max(0, nCols - 9);
-    // Fila 1: Logo BALCAM + datos org
-    const f1 = [
-      C("BALCAM", {bold:true, bg:PRP, fg:WHITE, align:"center", sz:22}),
-      E(PRP), E(PRP), E(PRP),
-      E(PRP),
-      C("Organización", {bold:true, bg:PRP4, fg:WHITE, sz:9}),
-      C(org?.nombre||"—", {bg:PRP3, fg:PRP4, sz:9, wrap:true}),
-      C("NIT", {bold:true, bg:PRP4, fg:WHITE, sz:9}),
-      C(org?.nit||"—", {bg:PRP3, fg:PRP4, sz:9}),
-      ...Array(extra).fill(E(PRP3)),
+  // ── Bloque info cabecera (sin logo — se agrega como imagen) ──
+  function infoBlock(ev, org, qFin, qMin) {
+    const qAlcanzado = qFin >= qMin;
+    return [
+      // fila 0: espacio para logo (cols A-C) + info
+      [ E(), E(), E(),
+        C("Organización", {bold:true, bg:PRP,   fg:WHT, sz:9}),
+        C(org?.nombre||"—", {bg:PRP_L, fg:PRP_D, sz:9, wrap:true}),
+        E(PRP_L), E(PRP_L) ],
+      [ E(), E(), E(),
+        C("NIT",          {bold:true, bg:PRP,   fg:WHT, sz:9}),
+        C(org?.nit||"—",  {bg:PRP_L, fg:PRP_D, sz:9}),
+        E(PRP_L), E(PRP_L) ],
+      [ E(), E(), E(),
+        C("Evento",       {bold:true, bg:PRP,   fg:WHT, sz:9}),
+        C(ev?.nombre||"—",{bg:PRP_L, fg:PRP_D, sz:9, bold:true, wrap:true}),
+        E(PRP_L), E(PRP_L) ],
+      [ E(), E(), E(),
+        C("Fecha",        {bold:true, bg:PRP,   fg:WHT, sz:9}),
+        C(ev?.fecha ? new Date(ev.fecha).toLocaleString("es-CO") : "—", {bg:PRP_L, fg:PRP_D, sz:9}),
+        E(PRP_L), E(PRP_L) ],
+      [ E(), E(), E(),
+        C("Lugar",        {bold:true, bg:PRP,   fg:WHT, sz:9}),
+        C(ev?.lugar||"VIRTUAL", {bg:PRP_L, fg:PRP_D, sz:9}),
+        E(PRP_L), E(PRP_L) ],
+      [ E(), E(), E(),
+        C("Quórum Mínimo",{bold:true, bg:PRP,   fg:WHT, sz:9}),
+        C(fP(qMin),       {bg:AMB,   fg:AMB_D, sz:9, bold:true}),
+        E(AMB), E(AMB) ],
+      [ E(), E(), E(),
+        C("Quórum Final", {bold:true, bg:PRP,   fg:WHT, sz:9}),
+        C(fP(qFin),       {bg:qAlcanzado?VRD:RJO, fg:qAlcanzado?VRD_D:RJO_D, sz:9, bold:true}),
+        E(qAlcanzado?VRD:RJO), E(qAlcanzado?VRD:RJO) ],
+      Array(7).fill(E(GR2))  // separador
     ];
-    // Fila 2: subtítulo + más datos
-    const f2 = [
-      C("GRUPO EMPRESARIAL", {bg:PRP, fg:"C4B5FD", align:"center", sz:8, italic:true}),
-      E(PRP), E(PRP), E(PRP),
-      E(PRP),
-      C("Evento", {bold:true, bg:PRP4, fg:WHITE, sz:9}),
-      C(ev?.nombre||"—", {bg:PRP3, fg:PRP4, sz:9, bold:true, wrap:true}),
-      C("Tipo", {bold:true, bg:PRP4, fg:WHITE, sz:9}),
-      C(ev?.tipo||"—", {bg:PRP3, fg:PRP4, sz:9}),
-      ...Array(extra).fill(E(PRP3)),
-    ];
-    const f3 = [E(PRP5),E(PRP5),E(PRP5),E(PRP5), E(),
-      C("Fecha", {bold:true, bg:PRP, fg:WHITE, sz:9}),
-      C(ev?.fecha ? new Date(ev.fecha).toLocaleString("es-CO") : "—", {bg:PRP3, fg:PRP4, sz:9}),
-      C("Lugar", {bold:true, bg:PRP, fg:WHITE, sz:9}),
-      C(ev?.lugar||"VIRTUAL", {bg:PRP3, fg:PRP4, sz:9}),
-      ...Array(extra).fill(E()),
-    ];
-    const f4 = [E(PRP5),E(PRP5),E(PRP5),E(PRP5), E(),
-      C("Quórum Mínimo", {bold:true, bg:PRP, fg:WHITE, sz:9}),
-      C(fP(quorumMin), {bg:AMB1, fg:AMB2, sz:9, bold:true}),
-      C("Quórum Final", {bold:true, bg:PRP, fg:WHITE, sz:9}),
-      C(fP(quorumFinal), {bg:quorumFinal>=quorumMin?VRD1:RJO1, fg:quorumFinal>=quorumMin?VRD2:RJO2, sz:9, bold:true}),
-      ...Array(extra).fill(E()),
-    ];
-    return [f1, f2, f3, f4, SEP(nCols)];
+  }
+
+  // ── Helper: añadir imagen logo BALCAM a la hoja ──
+  function addLogo(ws) {
+    if (!ws["!images"]) ws["!images"] = [];
+    ws["!images"].push({
+      "!type": "image",
+      "!pos": {r:0, c:0, x:5, y:5, w:160, h:60},
+      "!data": BALCAM_LOGO_B64,
+      "!datatype": "base64"
+    });
   }
 
   const wb = XLSX.utils.book_new();
 
-  // ════════════════════════════════════════════════════
-  // HOJA 1 — QUÓRUM
-  // ════════════════════════════════════════════════════
+  // ════════════════════════════════════════
+  // HOJA QUÓRUM
+  // ════════════════════════════════════════
   const camposAd  = ["campo_adicional_1","campo_adicional_2","campo_adicional_3","campo_adicional_4"];
   const camposAct = camposAd.filter(c => unis.some(u => u[c]));
-  const NC_Q = 8 + camposAct.length;
+  const NC = 8 + camposAct.length;
 
-  const wQ = [...headerBlock(NC_Q)];
+  const wQ = infoBlock(ev, org, quorumFinal, quorumMin);
 
-  // Estadísticas rápidas
-  const regCount   = unisReg.length;
-  const noRegCount = unis.length - regCount;
+  // Fila estadísticas
+  const regC = unisReg.length, noRegC = unis.length - regC;
   wQ.push([
-    C("✓ Registrados", {bold:true, bg:VRD1, fg:VRD2, align:"center", sz:9}),
-    C(regCount, {bold:true, bg:VRD1, fg:VRD2, align:"center", sz:14}),
-    E(VRD1),
-    C("✗ No Registrados", {bold:true, bg:RJO1, fg:RJO2, align:"center", sz:9}),
-    C(noRegCount, {bold:true, bg:RJO1, fg:RJO2, align:"center", sz:14}),
-    E(RJO1),
-    C("Quórum Alcanzado", {bold:true, bg:quorumFinal>=quorumMin?VRD1:AMB1, fg:quorumFinal>=quorumMin?VRD2:AMB2, align:"center", sz:9}),
-    C(fP(quorumFinal), {bold:true, bg:quorumFinal>=quorumMin?VRD1:AMB1, fg:quorumFinal>=quorumMin?VRD2:AMB2, align:"center", sz:14}),
+    C("✓ Registrados",   {bold:true, bg:VRD, fg:VRD_D, align:"center", sz:9}),
+    C(regC,              {bold:true, bg:VRD, fg:VRD_D, align:"center", sz:16}),
+    E(VRD),
+    C("✗ No Registrados",{bold:true, bg:RJO, fg:RJO_D, align:"center", sz:9}),
+    C(noRegC,            {bold:true, bg:RJO, fg:RJO_D, align:"center", sz:16}),
+    E(RJO),
+    C("Quórum Final",    {bold:true, bg:quorumFinal>=quorumMin?VRD:AMB, fg:quorumFinal>=quorumMin?VRD_D:AMB_D, align:"center", sz:9}),
+    C(fP(quorumFinal),   {bold:true, bg:quorumFinal>=quorumMin?VRD:AMB, fg:quorumFinal>=quorumMin?VRD_D:AMB_D, align:"center", sz:14}),
     ...Array(camposAct.length).fill(E()),
   ]);
-  wQ.push(SEP(NC_Q));
+  wQ.push(Array(NC).fill(E(GR2)));
 
-  // Headers tabla
-  const hQ = [
-    C("Contenedor",   {bold:true, bg:PRP,  fg:WHITE, align:"center", border:"head"}),
-    C("Código",       {bold:true, bg:PRP,  fg:WHITE, align:"center", border:"head"}),
-    C("Tipo",         {bold:true, bg:PRP,  fg:WHITE, align:"center", border:"head"}),
-    C("Propietario 1",{bold:true, bg:PRP,  fg:WHITE, align:"left",   border:"head"}),
-    C("Coeficiente",  {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
-    C("Nominal",      {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
-    C("Estado",       {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
-    C("Hora Registro",{bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
-    ...camposAct.map((_,i) => C(`Campo ${i+1}`, {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"})),
-  ];
-  wQ.push(hQ);
+  // Headers
+  wQ.push([
+    C("#",             {bold:true, bg:PRP_D, fg:WHT, align:"center", border:true}),
+    C("Contenedor",    {bold:true, bg:PRP_D, fg:WHT, align:"center", border:true}),
+    C("Código",        {bold:true, bg:PRP_D, fg:WHT, align:"center", border:true}),
+    C("Tipo",          {bold:true, bg:PRP_D, fg:WHT, align:"left",   border:true}),
+    C("Propietario 1", {bold:true, bg:PRP_D, fg:WHT, align:"left",   border:true}),
+    C("Coeficiente",   {bold:true, bg:PRP,   fg:WHT, align:"center", border:true}),
+    C("Nominal",       {bold:true, bg:PRP,   fg:WHT, align:"center", border:true}),
+    C("Estado",        {bold:true, bg:PRP,   fg:WHT, align:"center", border:true}),
+    C("Hora Registro", {bold:true, bg:PRP,   fg:WHT, align:"center", border:true}),
+    ...camposAct.map((_,i) => C(`Campo ${i+1}`, {bold:true, bg:PRP, fg:WHT, align:"center", border:true})),
+  ]);
 
-  // Filas — ordenadas: registradas primero
   const unisOrd = [...unis].sort((a,b) => (partMap[b.id]?.activo?1:0)-(partMap[a.id]?.activo?1:0));
-  unisOrd.forEach((u, idx) => {
+  unisOrd.forEach((u, i) => {
     const reg = partMap[u.id]?.activo;
-    const alt = idx % 2 === 0;
-    const rowBg = reg ? (alt ? WHITE : VRD3) : (alt ? WHITE : RJO3);
+    const alt = i % 2 === 0;
+    const bg  = reg ? (alt ? WHT : VRD_XL) : (alt ? WHT : RJO_XL);
     wQ.push([
-      C(u.contenedor||"—", {bg:rowBg, align:"center", border:"all"}),
-      C(u.codigo||"—",     {bg:rowBg, align:"center", border:"all", bold:true}),
-      C(u.tipo||"—",       {bg:rowBg, align:"left",   border:"all"}),
-      C(u.propietario_1||"—", {bg:rowBg, align:"left", border:"all"}),
-      C(fP(toN(u.coeficiente)), {bg:rowBg, align:"center", border:"all"}),
-      C("100%",            {bg:rowBg, align:"center", border:"all", fg:GRIS3}),
-      C(reg?"Registrado":"No Registrado", {bold:true, bg:reg?VRD1:RJO1, fg:reg?VRD2:RJO2, align:"center", border:"all"}),
-      C(fH(partMap[u.id]?.hora_registro), {bg:rowBg, align:"center", fg:GRIS3, border:"all"}),
-      ...camposAct.map(c => C(u[c]||"—", {bg:rowBg, align:"center", border:"all"})),
+      C(i+1,                      {bg, align:"center", border:true}),
+      C(u.contenedor||"—",        {bg, align:"center", border:true}),
+      C(u.codigo||"—",            {bg, align:"center", border:true, bold:true}),
+      C(u.tipo||"—",              {bg, align:"left",   border:true}),
+      C(u.propietario_1||"—",     {bg, align:"left",   border:true}),
+      C(fP(toN(u.coeficiente)),   {bg, align:"center", border:true}),
+      C("100%",                   {bg, align:"center", border:true, fg:GR3}),
+      C(reg?"Registrado":"No Registrado", {bold:true, bg:reg?VRD:RJO, fg:reg?VRD_D:RJO_D, align:"center", border:true}),
+      C(fH(partMap[u.id]?.hora_registro), {bg, align:"center", fg:GR3, border:true}),
+      ...camposAct.map(c => C(u[c]||"—", {bg, align:"center", border:true})),
     ]);
   });
 
-  // Fila totales
-  const totCoef = unisReg.reduce((s,u)=>s+toN(u.coeficiente),0);
+  // Total
   wQ.push([
-    C("TOTAL", {bold:true, bg:PRP4, fg:WHITE, align:"center"}),
-    E(PRP4), E(PRP4),
-    C(`${regCount} de ${unis.length} registrados`, {bold:true, bg:PRP4, fg:"C4B5FD", align:"center"}),
-    C(fP(totCoef), {bold:true, bg:PRP4, fg:WHITE, align:"center"}),
-    C(regCount.toString(), {bold:true, bg:PRP4, fg:WHITE, align:"center"}),
-    E(PRP4), E(PRP4),
-    ...Array(camposAct.length).fill(E(PRP4)),
+    E(PRP_D), E(PRP_D), E(PRP_D),
+    C(`${regC} de ${unis.length} registrados`, {bold:true, bg:PRP_D, fg:"C4B5FD", align:"center"}),
+    E(PRP_D),
+    C(fP(quorumFinal), {bold:true, bg:PRP_D, fg:WHT, align:"center"}),
+    C(regC, {bold:true, bg:PRP_D, fg:WHT, align:"center"}),
+    E(PRP_D), E(PRP_D),
+    ...Array(camposAct.length).fill(E(PRP_D)),
   ]);
 
   const wsQ = XLSX.utils.aoa_to_sheet(wQ);
-  wsQ["!cols"] = [
-    {wch:13},{wch:9},{wch:15},{wch:32},{wch:13},{wch:10},{wch:17},{wch:15},
-    ...camposAct.map(()=>({wch:18}))
-  ];
+  wsQ["!cols"] = [{wch:5},{wch:13},{wch:9},{wch:15},{wch:34},{wch:13},{wch:10},{wch:17},{wch:15},...camposAct.map(()=>({wch:18}))];
+  wsQ["!rows"] = [{hpt:24},{hpt:20},{hpt:20},{hpt:20},{hpt:20},{hpt:20},{hpt:20},{hpt:6},{hpt:28},{hpt:6},{hpt:22},...Array(unisOrd.length+1).fill({hpt:21})];
   wsQ["!merges"] = [
-    {s:{r:0,c:0},e:{r:1,c:3}},  // BALCAM merge
-    {s:{r:5,c:0},e:{r:5,c:1}},  // Stat 1 label
-    {s:{r:5,c:2},e:{r:5,c:2}},
-    {s:{r:5,c:3},e:{r:5,c:4}},
-    {s:{r:5,c:5},e:{r:5,c:5}},
-    {s:{r:5,c:6},e:{r:5,c:6}},
-    {s:{r:5,c:7},e:{r:5,c:NC_Q-1}},
+    {s:{r:0,c:0},e:{r:6,c:2}},   // espacio logo
+    {s:{r:0,c:4},e:{r:0,c:NC-1}}, {s:{r:1,c:4},e:{r:1,c:NC-1}},
+    {s:{r:2,c:4},e:{r:2,c:NC-1}}, {s:{r:3,c:4},e:{r:3,c:NC-1}},
+    {s:{r:4,c:4},e:{r:4,c:NC-1}}, {s:{r:5,c:4},e:{r:5,c:NC-1}},
+    {s:{r:6,c:4},e:{r:6,c:NC-1}},
+    {s:{r:8,c:0},e:{r:8,c:1}}, {s:{r:8,c:3},e:{r:8,c:4}},
+    {s:{r:8,c:6},e:{r:8,c:NC-1}},
+    {s:{r:11,c:3},e:{r:11,c:4}},
   ];
-  wsQ["!rows"] = [{hpt:34},{hpt:18},{hpt:20},{hpt:20},{hpt:8},{hpt:28},{hpt:8},{hpt:22},...Array(unisOrd.length+1).fill({hpt:21})];
+  addLogo(wsQ);
   XLSX.utils.book_append_sheet(wb, wsQ, "Quórum");
 
-  // ════════════════════════════════════════════════════
+  // ════════════════════════════════════════
   // HOJAS PREGUNTAS
-  // ════════════════════════════════════════════════════
+  // ════════════════════════════════════════
+  const opColors = [
+    {bg:"EDE9FE",fg:PRP_D},{bg:AZL,fg:AZL_D},{bg:VRD,fg:VRD_D},
+    {bg:AMB,fg:AMB_D},{bg:"FCE7F3",fg:"9D174D"},{bg:"D1FAE5",fg:"065F46"},
+  ];
+
   (pregs||[]).forEach((preg, pi) => {
-    const votosP  = votoMap[preg.id] || {};
-    const opcs    = Array.isArray(preg.opciones) ? preg.opciones.map(o=>typeof o==="object"?o.texto:o) : [];
-    const porResp = {};
-    opcs.forEach(o => { porResp[o]={coef:0,nominal:0}; });
+    const votosP = votoMap[preg.id] || {};
+    const opcs   = Array.isArray(preg.opciones) ? preg.opciones.map(o=>typeof o==="object"?o.texto:o) : [];
+    const por    = {};
+    opcs.forEach(o => { por[o]={coef:0,nom:0}; });
     Object.values(votosP).forEach(v => {
-      if (!porResp[v.respuesta]) porResp[v.respuesta]={coef:0,nominal:0};
-      porResp[v.respuesta].coef    += toN(v.coeficiente);
-      porResp[v.respuesta].nominal += 1;
+      if (!por[v.respuesta]) por[v.respuesta]={coef:0,nom:0};
+      por[v.respuesta].coef += toN(v.coeficiente);
+      por[v.respuesta].nom  += 1;
     });
 
-    const votaron   = unisReg.filter(u => votosP[u.id]);
-    const sinVotar  = unisReg.filter(u => !votosP[u.id]);
-    // Solo los que VOTARON cuentan para quórum de la pregunta
-    const totVotCoef = votaron.reduce((s,u) => s + toN(u.coeficiente), 0);
+    const votaron  = unisReg.filter(u => votosP[u.id]);
+    const sinVotar = unisReg.filter(u => !votosP[u.id]);
+    const totVCoef = votaron.reduce((s,u) => s+toN(u.coeficiente), 0);
+    const svCoef   = sinVotar.reduce((s,u) => s+toN(u.coeficiente), 0);
+    const pctVoto  = quorumFinal>0 ? totVCoef/quorumFinal : 0;
+
     const NC_P = 15;
-    const wP   = [...headerBlock(NC_P)];
+    const wP   = infoBlock(ev, org, quorumFinal, quorumMin);
 
-    // Badge de la pregunta
-    const estadoPreg = preg.estado === "Cerrada" ? "🔒 Cerrada" : "▶ Activa";
-    const bgEstado   = preg.estado === "Cerrada" ? RJO1 : VRD1;
-    const fgEstado   = preg.estado === "Cerrada" ? RJO2 : VRD2;
+    // Badge pregunta
+    const isCerrada = preg.estado === "Cerrada";
     wP.push([
-      C(estadoPreg, {bold:true, bg:bgEstado, fg:fgEstado, align:"center", sz:9}),
-      C(`PREGUNTA ${pi+1}`, {bold:true, bg:PRP, fg:WHITE, align:"center", sz:10}),
-      C(preg.titulo||"Sin título", {bold:true, fg:PRP4, sz:11, wrap:true}),
-      E(), E(), E(), E(), E(), E(), E(), E(), E(), E(), E(), E(),
+      C(isCerrada?"🔒 Cerrada":"▶ Activa", {bold:true, bg:isCerrada?RJO:VRD, fg:isCerrada?RJO_D:VRD_D, align:"center", sz:8}),
+      C(`PREGUNTA ${pi+1}`, {bold:true, bg:PRP_D, fg:WHT, align:"center", sz:10}),
+      C(preg.titulo||"", {bold:true, fg:PRP_D, sz:11, wrap:true}),
+      ...Array(NC_P-3).fill(E()),
     ]);
+    if (preg.descripcion) {
+      wP.push([E(),E(),C(preg.descripcion, {fg:GR3, sz:9, italic:true, wrap:true}),...Array(NC_P-3).fill(E())]);
+    }
+    wP.push(Array(NC_P).fill(E(GR2)));
+
+    // Stats pregunta
     wP.push([
-      E(), E(),
-      C(preg.descripcion||"", {fg:GRIS3, sz:9, italic:true, wrap:true}),
-      E(), E(), E(), E(), E(), E(), E(), E(), E(), E(), E(), E(),
+      C("Votaron",      {bold:true, bg:VRD, fg:VRD_D, align:"center", sz:8}),
+      C(votaron.length, {bold:true, bg:VRD, fg:VRD_D, align:"center", sz:16}),
+      E(VRD),
+      C("Sin Votar",     {bold:true, bg:RJO, fg:RJO_D, align:"center", sz:8}),
+      C(sinVotar.length, {bold:true, bg:RJO, fg:RJO_D, align:"center", sz:16}),
+      E(RJO),
+      C("Coef. Votado",  {bold:true, bg:AZL, fg:AZL_D, align:"center", sz:8}),
+      C(fP(totVCoef),    {bold:true, bg:AZL, fg:AZL_D, align:"center", sz:13}),
+      E(AZL),
+      C("% Quórum",      {bold:true, bg:PRP_L, fg:PRP_D, align:"center", sz:8}),
+      C(fP(pctVoto),     {bold:true, bg:PRP_L, fg:PRP_D, align:"center", sz:13}),
+      ...Array(NC_P-11).fill(E()),
     ]);
-    wP.push(SEP(NC_P));
+    wP.push(Array(NC_P).fill(E(GR2)));
 
-    // Estadísticas de la pregunta
-    const pctQuorumVoto = quorumFinal > 0 ? totVotCoef / quorumFinal : 0;
+    // Headers tabla
     wP.push([
-      C("Votaron", {bold:true, bg:VRD1, fg:VRD2, align:"center", sz:8}),
-      C(votaron.length.toString(), {bold:true, bg:VRD1, fg:VRD2, align:"center", sz:16}),
-      E(VRD1),
-      C("Sin Votar", {bold:true, bg:RJO1, fg:RJO2, align:"center", sz:8}),
-      C(sinVotar.length.toString(), {bold:true, bg:RJO1, fg:RJO2, align:"center", sz:16}),
-      E(RJO1),
-      C("Coef. Votado", {bold:true, bg:AZL1, fg:AZL2, align:"center", sz:8}),
-      C(fP(totVotCoef), {bold:true, bg:AZL1, fg:AZL2, align:"center", sz:14}),
-      E(AZL1),
-      C("% del Quórum", {bold:true, bg:PRP3, fg:PRP4, align:"center", sz:8}),
-      C(fP(pctQuorumVoto), {bold:true, bg:PRP3, fg:PRP4, align:"center", sz:14}),
-      E(PRP3), E(), E(), E(),
+      C("#",             {bold:true, bg:PRP_D, fg:WHT, align:"center", border:true}),
+      C("Contenedor",    {bold:true, bg:PRP_D, fg:WHT, align:"center", border:true}),
+      C("Código",        {bold:true, bg:PRP_D, fg:WHT, align:"center", border:true}),
+      C("Tipo",          {bold:true, bg:PRP_D, fg:WHT, align:"left",   border:true}),
+      C("Propietario 1", {bold:true, bg:PRP_D, fg:WHT, align:"left",   border:true}),
+      C("Coeficiente",   {bold:true, bg:PRP,   fg:WHT, align:"center", border:true}),
+      C("Quórum",        {bold:true, bg:PRP,   fg:WHT, align:"center", border:true}),
+      C("Nominal",       {bold:true, bg:PRP,   fg:WHT, align:"center", border:true}),
+      C("Respuesta",     {bold:true, bg:PRP,   fg:WHT, align:"center", border:true}),
+      C("Hora Respuesta",{bold:true, bg:PRP,   fg:WHT, align:"center", border:true}),
+      E(),  // gap
+      C("Respuesta",     {bold:true, bg:PRP_D, fg:WHT, align:"center", border:true}),
+      C("Coeficiente",   {bold:true, bg:PRP_D, fg:WHT, align:"center", border:true}),
+      C("Nominal",       {bold:true, bg:PRP_D, fg:WHT, align:"center", border:true}),
+      C("Quórum",        {bold:true, bg:PRP_D, fg:WHT, align:"center", border:true}),
     ]);
-    wP.push(SEP(NC_P));
 
-    // TABLA IZQUIERDA: headers votos
-    const hVotos = [
-      C("#",              {bold:true, bg:PRP,  fg:WHITE, align:"center", border:"head"}),
-      C("Contenedor",     {bold:true, bg:PRP,  fg:WHITE, align:"center", border:"head"}),
-      C("Código",         {bold:true, bg:PRP,  fg:WHITE, align:"center", border:"head"}),
-      C("Tipo",           {bold:true, bg:PRP,  fg:WHITE, align:"left",   border:"head"}),
-      C("Propietario 1",  {bold:true, bg:PRP,  fg:WHITE, align:"left",   border:"head"}),
-      C("Coeficiente",    {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
-      C("% Quórum",       {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
-      C("Nominal",        {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
-      C("Respuesta",      {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
-      C("Hora",           {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
-      // GAP
-      E(PRP5),
-      // TABLA DERECHA: resultados
-      C("RESULTADOS",     {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
-      C("Coeficiente",    {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
-      C("Nominal",        {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
-      C("% Quórum",       {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
-    ];
-    wP.push(hVotos);
+    const todas  = [...votaron, ...sinVotar];
+    const resKs  = Object.keys(por);
 
-    // Colores por respuesta (ciclo de colores)
-    const resColors = [
-      {bg:"EDE9FE",fg:PRP4},{bg:"DBEAFE",fg:AZL2},{bg:"D1FAE5",fg:VRD2},
-      {bg:"FEF3C7",fg:AMB2},{bg:"FCE7F3",fg:"9D174D"},{bg:"F0FDF4",fg:"166534"},
-    ];
-    const resKeys = Object.keys(porResp);
-
-    const todas = [...votaron, ...sinVotar];
     todas.forEach((u, idx) => {
-      const v      = votosP[u.id];
-      const coef   = toN(u.coeficiente);
-      // % quórum solo para los que votaron; sin votar es 0 en esa columna
-      const qPct   = v && quorumFinal > 0 ? coef / quorumFinal : 0;
-      const alt    = idx % 2 === 0;
-      const rowBg  = v ? (alt ? WHITE : GRIS1) : (alt ? RJO3 : RJO1);
-      const rowFg  = v ? BLK : GRIS3;
+      const v    = votosP[u.id];
+      const coef = toN(u.coeficiente);
+      const qPct = v && quorumFinal>0 ? coef/quorumFinal : null;
+      const alt  = idx%2===0;
+      const rbg  = v ? (alt?WHT:GR1) : (alt?RJO_XL:RJO);
+      const rfg  = v ? BLK : GR3;
 
-      // Respuesta: color por opción
-      let respCell;
+      // Celda respuesta con color por opción
+      let respC;
       if (v) {
-        const ri = opcs.indexOf(v.respuesta);
-        const col = resColors[ri >= 0 ? ri % resColors.length : 0];
-        respCell = C(v.respuesta, {bold:true, bg:col.bg, fg:col.fg, align:"center", border:"all"});
+        const ri  = opcs.indexOf(v.respuesta);
+        const col = opColors[ri>=0 ? ri%opColors.length : 0];
+        respC = C(v.respuesta, {bold:true, bg:col.bg, fg:col.fg, align:"center", border:true});
       } else {
-        respCell = C("Sin voto", {fg:GRIS3, bg:RJO1, align:"center", border:"all", italic:true});
+        respC = C("Sin voto", {italic:true, fg:GR3, bg:RJO, align:"center", border:true});
       }
 
-      // Columna derecha: resultado de esta opción
-      let resRight = [E(PRP5), E(), E(), E(), E()];
-      if (idx < resKeys.length) {
-        const rk  = resKeys[idx];
-        const rd  = porResp[rk];
+      // Tabla derecha de resultados
+      let resR = [E(), E(), E(), E(), E()];
+      if (idx < resKs.length) {
+        const rk  = resKs[idx];
+        const rd  = por[rk];
         const ri  = opcs.indexOf(rk);
-        const col = resColors[ri >= 0 ? ri % resColors.length : 0];
-        // % quórum = coef opción / quórum final (solo votantes)
-        const rQPct = quorumFinal > 0 && rd.coef > 0 ? rd.coef / quorumFinal : 0;
-        resRight = [
-          E(PRP5),
-          C(rk,           {bold:true, bg:col.bg, fg:col.fg, align:"center", border:"all"}),
-          C(fP(rd.coef),  {bg:col.bg, fg:col.fg, align:"center", border:"all"}),
-          {v:rd.nominal, t:"n", s:C(rd.nominal, {bg:col.bg, fg:col.fg, align:"center", border:"all"}).s},
-          C(fP(rQPct),    {bold:true, bg:col.bg, fg:col.fg, align:"center", border:"all"}),
-        ];
-      } else if (idx === resKeys.length) {
-        // Fila "Sin Votar" en tabla derecha
-        const svCoef = sinVotar.reduce((s,u) => s+toN(u.coeficiente), 0);
-        const svPct  = quorumFinal > 0 && svCoef > 0 ? svCoef / quorumFinal : 0;
-        resRight = [
-          E(PRP5),
-          C("Sin Votar",     {bg:GRIS2, fg:GRIS3, align:"center", border:"all", italic:true}),
-          C(fP(svCoef),      {bg:GRIS2, fg:GRIS3, align:"center", border:"all"}),
-          {v:sinVotar.length, t:"n", s:C(sinVotar.length, {bg:GRIS2, fg:GRIS3, align:"center", border:"all"}).s},
-          C("—",             {bg:GRIS2, fg:GRIS3, align:"center", border:"all"}),  // Sin votar NO suma al quórum
-        ];
-      } else if (idx === resKeys.length + 1) {
-        // Fila TOTAL derecha — solo cuenta quorum de quienes votaron
-        resRight = [
-          E(PRP5),
-          C("TOTAL VOTOS",   {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
-          C(fP(totVotCoef),  {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
-          {v:votaron.length, t:"n", s:C(votaron.length, {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}).s},
-          C(fP(pctQuorumVoto), {bold:true, bg:PRP4, fg:WHITE, align:"center", border:"head"}),
-        ];
+        const col = opColors[ri>=0 ? ri%opColors.length : 0];
+        const rQ  = quorumFinal>0 && rd.coef>0 ? rd.coef/quorumFinal : 0;
+        resR = [E(),C(rk,{bold:true,bg:col.bg,fg:col.fg,align:"center",border:true}),C(fP(rd.coef),{bg:col.bg,fg:col.fg,align:"center",border:true}),C(rd.nom,{bg:col.bg,fg:col.fg,align:"center",border:true}),C(fP(rQ),{bold:true,bg:col.bg,fg:col.fg,align:"center",border:true})];
+      } else if (idx === resKs.length) {
+        // Sin Votar — quórum es "—" (no aporta)
+        resR = [E(),C("Sin Votar",{italic:true,bg:GR2,fg:GR3,align:"center",border:true}),C(fP(svCoef),{bg:GR2,fg:GR3,align:"center",border:true}),C(sinVotar.length,{bg:GR2,fg:GR3,align:"center",border:true}),C("—",{bg:GR2,fg:GR3,align:"center",border:true})];
+      } else if (idx === resKs.length+1) {
+        // Total — solo los que votaron
+        resR = [E(),C("TOTAL VOTOS",{bold:true,bg:PRP_D,fg:WHT,align:"center",border:true}),C(fP(totVCoef),{bold:true,bg:PRP_D,fg:WHT,align:"center",border:true}),C(votaron.length,{bold:true,bg:PRP_D,fg:WHT,align:"center",border:true}),C(fP(pctVoto),{bold:true,bg:PRP_D,fg:WHT,align:"center",border:true})];
       }
 
       wP.push([
-        {v:idx+1, t:"n", s:C(idx+1, {bg:rowBg, fg:rowFg, align:"center", border:"all"}).s},
-        C(u.contenedor||"—", {bg:rowBg, fg:rowFg, align:"center", border:"all"}),
-        C(u.codigo||"—",     {bg:rowBg, fg:v?BLK:GRIS3, align:"center", border:"all", bold:!!v}),
-        C(u.tipo||"—",       {bg:rowBg, fg:rowFg, align:"left",   border:"all"}),
-        C(u.propietario_1||"—", {bg:rowBg, fg:rowFg, align:"left", border:"all"}),
-        C(fP(coef),          {bg:rowBg, fg:rowFg, align:"center", border:"all"}),
-        C(v ? fP(qPct) : "—", {bg:rowBg, fg:rowFg, align:"center", border:"all"}),
-        C(v ? "100%" : "—",  {bg:rowBg, fg:rowFg, align:"center", border:"all", fg:GRIS3}),
-        respCell,
-        C(fH(v?.created_at), {bg:rowBg, fg:GRIS3, align:"center", border:"all"}),
-        ...resRight,
+        C(idx+1,               {bg:rbg, fg:rfg, align:"center", border:true}),
+        C(u.contenedor||"—",   {bg:rbg, fg:rfg, align:"center", border:true}),
+        C(u.codigo||"—",       {bg:rbg, fg:v?BLK:GR3, align:"center", border:true, bold:!!v}),
+        C(u.tipo||"—",         {bg:rbg, fg:rfg, align:"left",   border:true}),
+        C(u.propietario_1||"—",{bg:rbg, fg:rfg, align:"left",   border:true}),
+        C(fP(coef),            {bg:rbg, fg:rfg, align:"center", border:true}),
+        qPct!==null ? C(fP(qPct),{bg:rbg, align:"center", border:true}) : C("—",{bg:rbg,fg:GR3,align:"center",border:true}),
+        v ? C("100%",{bg:rbg,fg:GR3,align:"center",border:true}) : C("—",{bg:rbg,fg:GR3,align:"center",border:true}),
+        respC,
+        C(fH(v?.created_at),   {bg:rbg, fg:GR3, align:"center", border:true}),
+        ...resR,
       ]);
     });
 
-    // Fila total izquierda
+    // Total izquierda
     wP.push([
-      E(PRP4), E(PRP4), E(PRP4), E(PRP4),
-      C("TOTAL VOTARON", {bold:true, bg:PRP4, fg:WHITE, align:"right"}),
-      C(fP(totVotCoef),  {bold:true, bg:PRP4, fg:WHITE, align:"center"}),
-      C(fP(pctQuorumVoto), {bold:true, bg:PRP4, fg:WHITE, align:"center"}),
-      {v:votaron.length, t:"n", s:C(votaron.length, {bold:true, bg:PRP4, fg:WHITE, align:"center"}).s},
-      E(PRP4), E(PRP4),
-      E(), E(), E(), E(), E(),
+      E(PRP_D),E(PRP_D),E(PRP_D),E(PRP_D),
+      C("TOTAL VOTARON",{bold:true,bg:PRP_D,fg:WHT,align:"right"}),
+      C(fP(totVCoef),   {bold:true,bg:PRP_D,fg:WHT,align:"center"}),
+      C(fP(pctVoto),    {bold:true,bg:PRP_D,fg:WHT,align:"center"}),
+      C(votaron.length, {bold:true,bg:PRP_D,fg:WHT,align:"center"}),
+      E(PRP_D),E(PRP_D),E(),E(),E(),E(),E(),
     ]);
 
     const wsP = XLSX.utils.aoa_to_sheet(wP);
-    wsP["!cols"] = [{wch:5},{wch:12},{wch:9},{wch:13},{wch:28},{wch:12},{wch:10},{wch:9},{wch:18},{wch:12},{wch:3},{wch:18},{wch:12},{wch:9},{wch:11}];
-    wsP["!merges"] = [
-      {s:{r:0,c:0},e:{r:1,c:3}},            // BALCAM
-      {s:{r:5,c:0},e:{r:5,c:0}},
-      {s:{r:5,c:1},e:{r:5,c:14}},           // PREGUNTA N - título
-      {s:{r:6,c:2},e:{r:6,c:9}},            // descripción
-      {s:{r:8,c:0},e:{r:8,c:1}},            // stat votaron
-      {s:{r:8,c:3},e:{r:8,c:4}},
-      {s:{r:8,c:6},e:{r:8,c:7}},
-      {s:{r:8,c:9},e:{r:8,c:10}},
-    ];
+    wsP["!cols"] = [{wch:5},{wch:12},{wch:9},{wch:13},{wch:30},{wch:12},{wch:10},{wch:9},{wch:20},{wch:14},{wch:3},{wch:20},{wch:12},{wch:9},{wch:11}];
+
+    const baseRows = infoBlock(ev,org,quorumFinal,quorumMin).length;
+    const headerOffset = baseRows + (preg.descripcion?3:2) + 3;
     wsP["!rows"] = [
-      {hpt:34},{hpt:18},{hpt:20},{hpt:20},{hpt:8},
-      {hpt:24},{hpt:16},{hpt:8},{hpt:28},{hpt:8},{hpt:22},
+      {hpt:24},{hpt:20},{hpt:20},{hpt:20},{hpt:20},{hpt:20},{hpt:20},{hpt:6},
+      {hpt:24},{hpt:16},{hpt:6},{hpt:28},{hpt:6},{hpt:22},
       ...Array(todas.length+1).fill({hpt:21})
     ];
+    wsP["!merges"] = [
+      {s:{r:0,c:0},e:{r:6,c:2}},  // logo area
+      {s:{r:0,c:4},e:{r:0,c:6}},{s:{r:1,c:4},e:{r:1,c:6}},{s:{r:2,c:4},e:{r:2,c:6}},
+      {s:{r:3,c:4},e:{r:3,c:6}},{s:{r:4,c:4},e:{r:4,c:6}},{s:{r:5,c:4},e:{r:5,c:6}},{s:{r:6,c:4},e:{r:6,c:6}},
+      {s:{r:0,c:5},e:{r:0,c:NC_P-1}},{s:{r:1,c:5},e:{r:1,c:NC_P-1}},
+    ];
+    addLogo(wsP);
     XLSX.utils.book_append_sheet(wb, wsP, `Pregunta ${pi+1}`.substring(0,31));
   });
 
@@ -2733,37 +2689,11 @@ async function exportarInformePanel(evId, orgId) {
 }
 
 init();
+document.addEventListener("DOMContentLoaded", () => {
+  const m = document.getElementById("modal-inactiva");
+  if (m) m.addEventListener("click", function(e) { if (e.target === this) cancelarInactiva(); });
+});
 </script>
-<!-- Modal de confirmación para Inactiva -->
-<div id="modal-inactiva" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(15,10,30,.85);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:20px;">
-  <div style="background:#fff;border-radius:20px;max-width:440px;width:100%;padding:32px;box-shadow:0 24px 64px rgba(0,0,0,.3);">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
-      <div style="width:48px;height:48px;border-radius:14px;background:#fef3c7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-        <svg width="24" height="24" fill="none" stroke="#d97706" stroke-width="2.5" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      </div>
-      <div>
-        <div style="font-size:16px;font-weight:800;color:#1e1b4b;">¿Inactivar esta pregunta?</div>
-        <div style="font-size:12px;color:#64748b;margin-top:2px;">Acción con consecuencias en el portal</div>
-      </div>
-    </div>
-    <div style="background:#fef9eb;border:1.5px solid #fcd34d;border-radius:12px;padding:14px 16px;margin-bottom:20px;">
-      <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px;">⚠ ¿Qué ocurre al inactivar?</div>
-      <ul style="font-size:12px;color:#78350f;line-height:1.8;padding-left:16px;margin:0;">
-        <li>La pregunta <strong>desaparece del portal</strong> para los participantes</li>
-        <li>El historial de votos en el portal <strong>se oculta</strong> (los datos siguen en BD)</li>
-        <li>Si la reactivás luego, los participantes que ya votaron <strong>verán su voto anterior</strong></li>
-        <li>Los datos en <strong>Administración no se borran</strong> — solo se ocultan</li>
-      </ul>
-    </div>
-    <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:12px 16px;margin-bottom:24px;font-size:12px;color:#166534;">
-      💡 <strong>Recomendación:</strong> Si fue un error de contenido, preferí <strong>Cerrada</strong> — así queda el historial visible y podés revisarlo.
-    </div>
-    <div style="display:flex;gap:10px;">
-      <button onclick="cancelarInactiva()" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid #e8e3ff;background:#f8f7ff;color:#7c3aed;font-size:14px;font-weight:700;cursor:pointer;">Cancelar</button>
-      <button onclick="confirmarInactiva()" style="flex:1;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Sí, inactivar</button>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>
