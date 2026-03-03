@@ -1301,6 +1301,9 @@ function desactivarRealtime() {
 }
 
 // ── Toggle sidebar ──────────────────────────────────────
+// Limpiar estado anterior que podría tener el sidebar oculto
+localStorage.removeItem("adm_sidebar_collapsed");
+
 function toggleSidebar() {
   const layout = document.querySelector(".layout");
   layout.classList.toggle("sidebar-collapsed");
