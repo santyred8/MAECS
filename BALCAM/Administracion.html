@@ -56,30 +56,31 @@ nav{
 .layout{display:grid;grid-template-columns:280px 1fr;gap:20px;padding:20px 24px;max-width:1500px;margin:0 auto;transition:grid-template-columns .3s ease;}
 .layout.sidebar-collapsed{grid-template-columns:0px 1fr;gap:0;}
 .layout.sidebar-collapsed .sidebar{opacity:0;pointer-events:none;overflow:hidden;width:0;min-width:0;}
-.sidebar{transition:opacity .25s ease;overflow-y:auto;min-width:0;}
+.sidebar{transition:opacity .25s ease;min-width:0;overflow:visible;}
 
 /* ── Botón toggle sidebar ── */
+.sidebar{position:relative;}
 #sidebar-toggle{
-  position:fixed;top:50%;left:272px;transform:translateY(-50%);
-  z-index:200;width:20px;height:64px;
-  background:var(--p);color:#fff;border:none;border-radius:0 10px 10px 0;
-  cursor:pointer;display:flex;align-items:center;justify-content:center;
-  font-size:11px;transition:left .3s ease, background .2s, box-shadow .2s;
-  box-shadow:3px 0 12px rgba(124,58,237,.35);
-  padding:0;
+  position:absolute; top:50%; right:-20px; transform:translateY(-50%);
+  z-index:200; width:20px; height:56px;
+  background:var(--p); color:#fff; border:none; border-radius:0 10px 10px 0;
+  cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-size:10px; transition:background .2s, box-shadow .2s;
+  box-shadow:3px 0 10px rgba(124,58,237,.3);
+  padding:0; gap:3px;
 }
 #sidebar-toggle:hover{background:#6d28d9;}
-.layout.sidebar-collapsed #sidebar-toggle{left:0px;}
-#sidebar-toggle .tog-icon{transition:transform .3s ease;display:block;line-height:1;}
-.layout.sidebar-collapsed #sidebar-toggle .tog-icon{transform:scaleX(-1);}
-/* Cuando colapsado: mostrar indicador vertical con texto */
+#sidebar-toggle .tog-icon{transition:transform .3s ease; display:block; line-height:1;}
 #sidebar-toggle .tog-label{
-  display:none;
-  writing-mode:vertical-rl;text-orientation:mixed;
-  font-size:9px;font-weight:700;letter-spacing:.08em;
-  color:rgba(255,255,255,.7);margin-top:6px;
+  display:none; writing-mode:vertical-rl; text-orientation:mixed;
+  font-size:8px; font-weight:700; letter-spacing:.08em; color:rgba(255,255,255,.7);
 }
-.layout.sidebar-collapsed #sidebar-toggle{width:22px;height:80px;}
+/* Colapsado: fixed en borde izquierdo de la pantalla */
+.layout.sidebar-collapsed #sidebar-toggle{
+  position:fixed; top:50%; left:0; right:auto; transform:translateY(-50%);
+  height:72px; width:22px; border-radius:0 12px 12px 0;
+}
+.layout.sidebar-collapsed #sidebar-toggle .tog-icon{transform:scaleX(-1);}
 .layout.sidebar-collapsed #sidebar-toggle .tog-label{display:block;}
 
 
@@ -1187,7 +1188,7 @@ function actualizarEstadoUI(estado) {
     const dot=fs.querySelector(".flow-dot");
     if (!dot) return;
     const def=dotDefaults[e];
-    if (i<idx) {
+    if (i<idx || (i===idx && e==="Cerrado")) {
       // completado → chulito verde
       dot.innerHTML='<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
       dot.style.background="#10b981"; dot.style.color="#fff";
