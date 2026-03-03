@@ -256,8 +256,12 @@ function getDeviceId() {
 
 async function init() {
   if (!EV_ID || !ORG_ID) return;
-  // Si ya tiene sesion guardada para este evento ir directo sin pedir clave
-  if (localStorage.getItem("part_ev_id") === EV_ID && localStorage.getItem("part_unidad_id")) {
+  // Auto-redirect: si ya hay sesión guardada para este evento ir directo al portal
+  // Solo si NO venimos del portal (evitar loop si portal falla)
+  const savedEvId  = localStorage.getItem("part_ev_id");
+  const savedUniId = localStorage.getItem("part_unidad_id");
+  const vieneDePortal = document.referrer.includes("Portal_Participante");
+  if (savedEvId === EV_ID && savedUniId && !vieneDePortal) {
     location.replace(`Portal_Participante.html?ev=${EV_ID}&org=${ORG_ID}`);
     return;
   }
