@@ -2382,45 +2382,50 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
   function addInfoBlock(ws, r0, nCols) {
     const qOk = quorumFinal >= quorumMin;
 
-    // ── BALCAM: merge cols 1-5, filas r0 a r0+6 (ratio ~2.5:1 → 5 cols anchas) ──
-    ws.mergeCells(r0, 1, r0+6, 5);
-    const bCell = ws.getCell(r0, 1);
-    bCell.value = "";
-    bCell.fill  = {type:"pattern", pattern:"solid", fgColor:{argb:A(PRP_D)}};
+    // Cada fila del infoBlock se maneja independientemente (sin merge vertical)
+    // Cols 1-5: área BALCAM (fondo morado oscuro, merge horizontal por fila)
+    // Col 6: label info (morado medio)
+    // Cols 7-min(11,nCols): valor (morado claro)
+    // Cols 12+: vacío
 
-    // Logo con buen ratio horizontal
+    const valEnd = Math.min(11, nCols);
+    const info = [
+      ["Organización",  org?.nombre||"—",  {}],
+      ["NIT",           org?.nit||"—",     {}],
+      ["Evento",        ev?.nombre||"—",   {bold:true}],
+      ["Fecha",         ev?.fecha ? new Date(ev.fecha).toLocaleString("es-CO") : "—", {}],
+      ["Lugar",         ev?.lugar||"VIRTUAL", {}],
+      ["Quórum Mínimo", fP(quorumMin),     {bg:AMB, fg:AMB_D, bold:true}],
+      ["Quórum Final",  fP(quorumFinal),   {bg:qOk?VRD:RJO, fg:qOk?VRD_D:RJO_D, bold:true}],
+    ];
+
+    info.forEach(([lbl, val, vExtra], i) => {
+      const r = r0 + i;
+      // Merge cols 1-5 para BALCAM en esta fila
+      ws.mergeCells(r, 1, r, 5);
+      setC(ws, r, 1, i===0 ? "" : "", {bg:PRP_D});  // celda principal del merge
+      // Label col 6
+      setC(ws, r, 6, lbl, {bold:true, bg:PRP_D, fg:WHT, sz:10, align:"left"});
+      // Merge valor cols 7 a valEnd
+      if(valEnd >= 8) ws.mergeCells(r, 7, r, valEnd);
+      setC(ws, r, 7, val, Object.assign({bg:PRP_L, fg:PRP_D, sz:10, wrap:true}, vExtra));
+      // Resto
+      for(let c=valEnd+1; c<=nCols; c++) {
+        ws.getCell(r, c).fill = {type:"pattern", pattern:"solid", fgColor:{argb:WHTA}};
+      }
+    });
+
+    // Logo sobre el área de las 7 filas, cols 1-5
     ws.addImage(logoId, {
-      tl:{ col:0,   row:r0-1 },
-      br:{ col:5,   row:r0+6 },
+      tl:{ col:0, row:r0-1 },
+      br:{ col:5, row:r0+6 },
       editAs:"oneCell"
     });
 
-    // ── Info: col 6 label, cols 7-11 valor ──
-    const info = [
-      ["Organización", org?.nombre||"—",  {}],
-      ["NIT",          org?.nit||"—",     {}],
-      ["Evento",       ev?.nombre||"—",   {bold:true}],
-      ["Fecha",        ev?.fecha ? new Date(ev.fecha).toLocaleString("es-CO") : "—", {}],
-      ["Lugar",        ev?.lugar||"VIRTUAL", {}],
-      ["Quórum Mínimo", fP(quorumMin),    {bg:AMB, fg:AMB_D, bold:true}],
-      ["Quórum Final",  fP(quorumFinal),  {bg:qOk?VRD:RJO, fg:qOk?VRD_D:RJO_D, bold:true}],
-    ];
-    info.forEach(([lbl, val, vExtra], i) => {
-      const r = r0 + i;
-      // Fondo morado en cols 1-5 (ya mergeadas)
-      for(let c=2;c<=5;c++) ws.getCell(r,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:A(PRP_D)}};
-      // Label col 6
-      setC(ws, r, 6, lbl, {bold:true, bg:PRP_D, fg:WHT, sz:10, align:"left"});
-      // Valor cols 7-11
-      const valEnd = Math.min(11, nCols);
-      if(valEnd > 7) ws.mergeCells(r, 7, r, valEnd);
-      setC(ws, r, 7, val, Object.assign({bg:PRP_L, fg:PRP_D, sz:10, wrap:true}, vExtra));
-      // Resto vacío
-      for(let c=12;c<=nCols;c++) ws.getCell(r,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}};
-    });
-
     // Separador fila r0+7
-    for(let c=1;c<=nCols;c++) ws.getCell(r0+7,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:GR2A}};
+    for(let c=1; c<=nCols; c++) {
+      ws.getCell(r0+7, c).fill = {type:"pattern", pattern:"solid", fgColor:{argb:GR2A}};
+    }
     ws.getRow(r0+7).height = 8;
 
     return r0 + 8;
@@ -2428,13 +2433,8 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
 
   // ── Alturas del infoBlock ─────────────────────────
   function setInfoRowHeights(ws, r0){
-    ws.getRow(r0  ).height = 30;
-    ws.getRow(r0+1).height = 28;
-    ws.getRow(r0+2).height = 28;
-    ws.getRow(r0+3).height = 28;
-    ws.getRow(r0+4).height = 28;
-    ws.getRow(r0+5).height = 28;
-    ws.getRow(r0+6).height = 28;
+    // 7 filas × ~28px para que el logo tenga buena altura total
+    for(let i=0; i<7; i++) ws.getRow(r0+i).height = 28;
   }
 
   // ════════════════════════════════════════════════
@@ -2469,8 +2469,7 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
   setC(wsQ,rQ,9,noRegC,             {bold:true,bg:RJO,fg:RJO_D,align:"center",sz:24});
   wsQ.mergeCells(rQ,10,rQ,11);
   setC(wsQ,rQ,10,"Quórum Final",{bold:true,bg:qOk?VRD:AMB,fg:qOk?VRD_D:AMB_D,align:"center",sz:11});
-  const qColEnd = NC_Q;
-  wsQ.mergeCells(rQ,12,rQ,qColEnd);
+  if(NC_Q > 12) wsQ.mergeCells(rQ,12,rQ,NC_Q);
   setC(wsQ,rQ,12,fP(quorumFinal),{bold:true,bg:qOk?VRD:AMB,fg:qOk?VRD_D:AMB_D,align:"center",sz:24});
   wsQ.getRow(rQ).height=34; rQ++;
 
