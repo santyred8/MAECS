@@ -2382,60 +2382,59 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
   function addInfoBlock(ws, r0, nCols) {
     const qOk = quorumFinal >= quorumMin;
 
-    // Merge BALCAM: cols 1-3, filas r0 a r0+6
-    ws.mergeCells(r0,1,r0+6,3);
-    const bCell = ws.getCell(r0,1);
-    bCell.value = "BALCAM\nGRUPO EMPRESARIAL";
-    S(bCell,{bold:true,bg:PRP_D,fg:WHT,align:"center",sz:28,wrap:true});
+    // ── BALCAM: merge cols 1-5, filas r0 a r0+6 (ratio ~2.5:1 → 5 cols anchas) ──
+    ws.mergeCells(r0, 1, r0+6, 5);
+    const bCell = ws.getCell(r0, 1);
+    bCell.value = "";
+    bCell.fill  = {type:"pattern", pattern:"solid", fgColor:{argb:A(PRP_D)}};
 
-    // Imagen logo sobre ese área — más grande
-    ws.addImage(logoId,{
-      tl:{col:0, row:r0-1},
-      br:{col:3, row:r0+6},
+    // Logo con buen ratio horizontal
+    ws.addImage(logoId, {
+      tl:{ col:0,   row:r0-1 },
+      br:{ col:5,   row:r0+6 },
       editAs:"oneCell"
     });
 
-    bCell.fill = {type:"pattern",pattern:"solid",fgColor:{argb:A(PRP_D)}};
-
-    // Filas info: col 4 = label morado, cols 5-6 = valor lila
+    // ── Info: col 6 label, cols 7-11 valor ──
     const info = [
-      ["Organización", org?.nombre||"—",  null],
-      ["NIT",          org?.nit||"—",     null],
-      ["Evento",       ev?.nombre||"—",   null],
-      ["Fecha",        ev?.fecha?new Date(ev.fecha).toLocaleString("es-CO"):"—", null],
-      ["Lugar",        ev?.lugar||"VIRTUAL", null],
-      ["Quórum Mínimo",fP(quorumMin),     {bg:AMB,fg:AMB_D}],
-      ["Quórum Final", fP(quorumFinal),   {bg:qOk?VRD:RJO,fg:qOk?VRD_D:RJO_D}],
+      ["Organización", org?.nombre||"—",  {}],
+      ["NIT",          org?.nit||"—",     {}],
+      ["Evento",       ev?.nombre||"—",   {bold:true}],
+      ["Fecha",        ev?.fecha ? new Date(ev.fecha).toLocaleString("es-CO") : "—", {}],
+      ["Lugar",        ev?.lugar||"VIRTUAL", {}],
+      ["Quórum Mínimo", fP(quorumMin),    {bg:AMB, fg:AMB_D, bold:true}],
+      ["Quórum Final",  fP(quorumFinal),  {bg:qOk?VRD:RJO, fg:qOk?VRD_D:RJO_D, bold:true}],
     ];
-    info.forEach(([lbl,val,vOpts],i)=>{
-      const r = r0+i;
-      // Relleno morado en cols 1-3 (ya mergeadas, solo fondo)
-      [1,2,3].forEach(c=>{ if(c>1){ ws.getCell(r,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:A(PRP_D)}}; }});
-      setC(ws,r,4,lbl,{bold:true,bg:PRP,fg:WHT,sz:9});
-      ws.mergeCells(r,5,r,7);
-      setC(ws,r,5,val,vOpts||{bg:PRP_L,fg:PRP_D,sz:9,wrap:true});
-      // Resto de cols vacías con fondo blanco
-      for(let c=7;c<=nCols;c++) ws.getCell(r,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}};
+    info.forEach(([lbl, val, vExtra], i) => {
+      const r = r0 + i;
+      // Fondo morado en cols 1-5 (ya mergeadas)
+      for(let c=2;c<=5;c++) ws.getCell(r,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:A(PRP_D)}};
+      // Label col 6
+      setC(ws, r, 6, lbl, {bold:true, bg:PRP_D, fg:WHT, sz:10, align:"left"});
+      // Valor cols 7-11
+      const valEnd = Math.min(11, nCols);
+      if(valEnd > 7) ws.mergeCells(r, 7, r, valEnd);
+      setC(ws, r, 7, val, Object.assign({bg:PRP_L, fg:PRP_D, sz:10, wrap:true}, vExtra));
+      // Resto vacío
+      for(let c=12;c<=nCols;c++) ws.getCell(r,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}};
     });
 
-    // Fila separadora r0+7
-    for(let c=1;c<=nCols;c++){
-      ws.getCell(r0+7,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:GR2A}};
-    }
-    ws.getRow(r0+7).height = 5;
+    // Separador fila r0+7
+    for(let c=1;c<=nCols;c++) ws.getCell(r0+7,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:GR2A}};
+    ws.getRow(r0+7).height = 8;
 
-    return r0+8; // primera fila libre
+    return r0 + 8;
   }
 
   // ── Alturas del infoBlock ─────────────────────────
   function setInfoRowHeights(ws, r0){
-    ws.getRow(r0  ).height = 28;
-    ws.getRow(r0+1).height = 22;
-    ws.getRow(r0+2).height = 22;
-    ws.getRow(r0+3).height = 22;
-    ws.getRow(r0+4).height = 22;
-    ws.getRow(r0+5).height = 22;
-    ws.getRow(r0+6).height = 22;
+    ws.getRow(r0  ).height = 30;
+    ws.getRow(r0+1).height = 28;
+    ws.getRow(r0+2).height = 28;
+    ws.getRow(r0+3).height = 28;
+    ws.getRow(r0+4).height = 28;
+    ws.getRow(r0+5).height = 28;
+    ws.getRow(r0+6).height = 28;
   }
 
   // ════════════════════════════════════════════════
@@ -2443,15 +2442,17 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
   // ════════════════════════════════════════════════
   const camposAd  = ["campo_adicional_1","campo_adicional_2","campo_adicional_3","campo_adicional_4"];
   const camposAct = camposAd.filter(c=>unis.some(u=>u[c]));
-  const NC_Q = 9+camposAct.length;
+  const NC_Q = 11+camposAct.length;
 
   const wsQ = wb.addWorksheet("Quórum");
   wsQ.views = [{state:"normal"}];
 
   // Anchos columnas
-  wsQ.getColumn(1).width=5;  wsQ.getColumn(2).width=14; wsQ.getColumn(3).width=10;
-  wsQ.getColumn(4).width=15; wsQ.getColumn(5).width=36; wsQ.getColumn(6).width=14;
-  wsQ.getColumn(7).width=11; wsQ.getColumn(8).width=19; wsQ.getColumn(9).width=16;
+  // Cols 1-5: BALCAM logo | Col6: label | Cols 7-11: data/valores
+  wsQ.getColumn(1).width=7;   wsQ.getColumn(2).width=11; wsQ.getColumn(3).width=9;
+  wsQ.getColumn(4).width=11;  wsQ.getColumn(5).width=11; wsQ.getColumn(6).width=17;
+  wsQ.getColumn(7).width=30;  wsQ.getColumn(8).width=13; wsQ.getColumn(9).width=11;
+  wsQ.getColumn(10).width=18; wsQ.getColumn(11).width=16;
   camposAct.forEach((_,i)=>{ wsQ.getColumn(10+i).width=16; });
 
   setInfoRowHeights(wsQ,1);
@@ -2460,17 +2461,18 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
   // Estadísticas (rQ)
   const regC=unisReg.length, noRegC=unis.length-regC;
   const qOk=quorumFinal>=quorumMin;
-  wsQ.mergeCells(rQ,1,rQ,2);
-  setC(wsQ,rQ,1,"✓ Registrados",    {bold:true,bg:VRD,fg:VRD_D,align:"center",sz:9});
-  setC(wsQ,rQ,3,regC,               {bold:true,bg:VRD,fg:VRD_D,align:"center",sz:18});
-  wsQ.mergeCells(rQ,4,rQ,5);
-  setC(wsQ,rQ,4,"✗ No Registrados", {bold:true,bg:RJO,fg:RJO_D,align:"center",sz:9});
-  setC(wsQ,rQ,6,noRegC,             {bold:true,bg:RJO,fg:RJO_D,align:"center",sz:18});
-  wsQ.mergeCells(rQ,7,rQ,8);
-  setC(wsQ,rQ,7,"Quórum Final",{bold:true,bg:qOk?VRD:AMB,fg:qOk?VRD_D:AMB_D,align:"center",sz:9});
-  setC(wsQ,rQ,9,fP(quorumFinal),{bold:true,bg:qOk?VRD:AMB,fg:qOk?VRD_D:AMB_D,align:"center",sz:18});
-  for(let c=10;c<=NC_Q;c++) wsQ.getCell(rQ,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}};
-  wsQ.getRow(rQ).height=30; rQ++;
+  wsQ.mergeCells(rQ,1,rQ,4);
+  setC(wsQ,rQ,1,"✓ Registrados",    {bold:true,bg:VRD,fg:VRD_D,align:"center",sz:11});
+  setC(wsQ,rQ,5,regC,               {bold:true,bg:VRD,fg:VRD_D,align:"center",sz:24});
+  wsQ.mergeCells(rQ,6,rQ,8);
+  setC(wsQ,rQ,6,"✗ No Registrados", {bold:true,bg:RJO,fg:RJO_D,align:"center",sz:11});
+  setC(wsQ,rQ,9,noRegC,             {bold:true,bg:RJO,fg:RJO_D,align:"center",sz:24});
+  wsQ.mergeCells(rQ,10,rQ,11);
+  setC(wsQ,rQ,10,"Quórum Final",{bold:true,bg:qOk?VRD:AMB,fg:qOk?VRD_D:AMB_D,align:"center",sz:11});
+  const qColEnd = NC_Q;
+  wsQ.mergeCells(rQ,12,rQ,qColEnd);
+  setC(wsQ,rQ,12,fP(quorumFinal),{bold:true,bg:qOk?VRD:AMB,fg:qOk?VRD_D:AMB_D,align:"center",sz:24});
+  wsQ.getRow(rQ).height=34; rQ++;
 
   // Sep
   for(let c=1;c<=NC_Q;c++) wsQ.getCell(rQ,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:GR2A}};
@@ -2503,13 +2505,12 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
   });
 
   // Total
-  wsQ.mergeCells(rQ,1,rQ,4);
+  wsQ.mergeCells(rQ,1,rQ,6);
   setC(wsQ,rQ,1,`${regC} de ${unis.length} registrados`,{bold:true,bg:PRP_D,fg:"C4B5FD",align:"center"});
-  setC(wsQ,rQ,5,"",{bg:PRP_D}); // fill gap
-  setC(wsQ,rQ,6,fP(quorumFinal),{bold:true,bg:PRP_D,fg:WHT,align:"center"});
-  setC(wsQ,rQ,7,regC,           {bold:true,bg:PRP_D,fg:WHT,align:"center"});
-  for(let c=8;c<=NC_Q;c++) setC(wsQ,rQ,c,"",{bg:PRP_D});
-  wsQ.getRow(rQ).height=22;
+  setC(wsQ,rQ,7,fP(quorumFinal),{bold:true,bg:PRP_D,fg:WHT,align:"center"});
+  setC(wsQ,rQ,8,regC,           {bold:true,bg:PRP_D,fg:WHT,align:"center"});
+  for(let c=9;c<=NC_Q+camposAct.length;c++) setC(wsQ,rQ,c,"",{bg:PRP_D});
+  wsQ.getRow(rQ).height=24;
 
   // ════════════════════════════════════════════════
   // HOJAS PREGUNTAS
@@ -2539,56 +2540,64 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
 
     const wsP=wb.addWorksheet(`Pregunta ${pi+1}`.substring(0,31));
     wsP.views=[{state:"normal"}];
-    wsP.getColumn(1).width=5;  wsP.getColumn(2).width=13; wsP.getColumn(3).width=10;
-    wsP.getColumn(4).width=14; wsP.getColumn(5).width=32; wsP.getColumn(6).width=13;
-    wsP.getColumn(7).width=11; wsP.getColumn(8).width=10; wsP.getColumn(9).width=22;
-    wsP.getColumn(10).width=15; wsP.getColumn(11).width=3;
-    wsP.getColumn(12).width=22; wsP.getColumn(13).width=13;
-    wsP.getColumn(14).width=10; wsP.getColumn(15).width=12;
+    // Cols 1-5: BALCAM | Col6: label | Col7-16: datos preguntas
+    wsP.getColumn(1).width=7;   wsP.getColumn(2).width=11; wsP.getColumn(3).width=9;
+    wsP.getColumn(4).width=11;  wsP.getColumn(5).width=11; wsP.getColumn(6).width=17;
+    wsP.getColumn(7).width=30;  wsP.getColumn(8).width=13; wsP.getColumn(9).width=11;
+    wsP.getColumn(10).width=10; wsP.getColumn(11).width=20; wsP.getColumn(12).width=14;
+    wsP.getColumn(13).width=3;
+    wsP.getColumn(14).width=22; wsP.getColumn(15).width=13;
+    wsP.getColumn(16).width=10; wsP.getColumn(17).width=12;
 
     setInfoRowHeights(wsP,1);
     let rP=addInfoBlock(wsP,1,15);
 
     // Fila badge: estado + PREGUNTA N + título
     setC(wsP,rP,1,isClosed?"🔒 Cerrada":"▶ Activa",
-      {bold:true,bg:isClosed?RJO:VRD,fg:isClosed?RJO_D:VRD_D,align:"center",sz:8});
-    setC(wsP,rP,2,`PREGUNTA ${pi+1}`,{bold:true,bg:PRP_D,fg:WHT,align:"center",sz:10});
-    wsP.mergeCells(rP,3,rP,10);
-    setC(wsP,rP,3,preg.titulo||"Sin título",{bold:true,fg:PRP_D,sz:12,wrap:true});
-    for(let c=11;c<=15;c++) wsP.getCell(rP,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}};
-    wsP.getRow(rP).height=28; rP++;
-
-    // Sep
-    for(let c=1;c<=15;c++) wsP.getCell(rP,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:GR2A}};
-    wsP.getRow(rP).height=6; rP++;
-
-    // Stats pregunta
-    wsP.mergeCells(rP,1,rP,2);
-    setC(wsP,rP,1,"Votaron",      {bold:true,bg:VRD,fg:VRD_D,align:"center",sz:9});
-    setC(wsP,rP,3,votaron.length, {bold:true,bg:VRD,fg:VRD_D,align:"center",sz:18});
-    wsP.mergeCells(rP,4,rP,5);
-    setC(wsP,rP,4,"Sin Votar",    {bold:true,bg:RJO,fg:RJO_D,align:"center",sz:9});
-    setC(wsP,rP,6,sinVotar.length,{bold:true,bg:RJO,fg:RJO_D,align:"center",sz:18});
-    wsP.mergeCells(rP,7,rP,8);
-    setC(wsP,rP,7,"Coef. Votado", {bold:true,bg:AZL,fg:AZL_D,align:"center",sz:9});
-    setC(wsP,rP,9,fP(totVCoef),   {bold:true,bg:AZL,fg:AZL_D,align:"center",sz:14});
-    wsP.mergeCells(rP,10,rP,11);
-    setC(wsP,rP,10,"% Quórum",    {bold:true,bg:PRP_L,fg:PRP_D,align:"center",sz:9});
-    wsP.mergeCells(rP,12,rP,15);
-    setC(wsP,rP,12,fP(pctVoto),   {bold:true,bg:PRP_L,fg:PRP_D,align:"center",sz:14});
+      {bold:true,bg:isClosed?RJO:VRD,fg:isClosed?RJO_D:VRD_D,align:"center",sz:9});
+    setC(wsP,rP,2,`PREGUNTA ${pi+1}`,{bold:true,bg:PRP_D,fg:WHT,align:"center",sz:11});
+    wsP.mergeCells(rP,3,rP,13);
+    setC(wsP,rP,3,preg.titulo||"Sin título",{bold:true,fg:PRP_D,sz:13,wrap:true});
+    for(let c=14;c<=NC_P;c++) wsP.getCell(rP,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}};
     wsP.getRow(rP).height=30; rP++;
 
     // Sep
     for(let c=1;c<=15;c++) wsP.getCell(rP,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:GR2A}};
     wsP.getRow(rP).height=6; rP++;
 
+    // Stats pregunta
+    wsP.mergeCells(rP,1,rP,4);
+    setC(wsP,rP,1,"Votaron",      {bold:true,bg:VRD,fg:VRD_D,align:"center",sz:10});
+    setC(wsP,rP,5,votaron.length, {bold:true,bg:VRD,fg:VRD_D,align:"center",sz:22});
+    wsP.mergeCells(rP,6,rP,9);
+    setC(wsP,rP,6,"Sin Votar",    {bold:true,bg:RJO,fg:RJO_D,align:"center",sz:10});
+    setC(wsP,rP,10,sinVotar.length,{bold:true,bg:RJO,fg:RJO_D,align:"center",sz:22});
+    wsP.mergeCells(rP,11,rP,12);
+    setC(wsP,rP,11,"Coef. Votado",{bold:true,bg:AZL,fg:AZL_D,align:"center",sz:10});
+    setC(wsP,rP,13,fP(totVCoef),  {bold:true,bg:AZL,fg:AZL_D,align:"center",sz:18});
+    wsP.mergeCells(rP,14,rP,15);
+    setC(wsP,rP,14,"% Quórum",    {bold:true,bg:PRP_L,fg:PRP_D,align:"center",sz:10});
+    wsP.mergeCells(rP,16,rP,NC_P);
+    setC(wsP,rP,16,fP(pctVoto),   {bold:true,bg:PRP_L,fg:PRP_D,align:"center",sz:18});
+    wsP.getRow(rP).height=32; rP++;
+
+    // Sep
+    for(let c=1;c<=15;c++) wsP.getCell(rP,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:GR2A}};
+    wsP.getRow(rP).height=6; rP++;
+
     // Headers
-    const hL=["#","Contenedor","Código","Tipo","Propietario 1","Coeficiente","Quórum","Nominal","Respuesta","Hora Resp.","","Respuesta","Coeficiente","Nominal","Quórum"];
-    hL.forEach((lbl,ci)=>{
-      if(ci===10){ wsP.getCell(rP,ci+1).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}}; return; }
-      const isRight=ci>=11;
-      setC(wsP,rP,ci+1,lbl,{bold:true,bg:isRight?PRP_D:ci>=5?PRP:PRP_D,fg:WHT,align:"center",border:true});
+    // Data table: #(1) Contenedor(2) Código(3) Tipo(4) Propietario(5) Coef(6) Quórum(7) Nominal(8) Respuesta(9) Hora(10) gap(11) | Resp(12) Coef(13) Nom(14) Quórum(15) + extra(16)
+    const hD=["#","Contenedor","Código","Tipo","Propietario 1","Coeficiente","Quórum","Nominal","Respuesta","Hora Resp."];
+    hD.forEach((lbl,ci)=>{
+      setC(wsP,rP,ci+1,lbl,{bold:true,bg:ci>=5?PRP:PRP_D,fg:WHT,align:"center",border:true,sz:10});
     });
+    wsP.getCell(rP,11).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}}; // gap
+    wsP.getCell(rP,12).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}}; // gap before right table
+    const hR=["Respuesta","Coeficiente","Nominal","Quórum"];
+    hR.forEach((lbl,ci)=>{
+      setC(wsP,rP,ci+13,lbl,{bold:true,bg:PRP_D,fg:WHT,align:"center",border:true,sz:10});
+    });
+    if(NC_P>16) wsP.getCell(rP,17).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}};
     wsP.getRow(rP).height=24; rP++;
 
     // Datos
@@ -2606,52 +2615,56 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
       if(v){ const ri=opcs.indexOf(v.respuesta); const col=opColors[(ri>=0?ri:0)%opColors.length]; rBg=col.bg; rFg=col.fg; }
       else { rBg=RJO; rFg=GR3; }
 
-      setC(wsP,rP,1,idx+1,             {bg:rbg,fg:rfg,align:"center",border:true});
-      setC(wsP,rP,2,u.contenedor||"—", {bg:rbg,fg:rfg,align:"center",border:true});
-      setC(wsP,rP,3,u.codigo||"—",     {bg:rbg,fg:v?BLK:GR3,align:"center",border:true,bold:!!v});
-      setC(wsP,rP,4,u.tipo||"—",       {bg:rbg,fg:rfg,align:"left",  border:true});
-      setC(wsP,rP,5,u.propietario_1||"—",{bg:rbg,fg:rfg,align:"left",border:true});
-      setC(wsP,rP,6,fP(coef),          {bg:rbg,fg:rfg,align:"center",border:true});
-      setC(wsP,rP,7,qPct!==null?fP(qPct):"—",{bg:rbg,fg:qPct?rbg===WHT||rbg===GR1?BLK:rfg:GR3,align:"center",border:true});
-      setC(wsP,rP,8,v?"100%":"—",      {bg:rbg,fg:GR3,align:"center",border:true});
+      setC(wsP,rP,1,idx+1,              {bg:rbg,fg:rfg,align:"center",border:true});
+      setC(wsP,rP,2,u.contenedor||"—",  {bg:rbg,fg:rfg,align:"center",border:true});
+      setC(wsP,rP,3,u.codigo||"—",      {bg:rbg,fg:v?BLK:GR3,align:"center",border:true,bold:!!v});
+      setC(wsP,rP,4,u.tipo||"—",        {bg:rbg,fg:rfg,align:"left",  border:true});
+      setC(wsP,rP,5,u.propietario_1||"—",{bg:rbg,fg:rfg,align:"left", border:true});
+      setC(wsP,rP,6,fP(coef),           {bg:rbg,fg:rfg,align:"center",border:true});
+      setC(wsP,rP,7,qPct!==null?fP(qPct):"—",{bg:rbg,align:"center",border:true});
+      setC(wsP,rP,8,v?"100%":"—",       {bg:rbg,fg:GR3,align:"center",border:true});
       setC(wsP,rP,9,v?v.respuesta:"Sin voto",{bold:!!v,italic:!v,bg:rBg,fg:rFg,align:"center",border:true});
-      setC(wsP,rP,10,fH(v?.created_at),{bg:rbg,fg:GR3,align:"center",border:true});
-      wsP.getCell(rP,11).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}};
+      setC(wsP,rP,10,fH(v?.created_at), {bg:rbg,fg:GR3,align:"center",border:true});
+      wsP.getCell(rP,11).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}}; // gap col
 
-      // Tabla derecha
+      // Tabla derecha resultados (cols 12 gap | 13-16 data)
+      wsP.getCell(rP,12).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}}; // gap
       if(idx<resKs.length){
         const rk=resKs[idx]; const rd=por[rk];
         const ri=opcs.indexOf(rk); const col=opColors[(ri>=0?ri:0)%opColors.length];
         const rQ=quorumFinal>0&&rd.coef>0?rd.coef/quorumFinal:0;
-        setC(wsP,rP,12,rk,       {bold:true,bg:col.bg,fg:col.fg,align:"center",border:true});
-        setC(wsP,rP,13,fP(rd.coef),{bg:col.bg,fg:col.fg,align:"center",border:true});
-        setC(wsP,rP,14,rd.nom,   {bg:col.bg,fg:col.fg,align:"center",border:true});
-        setC(wsP,rP,15,fP(rQ),   {bold:true,bg:col.bg,fg:col.fg,align:"center",border:true});
+        setC(wsP,rP,13,rk,          {bold:true,bg:col.bg,fg:col.fg,align:"center",border:true});
+        setC(wsP,rP,14,fP(rd.coef), {bg:col.bg,fg:col.fg,align:"center",border:true});
+        setC(wsP,rP,15,rd.nom,      {bg:col.bg,fg:col.fg,align:"center",border:true});
+        setC(wsP,rP,16,fP(rQ),      {bold:true,bg:col.bg,fg:col.fg,align:"center",border:true});
+        if(NC_P>16) wsP.getCell(rP,17).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}};
       } else if(idx===resKs.length){
-        setC(wsP,rP,12,"Sin Votar",{italic:true,bg:GR2,fg:GR3,align:"center",border:true});
-        setC(wsP,rP,13,fP(svCoef), {bg:GR2,fg:GR3,align:"center",border:true});
-        setC(wsP,rP,14,sinVotar.length,{bg:GR2,fg:GR3,align:"center",border:true});
-        setC(wsP,rP,15,"—",        {bg:GR2,fg:GR3,align:"center",border:true});
+        setC(wsP,rP,13,"Sin Votar", {italic:true,bg:GR2,fg:GR3,align:"center",border:true});
+        setC(wsP,rP,14,fP(svCoef),  {bg:GR2,fg:GR3,align:"center",border:true});
+        setC(wsP,rP,15,sinVotar.length,{bg:GR2,fg:GR3,align:"center",border:true});
+        setC(wsP,rP,16,"—",         {bg:GR2,fg:GR3,align:"center",border:true});
+        if(NC_P>16) wsP.getCell(rP,17).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}};
       } else if(idx===resKs.length+1){
-        setC(wsP,rP,12,"TOTAL VOTOS",{bold:true,bg:PRP_D,fg:WHT,align:"center",border:true});
-        setC(wsP,rP,13,fP(totVCoef), {bold:true,bg:PRP_D,fg:WHT,align:"center",border:true});
-        setC(wsP,rP,14,votaron.length,{bold:true,bg:PRP_D,fg:WHT,align:"center",border:true});
-        setC(wsP,rP,15,fP(pctVoto),  {bold:true,bg:PRP_D,fg:WHT,align:"center",border:true});
+        setC(wsP,rP,13,"TOTAL VOTOS",{bold:true,bg:PRP_D,fg:WHT,align:"center",border:true});
+        setC(wsP,rP,14,fP(totVCoef), {bold:true,bg:PRP_D,fg:WHT,align:"center",border:true});
+        setC(wsP,rP,15,votaron.length,{bold:true,bg:PRP_D,fg:WHT,align:"center",border:true});
+        setC(wsP,rP,16,fP(pctVoto),  {bold:true,bg:PRP_D,fg:WHT,align:"center",border:true});
+        if(NC_P>16) wsP.getCell(rP,17).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}};
       } else {
-        for(let c=12;c<=15;c++) wsP.getCell(rP,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}};
+        for(let c=13;c<=NC_P;c++) wsP.getCell(rP,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}};
       }
-      wsP.getRow(rP).height=21; rP++;
+      wsP.getRow(rP).height=22; rP++;
     });
 
     // Total izquierda
-    wsP.mergeCells(rP,1,rP,4);
-    setC(wsP,rP,1,"",{bg:PRP_D});
-    setC(wsP,rP,5,"TOTAL VOTARON",{bold:true,bg:PRP_D,fg:WHT,align:"right"});
-    setC(wsP,rP,6,fP(totVCoef),   {bold:true,bg:PRP_D,fg:WHT,align:"center"});
-    setC(wsP,rP,7,fP(pctVoto),    {bold:true,bg:PRP_D,fg:WHT,align:"center"});
-    setC(wsP,rP,8,votaron.length, {bold:true,bg:PRP_D,fg:WHT,align:"center"});
-    for(let c=9;c<=15;c++) setC(wsP,rP,c,"",{bg:PRP_D});
-    wsP.getRow(rP).height=22;
+    wsP.mergeCells(rP,1,rP,5);
+    setC(wsP,rP,1,"TOTAL VOTARON",{bold:true,bg:PRP_D,fg:WHT,align:"right"});
+    setC(wsP,rP,6,fP(totVCoef),  {bold:true,bg:PRP_D,fg:WHT,align:"center"});
+    setC(wsP,rP,7,fP(pctVoto),   {bold:true,bg:PRP_D,fg:WHT,align:"center"});
+    setC(wsP,rP,8,votaron.length,{bold:true,bg:PRP_D,fg:WHT,align:"center"});
+    for(let c=9;c<=11;c++) setC(wsP,rP,c,"",{bg:PRP_D});
+    for(let c=12;c<=NC_P;c++) wsP.getCell(rP,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}};
+    wsP.getRow(rP).height=24;
   });
 
   // ── Descargar ─────────────────────────────────────
