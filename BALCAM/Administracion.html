@@ -264,9 +264,15 @@ nav{
 <nav>
   <div style="display:flex;align-items:center;gap:12px;">
     <button onclick="toggleSidebar()" id="sidebar-toggle" title="Mostrar/ocultar panel lateral"
-      style="background:#7c3aed;border:none;color:#fff;width:36px;height:34px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;transition:background .2s;box-shadow:0 2px 8px rgba(124,58,237,.5);">
-      <span class="sb-tog-open">☰</span>
-      <span class="sb-tog-closed">☰</span>
+      style="background:#7c3aed;border:none;color:#fff;width:36px;height:34px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s;box-shadow:0 2px 8px rgba(124,58,237,.5);">
+      <!-- Flecha izquierda: sidebar visible → ocultar -->
+      <span class="sb-tog-open">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </span>
+      <!-- Flecha derecha: sidebar oculto → mostrar -->
+      <span class="sb-tog-closed">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </span>
     </button>
     <a class="brand" href="Panel.html">
       <span class="brand-logo">BALCAM</span>
