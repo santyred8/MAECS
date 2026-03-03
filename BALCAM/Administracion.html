@@ -54,23 +54,33 @@ nav{
 
 /* ══ LAYOUT ══ */
 .layout{display:grid;grid-template-columns:280px 1fr;gap:20px;padding:20px 24px;max-width:1500px;margin:0 auto;transition:grid-template-columns .3s ease;}
-.layout.sidebar-collapsed{grid-template-columns:0px 1fr;}
-.layout.sidebar-collapsed .sidebar{opacity:0;pointer-events:none;overflow:hidden;}
-.sidebar{transition:opacity .25s ease;overflow-y:auto;}
+.layout.sidebar-collapsed{grid-template-columns:0px 1fr;gap:0;}
+.layout.sidebar-collapsed .sidebar{opacity:0;pointer-events:none;overflow:hidden;width:0;min-width:0;}
+.sidebar{transition:opacity .25s ease;overflow-y:auto;min-width:0;}
 
 /* ── Botón toggle sidebar ── */
 #sidebar-toggle{
-  position:fixed;top:50%;left:280px;transform:translateY(-50%);
-  z-index:200;width:24px;height:56px;
-  background:var(--p);color:#fff;border:none;border-radius:0 12px 12px 0;
+  position:fixed;top:50%;left:272px;transform:translateY(-50%);
+  z-index:200;width:20px;height:64px;
+  background:var(--p);color:#fff;border:none;border-radius:0 10px 10px 0;
   cursor:pointer;display:flex;align-items:center;justify-content:center;
-  font-size:14px;transition:left .3s ease, background .2s, box-shadow .2s;
-  box-shadow:4px 0 16px rgba(124,58,237,.4);
+  font-size:11px;transition:left .3s ease, background .2s, box-shadow .2s;
+  box-shadow:3px 0 12px rgba(124,58,237,.35);
+  padding:0;
 }
-#sidebar-toggle:hover{background:#6d28d9;box-shadow:4px 0 20px rgba(124,58,237,.6);}
+#sidebar-toggle:hover{background:#6d28d9;}
 .layout.sidebar-collapsed #sidebar-toggle{left:0px;}
-#sidebar-toggle .tog-icon{transition:transform .3s ease;}
+#sidebar-toggle .tog-icon{transition:transform .3s ease;display:block;line-height:1;}
 .layout.sidebar-collapsed #sidebar-toggle .tog-icon{transform:scaleX(-1);}
+/* Cuando colapsado: mostrar indicador vertical con texto */
+#sidebar-toggle .tog-label{
+  display:none;
+  writing-mode:vertical-rl;text-orientation:mixed;
+  font-size:9px;font-weight:700;letter-spacing:.08em;
+  color:rgba(255,255,255,.7);margin-top:6px;
+}
+.layout.sidebar-collapsed #sidebar-toggle{width:22px;height:80px;}
+.layout.sidebar-collapsed #sidebar-toggle .tog-label{display:block;}
 
 
 /* ══ SIDEBAR ══ */
@@ -321,6 +331,7 @@ nav{
   <!-- ── Botón colapsar/expandir sidebar ── -->
   <button id="sidebar-toggle" onclick="toggleSidebar()" title="Mostrar/ocultar panel lateral">
     <span class="tog-icon">◀</span>
+    <span class="tog-label">PANEL</span>
   </button>
 
   <aside class="sidebar">
