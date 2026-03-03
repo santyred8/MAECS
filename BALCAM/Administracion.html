@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -2369,31 +2369,33 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
     const qAlcanzado = qFin >= qMin;
     return [
       // fila 0: espacio para logo (cols A-C) + info
-      [ E(), E(), E(),
+      [ C("BALCAM", {bold:true, bg:PRP_D, fg:WHT, align:"center", sz:22}),
+        E(PRP_D), E(PRP_D),
         C("Organización", {bold:true, bg:PRP,   fg:WHT, sz:9}),
         C(org?.nombre||"—", {bg:PRP_L, fg:PRP_D, sz:9, wrap:true}),
         E(PRP_L), E(PRP_L) ],
-      [ E(), E(), E(),
+      [ C("GRUPO EMPRESARIAL", {bg:PRP_D, fg:"C4B5FD", align:"center", sz:8, italic:true}),
+        E(PRP_D), E(PRP_D),
         C("NIT",          {bold:true, bg:PRP,   fg:WHT, sz:9}),
         C(org?.nit||"—",  {bg:PRP_L, fg:PRP_D, sz:9}),
         E(PRP_L), E(PRP_L) ],
-      [ E(), E(), E(),
+      [ E(PRP_D), E(PRP_D), E(PRP_D),
         C("Evento",       {bold:true, bg:PRP,   fg:WHT, sz:9}),
         C(ev?.nombre||"—",{bg:PRP_L, fg:PRP_D, sz:9, bold:true, wrap:true}),
         E(PRP_L), E(PRP_L) ],
-      [ E(), E(), E(),
+      [ E(PRP_D), E(PRP_D), E(PRP_D),
         C("Fecha",        {bold:true, bg:PRP,   fg:WHT, sz:9}),
         C(ev?.fecha ? new Date(ev.fecha).toLocaleString("es-CO") : "—", {bg:PRP_L, fg:PRP_D, sz:9}),
         E(PRP_L), E(PRP_L) ],
-      [ E(), E(), E(),
+      [ E(PRP_D), E(PRP_D), E(PRP_D),
         C("Lugar",        {bold:true, bg:PRP,   fg:WHT, sz:9}),
         C(ev?.lugar||"VIRTUAL", {bg:PRP_L, fg:PRP_D, sz:9}),
         E(PRP_L), E(PRP_L) ],
-      [ E(), E(), E(),
+      [ E(PRP_D), E(PRP_D), E(PRP_D),
         C("Quórum Mínimo",{bold:true, bg:PRP,   fg:WHT, sz:9}),
         C(fP(qMin),       {bg:AMB,   fg:AMB_D, sz:9, bold:true}),
         E(AMB), E(AMB) ],
-      [ E(), E(), E(),
+      [ E(PRP_D), E(PRP_D), E(PRP_D),
         C("Quórum Final", {bold:true, bg:PRP,   fg:WHT, sz:9}),
         C(fP(qFin),       {bg:qAlcanzado?VRD:RJO, fg:qAlcanzado?VRD_D:RJO_D, sz:9, bold:true}),
         E(qAlcanzado?VRD:RJO), E(qAlcanzado?VRD:RJO) ],
@@ -2401,16 +2403,8 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
     ];
   }
 
-  // ── Helper: añadir imagen logo BALCAM a la hoja ──
-  function addLogo(ws) {
-    if (!ws["!images"]) ws["!images"] = [];
-    ws["!images"].push({
-      "!type": "image",
-      "!pos": {r:0, c:0, x:5, y:5, w:160, h:60},
-      "!data": BALCAM_LOGO_B64,
-      "!datatype": "base64"
-    });
-  }
+  // Logo como celdas estilizadas (Google Sheets no soporta imágenes embebidas)
+  function addLogo(ws) { /* no-op: logo va en infoBlock */ }
 
   const wb = XLSX.utils.book_new();
 
@@ -2660,7 +2654,7 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
 
   const nEv  = (ev?.nombre||"Asamblea").replace(/[^\w\s]/g,"").replace(/\s+/g,"_").substring(0,30);
   const fech = new Date().toLocaleDateString("es-CO").replace(/\//g,"-");
-  XLSX.writeFile(wb, `Informe_${nEv}_${fech}.xlsx`, {bookType:"xlsx", type:"binary", cellStyles:true});
+  XLSX.writeFile(wb, `Informe_${nEv}_${fech}.xlsx`, {bookType:"xlsx", type:"binary"});
 }
 
 async function exportarInformeAsamblea() {
