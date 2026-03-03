@@ -2386,16 +2386,15 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
     ws.mergeCells(r0,1,r0+6,3);
     const bCell = ws.getCell(r0,1);
     bCell.value = "BALCAM\nGRUPO EMPRESARIAL";
-    S(bCell,{bold:true,bg:PRP_D,fg:WHT,align:"center",sz:18,wrap:true});
+    S(bCell,{bold:true,bg:PRP_D,fg:WHT,align:"center",sz:28,wrap:true});
 
-    // Imagen logo sobre ese área
+    // Imagen logo sobre ese área — más grande
     ws.addImage(logoId,{
-      tl:{col:0, row:r0-1},           // 0-indexed
-      br:{col:3, row:r0+6},           // columnas 0-2, filas r0-1 a r0+5
+      tl:{col:0, row:r0-1},
+      br:{col:3, row:r0+6},
       editAs:"oneCell"
     });
 
-    // Separar color del fondo para que el logo se vea bien
     bCell.fill = {type:"pattern",pattern:"solid",fgColor:{argb:A(PRP_D)}};
 
     // Filas info: col 4 = label morado, cols 5-6 = valor lila
@@ -2413,7 +2412,7 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
       // Relleno morado en cols 1-3 (ya mergeadas, solo fondo)
       [1,2,3].forEach(c=>{ if(c>1){ ws.getCell(r,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:A(PRP_D)}}; }});
       setC(ws,r,4,lbl,{bold:true,bg:PRP,fg:WHT,sz:9});
-      ws.mergeCells(r,5,r,6);
+      ws.mergeCells(r,5,r,7);
       setC(ws,r,5,val,vOpts||{bg:PRP_L,fg:PRP_D,sz:9,wrap:true});
       // Resto de cols vacías con fondo blanco
       for(let c=7;c<=nCols;c++) ws.getCell(r,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}};
@@ -2430,13 +2429,13 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
 
   // ── Alturas del infoBlock ─────────────────────────
   function setInfoRowHeights(ws, r0){
-    ws.getRow(r0  ).height = 20;
-    ws.getRow(r0+1).height = 18;
-    ws.getRow(r0+2).height = 18;
-    ws.getRow(r0+3).height = 18;
-    ws.getRow(r0+4).height = 18;
-    ws.getRow(r0+5).height = 18;
-    ws.getRow(r0+6).height = 18;
+    ws.getRow(r0  ).height = 28;
+    ws.getRow(r0+1).height = 22;
+    ws.getRow(r0+2).height = 22;
+    ws.getRow(r0+3).height = 22;
+    ws.getRow(r0+4).height = 22;
+    ws.getRow(r0+5).height = 22;
+    ws.getRow(r0+6).height = 22;
   }
 
   // ════════════════════════════════════════════════
@@ -2450,9 +2449,9 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
   wsQ.views = [{state:"normal"}];
 
   // Anchos columnas
-  wsQ.getColumn(1).width=5;  wsQ.getColumn(2).width=13; wsQ.getColumn(3).width=9;
-  wsQ.getColumn(4).width=14; wsQ.getColumn(5).width=32; wsQ.getColumn(6).width=13;
-  wsQ.getColumn(7).width=10; wsQ.getColumn(8).width=17; wsQ.getColumn(9).width=15;
+  wsQ.getColumn(1).width=5;  wsQ.getColumn(2).width=14; wsQ.getColumn(3).width=10;
+  wsQ.getColumn(4).width=15; wsQ.getColumn(5).width=36; wsQ.getColumn(6).width=14;
+  wsQ.getColumn(7).width=11; wsQ.getColumn(8).width=19; wsQ.getColumn(9).width=16;
   camposAct.forEach((_,i)=>{ wsQ.getColumn(10+i).width=16; });
 
   setInfoRowHeights(wsQ,1);
@@ -2471,18 +2470,18 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
   setC(wsQ,rQ,7,"Quórum Final",{bold:true,bg:qOk?VRD:AMB,fg:qOk?VRD_D:AMB_D,align:"center",sz:9});
   setC(wsQ,rQ,9,fP(quorumFinal),{bold:true,bg:qOk?VRD:AMB,fg:qOk?VRD_D:AMB_D,align:"center",sz:18});
   for(let c=10;c<=NC_Q;c++) wsQ.getCell(rQ,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}};
-  wsQ.getRow(rQ).height=28; rQ++;
+  wsQ.getRow(rQ).height=30; rQ++;
 
   // Sep
   for(let c=1;c<=NC_Q;c++) wsQ.getCell(rQ,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:GR2A}};
-  wsQ.getRow(rQ).height=5; rQ++;
+  wsQ.getRow(rQ).height=6; rQ++;
 
   // Headers
   const hLabels = ["#","Contenedor","Código","Tipo","Propietario 1","Coeficiente","Nominal","Estado","Hora Registro",...camposAct.map((_,i)=>`Campo ${i+1}`)];
   hLabels.forEach((lbl,ci)=>{
     setC(wsQ,rQ,ci+1,lbl,{bold:true,bg:ci<4?PRP_D:PRP,fg:WHT,align:"center",border:true});
   });
-  wsQ.getRow(rQ).height=22; rQ++;
+  wsQ.getRow(rQ).height=24; rQ++;
 
   // Datos
   const unisOrd=[...unis].sort((a,b)=>(partMap[b.id]?.activo?1:0)-(partMap[a.id]?.activo?1:0));
@@ -2500,7 +2499,7 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
     setC(wsQ,rQ,8,reg?"Registrado":"No Registrado",{bold:true,bg:reg?VRD:RJO,fg:reg?VRD_D:RJO_D,align:"center",border:true});
     setC(wsQ,rQ,9,fH(partMap[u.id]?.hora_registro),{bg,align:"center",fg:GR3,border:true});
     camposAct.forEach((ca,ci)=>{setC(wsQ,rQ,10+ci,u[ca]||"—",{bg,align:"center",border:true});});
-    wsQ.getRow(rQ).height=21; rQ++;
+    wsQ.getRow(rQ).height=22; rQ++;
   });
 
   // Total
@@ -2540,12 +2539,12 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
 
     const wsP=wb.addWorksheet(`Pregunta ${pi+1}`.substring(0,31));
     wsP.views=[{state:"normal"}];
-    wsP.getColumn(1).width=5;  wsP.getColumn(2).width=12; wsP.getColumn(3).width=9;
-    wsP.getColumn(4).width=13; wsP.getColumn(5).width=28; wsP.getColumn(6).width=12;
-    wsP.getColumn(7).width=10; wsP.getColumn(8).width=9;  wsP.getColumn(9).width=20;
-    wsP.getColumn(10).width=13; wsP.getColumn(11).width=2;
-    wsP.getColumn(12).width=20; wsP.getColumn(13).width=12;
-    wsP.getColumn(14).width=9;  wsP.getColumn(15).width=11;
+    wsP.getColumn(1).width=5;  wsP.getColumn(2).width=13; wsP.getColumn(3).width=10;
+    wsP.getColumn(4).width=14; wsP.getColumn(5).width=32; wsP.getColumn(6).width=13;
+    wsP.getColumn(7).width=11; wsP.getColumn(8).width=10; wsP.getColumn(9).width=22;
+    wsP.getColumn(10).width=15; wsP.getColumn(11).width=3;
+    wsP.getColumn(12).width=22; wsP.getColumn(13).width=13;
+    wsP.getColumn(14).width=10; wsP.getColumn(15).width=12;
 
     setInfoRowHeights(wsP,1);
     let rP=addInfoBlock(wsP,1,15);
@@ -2557,11 +2556,11 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
     wsP.mergeCells(rP,3,rP,10);
     setC(wsP,rP,3,preg.titulo||"Sin título",{bold:true,fg:PRP_D,sz:12,wrap:true});
     for(let c=11;c<=15;c++) wsP.getCell(rP,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:WHTA}};
-    wsP.getRow(rP).height=26; rP++;
+    wsP.getRow(rP).height=28; rP++;
 
     // Sep
     for(let c=1;c<=15;c++) wsP.getCell(rP,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:GR2A}};
-    wsP.getRow(rP).height=5; rP++;
+    wsP.getRow(rP).height=6; rP++;
 
     // Stats pregunta
     wsP.mergeCells(rP,1,rP,2);
@@ -2577,11 +2576,11 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
     setC(wsP,rP,10,"% Quórum",    {bold:true,bg:PRP_L,fg:PRP_D,align:"center",sz:9});
     wsP.mergeCells(rP,12,rP,15);
     setC(wsP,rP,12,fP(pctVoto),   {bold:true,bg:PRP_L,fg:PRP_D,align:"center",sz:14});
-    wsP.getRow(rP).height=26; rP++;
+    wsP.getRow(rP).height=30; rP++;
 
     // Sep
     for(let c=1;c<=15;c++) wsP.getCell(rP,c).fill={type:"pattern",pattern:"solid",fgColor:{argb:GR2A}};
-    wsP.getRow(rP).height=5; rP++;
+    wsP.getRow(rP).height=6; rP++;
 
     // Headers
     const hL=["#","Contenedor","Código","Tipo","Propietario 1","Coeficiente","Quórum","Nominal","Respuesta","Hora Resp.","","Respuesta","Coeficiente","Nominal","Quórum"];
@@ -2590,7 +2589,7 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
       const isRight=ci>=11;
       setC(wsP,rP,ci+1,lbl,{bold:true,bg:isRight?PRP_D:ci>=5?PRP:PRP_D,fg:WHT,align:"center",border:true});
     });
-    wsP.getRow(rP).height=22; rP++;
+    wsP.getRow(rP).height=24; rP++;
 
     // Datos
     const todas=[...votaron,...sinVotar];
