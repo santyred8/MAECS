@@ -53,7 +53,7 @@ nav{
 .btn-out:hover{color:var(--red);}
 
 /* ══ LAYOUT ══ */
-.layout{display:grid;grid-template-columns:280px 1fr;gap:20px;padding:20px 24px;max-width:1500px;margin:0 auto;transition:grid-template-columns .3s ease;}
+.layout{display:grid;grid-template-columns:280px 1fr;gap:20px;padding:20px 24px;max-width:1500px;margin:0 auto;}
 .layout.sidebar-collapsed{grid-template-columns:0px 1fr;gap:0;}
 .layout.sidebar-collapsed .sidebar{opacity:0;pointer-events:none;overflow:hidden;width:0;min-width:0;}
 
@@ -1301,8 +1301,8 @@ function desactivarRealtime() {
 }
 
 // ── Toggle sidebar ──────────────────────────────────────
-// Limpiar estado anterior que podría tener el sidebar oculto
-localStorage.removeItem("adm_sidebar_collapsed");
+// SIEMPRE arrancar con sidebar visible
+document.querySelector(".layout")?.classList.remove("sidebar-collapsed");
 
 function toggleSidebar() {
   const layout = document.querySelector(".layout");
