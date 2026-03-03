@@ -2537,6 +2537,7 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
     const resKs    =Object.keys(por);
     const isClosed =preg.estado==="Cerrada";
 
+    const NC_P = 17;
     const wsP=wb.addWorksheet(`Pregunta ${pi+1}`.substring(0,31));
     wsP.views=[{state:"normal"}];
     // Cols 1-5: BALCAM | Col6: label | Col7-16: datos preguntas
