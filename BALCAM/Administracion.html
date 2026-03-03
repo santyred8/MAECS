@@ -1148,10 +1148,20 @@ function actualizarEstadoUI(estado) {
   ESTADOS.forEach((e,i)=>{
     const sb=document.getElementById("sb-"+e);
     if (!sb) return;
-    sb.classList.toggle("active", i===idx);
-    sb.classList.toggle("done", i<idx);
+    const isDone = i<idx || (i===idx && e==="Cerrado");
+    sb.classList.toggle("active", i===idx && e!=="Cerrado");
+    sb.classList.toggle("done", isDone);
     sb.style.cursor = "pointer";
     sb.style.opacity = "1";
+    // Cambiar el dot del status bar horizontal también
+    const dot = sb.querySelector(".sb-dot");
+    if (dot) {
+      if (isDone) {
+        dot.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+      } else {
+        dot.textContent = i+1;
+      }
+    }
   });
   [1,2,3].forEach(i=>{
     const l=document.getElementById("sbl-"+i);
