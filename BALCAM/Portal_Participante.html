@@ -345,6 +345,10 @@ body{
     <div id="nav-nombre" class="nav-nombre">—</div>
     <div id="nav-unidad" class="nav-unidad">Unidad —</div>
   </div>
+  <button onclick="cerrarSesion()" title="Cerrar sesión"
+    style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#f87171;padding:7px 13px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">
+    🚪 Salir
+  </button>
 </nav>
 
 <!-- LAYOUT WRAPPER -->
@@ -379,11 +383,11 @@ const sb = supabase.createClient(
 
 // ── SESIÓN ────────────────────────────────────────────
 const SS = {
-  unidadId: sessionStorage.getItem("part_unidad_id"),
-  codigo:   sessionStorage.getItem("part_codigo"),
-  nombre:   sessionStorage.getItem("part_nombre"),
-  evId:     sessionStorage.getItem("part_ev_id"),
-  orgId:    sessionStorage.getItem("part_org_id"),
+  unidadId: localStorage.getItem("part_unidad_id"),
+  codigo:   localStorage.getItem("part_codigo"),
+  nombre:   localStorage.getItem("part_nombre"),
+  evId:     localStorage.getItem("part_ev_id"),
+  orgId:    localStorage.getItem("part_org_id"),
 };
 const EV_ID  = SS.evId;
 const ORG_ID = SS.orgId;
@@ -396,8 +400,17 @@ let unidadInfo  = null;
 let statsGlobal = { totalPart:0, totalVotaron:0, coefVotado:0 };
 let pollingInt  = null;  // intervalo de polling
 
-// ── INIT ──────────────────────────────────────────────
-async function init() {
+// ── CERRAR SESIÓN ────────────────────────────────────────
+function cerrarSesion() {
+  if (!confirm("¿Seguro que quieres cerrar sesión?")) return;
+  // Limpiar sesión guardada
+  ["part_unidad_id","part_codigo","part_nombre","part_ev_id","part_org_id"]
+    .forEach(k => localStorage.removeItem(k));
+  // Marcar participante como inactivo
+  pingSession(true);
+  // Ir al login
+  location.replace(`Login_Participante.html?ev=${EV_ID||""}&org=${ORG_ID||""}`);
+}
   if (!SS.unidadId || !EV_ID) {
     location.href = `Login_Participante.html?ev=${EV_ID||""}&org=${ORG_ID||""}`;
     return;
