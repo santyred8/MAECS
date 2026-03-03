@@ -411,6 +411,8 @@ function cerrarSesion() {
   // Ir al login
   location.replace(`Login_Participante.html?ev=${EV_ID||""}&org=${ORG_ID||""}`);
 }
+// ── INIT ──────────────────────────────────────────────
+async function init() {
   if (!SS.unidadId || !EV_ID) {
     location.href = `Login_Participante.html?ev=${EV_ID||""}&org=${ORG_ID||""}`;
     return;
