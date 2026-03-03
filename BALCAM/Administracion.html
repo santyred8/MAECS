@@ -56,7 +56,6 @@ nav{
 .layout{display:grid;grid-template-columns:280px 1fr;gap:20px;padding:20px 24px;max-width:1500px;margin:0 auto;transition:grid-template-columns .3s ease;}
 .layout.sidebar-collapsed{grid-template-columns:0px 1fr;gap:0;}
 .layout.sidebar-collapsed .sidebar{opacity:0;pointer-events:none;overflow:hidden;width:0;min-width:0;}
-.sidebar{transition:opacity .25s ease;min-width:0;overflow:hidden;}
 
 /* ── Botón toggle sidebar — en navbar ── */
 .layout:not(.sidebar-collapsed) #sidebar-toggle .sb-tog-open{display:flex;}
@@ -1304,15 +1303,8 @@ function desactivarRealtime() {
 // ── Toggle sidebar ──────────────────────────────────────
 function toggleSidebar() {
   const layout = document.querySelector(".layout");
-  const collapsed = layout.classList.toggle("sidebar-collapsed");
-  localStorage.setItem("adm_sidebar_collapsed", collapsed ? "1" : "0");
+  layout.classList.toggle("sidebar-collapsed");
 }
-// Restaurar estado al cargar
-(function(){
-  if (localStorage.getItem("adm_sidebar_collapsed") === "1") {
-    document.querySelector(".layout")?.classList.add("sidebar-collapsed");
-  }
-})();
 
 function toggleAutoRefresh() {
   const on = document.getElementById("t-live").checked;
