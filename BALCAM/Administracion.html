@@ -627,7 +627,7 @@ nav{
         </div>
         <div style="position:relative;">
           <svg width="14" height="14" fill="none" stroke="#94a3b8" stroke-width="2" viewBox="0 0 24 24" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input id="p-buscar" oninput="filtrarParticipantes()" type="text" placeholder="Buscar unidad, propietario…" style="padding:9px 14px 9px 34px;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;color:#1e1b4b;background:#f8fafc;outline:none;width:260px;">
+          <input id="p-buscar" oninput="filtrarParticipantes()" type="text" placeholder="Buscar unidad, propietario, teléfono…" style="padding:9px 14px 9px 34px;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;color:#1e1b4b;background:#f8fafc;outline:none;width:260px;">
         </div>
       </div>
 
@@ -1598,7 +1598,7 @@ function filtrarParticipantes() {
   if (!q) { p.filtrados=[...p.todos]; aplicarPOrden(); p.pag=1; renderParticipantes(); return; }
   const tokens = q.split(/\s+/);
   p.filtrados = p.todos.filter(u => {
-    const hay = [u.tipo,u.contenedor,u.codigo,u.propietario_1,u.propietario_2,u.estado,u.delegado]
+    const hay = [u.tipo,u.contenedor,u.codigo,u.propietario_1,u.propietario_2,u.estado,u.delegado,u.telefono_1,u.telefono_2]
       .map(v=>(v||"").toLowerCase()).join(" ");
     return tokens.every(t=>hay.includes(t));
   });
