@@ -1668,11 +1668,11 @@ function abrirWspUnidad(unidadId) {
 }
 
 function _buildMsgWsp(u) {
-  const base   = window.location.href.split("?")[0].replace(/[^/]*$/, "");
-  const enlace = base + "Login_Participante.html?ev=" + EV_ID + "&org=" + ORG_ID;
-  const tipo   = evData?.tipo === "Asamblea" ? "Asamblea " : "";
-  const nombre = u.propietario_1 || "Propietario";
-  return `Hola ${nombre} 👋, bienvenido(a) a la _${tipo}${evData?.nombre||"el evento"}_, sus datos de conexión son los siguientes:\n\n• *Usuario:* \`${u.usuario||"—"}\`\n• *Contraseña:* \`${u.contrasena||"—"}\`\n• *Enlace:* ${enlace}\n\n_Guarda este mensaje para acceder durante el evento._ 🔐`;
+  const base    = window.location.href.split("?")[0].replace(/[^/]*$/, "");
+  const enlace  = base + "Login_Participante.html?ev=" + EV_ID + "&org=" + ORG_ID;
+  const nombre  = u.propietario_1 || "Propietario";
+  const evNombre = evData?.nombre || "el evento";
+  return `Hola ${nombre} 👋, bienvenido(a) a la _${evNombre}_, sus datos de conexión son los siguientes:\n\n• *Usuario:* \`${u.usuario||"—"}\`\n• *Contraseña:* \`${u.contrasena||"—"}\`\n• *Enlace:* ${enlace}\n\n_Guarda este mensaje para acceder durante el evento._ 🔐`;
 }
 
 function _enviarWspDirecto(tel, u) {
