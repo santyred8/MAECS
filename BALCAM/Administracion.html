@@ -1011,7 +1011,8 @@ const sb = supabase.createClient(
 const params = new URLSearchParams(location.search);
 const EV_ID  = params.get("ev");
 const ORG_ID = params.get("org");
-let evData = null;
+let evData  = null;
+let orgData = null;
 let refreshInt = null;
 const ESTADOS = ["Creado","En registro","En curso","Cerrado"];
 
@@ -1053,6 +1054,7 @@ function iniciarReloj() {
 async function cargarOrg() {
   const {data} = await sb.from("organizaciones").select("*").eq("id",ORG_ID).single();
   if (!data) return;
+  orgData = data;
   const l = (data.nombre||"?")[0].toUpperCase();
   const cs=["#7c3aed","#9333ea","#db2777","#2563eb","#059669","#d97706"];
   const c=cs[l.charCodeAt(0)%cs.length];
@@ -1668,11 +1670,13 @@ function abrirWspUnidad(unidadId) {
 }
 
 function _buildMsgWsp(u) {
-  const base    = window.location.href.split("?")[0].replace(/[^/]*$/, "");
-  const enlace  = base + "Login_Participante.html?ev=" + EV_ID + "&org=" + ORG_ID;
-  const nombre  = u.propietario_1 || "Propietario";
-  const evNombre = evData?.nombre || "el evento";
-  return `Hola ${nombre} 👋, bienvenido(a) a la _${evNombre}_, sus datos de conexión son los siguientes:\n\n• *Usuario:* \`${u.usuario||"—"}\`\n• *Contraseña:* \`${u.contrasena||"—"}\`\n• *Enlace:* ${enlace}\n\n_Guarda este mensaje para acceder durante el evento._ 🔐`;
+  const base     = window.location.href.split("?")[0].replace(/[^/]*$/, "");
+  const enlace   = base + "Login_Participante.html?ev=" + EV_ID + "&org=" + ORG_ID;
+  const nombre   = u.propietario_1 || "Propietario";
+  const evNombre = evData?.nombre  || "el evento";
+  const orgNombre= orgData?.nombre || "";
+  const destino  = orgNombre ? `${evNombre} - ${orgNombre}` : evNombre;
+  return `Hola ${nombre}, bienvenido(a) a la _${destino}_, sus datos de conexion son los siguientes:\n\n*Usuario:* \`${u.usuario||"—"}\`\n*Contrasena:* \`${u.contrasena||"—"}\`\n*Enlace:* ${enlace}\n\n_Guarda este mensaje para acceder durante el evento._`;
 }
 
 function _enviarWspDirecto(tel, u) {
