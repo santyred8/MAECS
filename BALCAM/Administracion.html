@@ -2560,6 +2560,28 @@ async function regLogin() {
     errEl.classList.add("show"); return;
   }
 
+  // ── Registrar automáticamente las unidades que delegaron su poder a esta ──
+  // Buscar delegaciones donde id_unidad_recibe = esta unidad
+  const { data: delegsRecibidas } = await sb.from("delegaciones")
+    .select("id_unidad_entrega")
+    .eq("id_evento", EV_ID)
+    .eq("id_unidad_recibe", unidad.id);
+
+  if (delegsRecibidas?.length) {
+    const upsertsDelegantes = delegsRecibidas.map(d => ({
+      id_evento:     EV_ID,
+      id_unidad:     d.id_unidad_entrega,
+      activo:        false,          // no tienen toggle propio
+      estado:        "Registrado",   // pero quedan como registrados
+      hora_registro: horaAhora,      // misma hora que quien los representa
+      delegado:      unidad.codigo,  // referencia a quien los representa
+    }));
+    // upsert silencioso — no bloquea el flujo si falla
+    await sb.from("participantes").upsert(upsertsDelegantes, {
+      onConflict: "id_evento,id_unidad", ignoreDuplicates: false
+    }).catch(() => {});
+  }
+
   btn.disabled = false;
   btn.innerHTML = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>Iniciar Sesión`;
 
