@@ -553,7 +553,7 @@ nav{
             <div class="cc-top">
               <div>
                 <div class="cc-icon" style="background:#ede9fe;margin-bottom:8px;"><svg width="16" height="16" fill="none" stroke="#7c3aed" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></div>
-                <div class="cc-text"><h5>Auto-refresh</h5><p>Datos en vivo cada 15 seg</p></div>
+                <div class="cc-text"><h5>Auto-refresh</h5><p>Datos en vivo cada 10 seg</p></div>
               </div>
               <label class="tog"><input id="t-live" type="checkbox" onchange="toggleAutoRefresh()"><span class="tog-sl"></span></label>
             </div>
@@ -1457,18 +1457,27 @@ function toggleSidebar() {
   layout.classList.toggle("sidebar-collapsed");
 }
 
+let _evRefreshInt = null;
+
 function toggleAutoRefresh() {
   const on = document.getElementById("t-live").checked;
   if (on) {
     activarRealtime();
-    toast("📡 Actualización en tiempo real activada","ok");
+    // Recargar datos del evento cada 10 segundos
+    clearInterval(_evRefreshInt);
+    _evRefreshInt = setInterval(() => cargarEvento(), 10000);
+    toast("📡 Auto-refresh activado (cada 10 seg)","ok");
   } else {
     desactivarRealtime();
-    toast("Tiempo real desactivado","ok");
+    clearInterval(_evRefreshInt);
+    _evRefreshInt = null;
+    toast("Auto-refresh desactivado","ok");
   }
 }
 
 // ── TABS ─────────────────────────────────────────────
+let _autoRefreshInt = null;
+
 function irTab(n,btn) {
   document.querySelectorAll(".tab-section").forEach(s=>s.classList.remove("on"));
   document.querySelectorAll(".tab").forEach(b=>b.classList.remove("on"));
@@ -1480,6 +1489,17 @@ function irTab(n,btn) {
   }
   if (n==="preguntas") {
     cargarPreguntasAdmin();
+    // Auto-refresh cada 10 segundos: recarga votos y resultados silenciosamente
+    clearInterval(_autoRefreshInt);
+    _autoRefreshInt = setInterval(() => {
+      if (admPregActual) {
+        Promise.all([cargarVotos(), cargarParticipAdmin()]).then(() => renderResultados());
+      }
+    }, 10000);
+  } else {
+    // Detener auto-refresh al salir de preguntas
+    clearInterval(_autoRefreshInt);
+    _autoRefreshInt = null;
   }
 }
 
@@ -1913,13 +1933,12 @@ function confirmarCambioEstado(select) {
   const nuevo = select.value;
   if (nuevo === "Inactiva") {
     _estadoPendiente = nuevo;
-    // Revertir visualmente hasta que confirme
     select.value = admPregActual?.estado || "Inactiva";
-    // Mostrar modal
-    const modal = document.getElementById("modal-inactiva");
-    modal.style.display = "flex";
+    document.getElementById("modal-inactiva").style.display = "flex";
+  } else {
+    // Activa / Cerrada → guardar inmediatamente en Supabase
+    admActualizarEstadoPreg();
   }
-  // Activa/Cerrada: no necesitan confirmación, el botón Actualizar la guarda
 }
 
 function cancelarInactiva() {
