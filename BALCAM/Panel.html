@@ -4166,7 +4166,7 @@ function renderDelegaciones() {
   document.getElementById('del-empty').style.display = 'none';
 
   slice.forEach((d, i) => {
-    const idsE  = Array.isArray(d.unidades_entrega) ? d.unidades_entrega : [d.id_unidad_entrega].filter(Boolean);
+    const idsE  = [d.id_unidad_entrega].filter(Boolean);  // solo esta fila, no el array completo
     const codE  = idsE.map(id => { const u=delUnidades.find(x=>String(x.id)===String(id)); return u?u.codigo:id; }).join(', ');
     const uR    = delUnidades.find(x=>String(x.id)===String(d.id_unidad_recibe));
     const codR  = uR ? uR.codigo : (d.id_unidad_recibe||'—');
@@ -4210,7 +4210,7 @@ function filtrarDelegaciones() {
   if (!q) { del.filtrados=[...del.todos]; del.pag=1; renderDelegaciones(); return; }
   del.filtrados = del.todos.filter(d => {
     const uR  = delUnidades.find(x=>String(x.id)===String(d.id_unidad_recibe));
-    const idsE= Array.isArray(d.unidades_entrega)?d.unidades_entrega:[d.id_unidad_entrega].filter(Boolean);
+    const idsE= [d.id_unidad_entrega].filter(Boolean);
     const codE= idsE.map(id=>{const u=delUnidades.find(x=>String(x.id)===String(id));return u?u.codigo:'';}).join(' ');
     return [(uR?.codigo||''),codE,(d.apoderado||'')].join(' ').toLowerCase().includes(q);
   });
@@ -4333,9 +4333,12 @@ document.addEventListener('click', e => {
 });
 
 async function guardarDelegacion() {
+  const btn = document.querySelector('#delModalBg button[onclick="guardarDelegacion()"]');
+  if (btn) { btn.disabled=true; btn.textContent='Guardando…'; }
+
   const recibeId = document.getElementById('del-m-recibe').value;
-  if (!recibeId)           { toast('Selecciona la unidad que recibe el poder','warn'); return; }
-  if (!delEntregaSelIds.length) { toast('Selecciona al menos una unidad que entrega','warn'); return; }
+  if (!recibeId) { toast('Selecciona la unidad que recibe el poder','warn'); if(btn){btn.disabled=false;btn.textContent='Guardar';} return; }
+  if (!delEntregaSelIds.length) { toast('Selecciona al menos una unidad que entrega','warn'); if(btn){btn.disabled=false;btn.textContent='Guardar';} return; }
   const apoderado = document.getElementById('del-m-apoderado').value.trim();
 
   let error;
@@ -4352,7 +4355,7 @@ async function guardarDelegacion() {
     }));
     ({ error } = await sb.from('delegaciones').insert(filas));
   }
-  if (error) { toast('Error: '+error.message,'err'); return; }
+  if (error) { toast('Error: '+error.message,'err'); if(btn){btn.disabled=false;btn.textContent='Guardar';} return; }
   toast(del.editId ? 'Delegación actualizada' : delEntregaSelIds.length+' delegación(es) guardada(s)','ok');
   cerrarDelModal();
   await cargarDelegaciones();
@@ -4378,7 +4381,7 @@ async function eliminarDelegacion(id) {
 function exportarDelCSV() {
   if (!del.filtrados.length) { toast('No hay datos','warn'); return; }
   const rows = del.filtrados.map((d,i) => {
-    const idsE=Array.isArray(d.unidades_entrega)?d.unidades_entrega:[d.id_unidad_entrega].filter(Boolean);
+    const idsE=Array.isArray([d.id_unidad_entrega])?[d.id_unidad_entrega]:[d.id_unidad_entrega].filter(Boolean);
     const codE=idsE.map(id=>{const u=delUnidades.find(x=>String(x.id)===String(id));return u?u.codigo:id;}).join(' | ');
     const uR=delUnidades.find(x=>String(x.id)===String(d.id_unidad_recibe));
     return [i+1,codE,uR?.codigo||'—',d.apoderado||''].join(',');
