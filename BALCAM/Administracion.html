@@ -1122,6 +1122,7 @@ nav{
     <div id="reg-s-nombre" style="font-size:20px;font-weight:900;color:#5b21b6;margin-bottom:4px;">—</div>
     <div id="reg-s-unidad" style="font-size:14px;color:#64748b;margin-bottom:14px;">Unidad —</div>
     <div id="reg-s-hora" style="font-size:13px;font-weight:700;color:#059669;background:#d1fae5;padding:7px 16px;border-radius:20px;display:inline-block;margin-bottom:16px;">—</div>
+    <div id="reg-debug" style="display:none;margin:10px 0;padding:10px 14px;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;font-size:11px;color:#92400e;text-align:left;word-break:break-all;"></div>
     <div style="font-size:13px;color:#64748b;line-height:1.6;margin-bottom:20px;">Registro exitoso. Espere las instrucciones del administrador para continuar.</div>
     <button onclick="irAlPortal()" style="width:100%;padding:12px;background:linear-gradient(135deg,#5b21b6,#7c3aed);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px;">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
@@ -2542,62 +2543,107 @@ async function regLogin() {
   const { data: delegEntregada } = await sb.from("delegaciones")
     .select("id_unidad_recibe")
     .eq("id_evento", EV_ID)
-    .eq("id_unidad_entrega", unidad.id)
+    .eq("id_unidad_entrega", String(unidad.id))
     .maybeSingle();
 
   if (delegEntregada) {
-    // Buscar el código de la unidad que recibe para mostrar en el mensaje
     const { data: uRecibe } = await sb.from("unidades")
       .select("codigo,propietario_1")
-      .eq("id", delegEntregada.id_unidad_recibe)
+      .eq("id", String(delegEntregada.id_unidad_recibe))
       .maybeSingle();
     btn.disabled = false;
     btn.innerHTML = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>Iniciar Sesión`;
     const repCod = uRecibe ? `unidad ${uRecibe.codigo}` : "otra unidad";
-    errEl.textContent = `Esta unidad entregó su poder a la ${repCod}. Solo ella puede registrarse en su nombre.`;
+    errEl.textContent = `Esta unidad cedió su poder a la ${repCod} — solo ella puede registrarse en su nombre.`;
     errEl.classList.add("show");
     return;
   }
 
   const horaAhora = new Date().toISOString();
 
-  // UPSERT atómico — si ya existe actualiza, si no existe inserta
-  // onConflict en (id_evento, id_unidad) evita duplicados con 800 personas simultáneas
-  const { error: upsertError } = await conRetry(() =>
-    sb.from("participantes").upsert({
-      id_evento:     EV_ID,
-      id_unidad:     unidad.id,
-      activo:        true,
-      estado:        "Registrado",
-      hora_registro: horaAhora,
-    }, { onConflict: "id_evento,id_unidad", ignoreDuplicates: false })
-  ).catch(e => ({ error: e }));
+  // ── Verificar si tiene el constraint upsert o hacer insert directo ──
+  // Primero chequear si ya existe para hacer update vs insert
+  const { data: partExist } = await sb.from("participantes")
+    .select("id")
+    .eq("id_evento", EV_ID)
+    .eq("id_unidad", unidad.id)
+    .maybeSingle();
+
+  let upsertError = null;
+  if (partExist?.id) {
+    const { error } = await sb.from("participantes").update({
+      activo: true, estado: "Registrado", hora_registro: horaAhora
+    }).eq("id", partExist.id);
+    upsertError = error;
+  } else {
+    const { error } = await sb.from("participantes").insert({
+      id_evento: EV_ID, id_unidad: unidad.id,
+      activo: true, estado: "Registrado", hora_registro: horaAhora
+    });
+    upsertError = error;
+  }
 
   if (upsertError) {
     btn.disabled = false;
     btn.innerHTML = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>Iniciar Sesión`;
-    errEl.textContent = "Error al registrar. Intenta de nuevo.";
+    errEl.textContent = "Error al registrar: " + upsertError.message;
     errEl.classList.add("show"); return;
   }
 
-  // ── Registrar automáticamente las unidades que delegaron su poder a esta ──
-  const { data: delegsRecibidas } = await sb.from("delegaciones")
+  // ── Registrar automáticamente las unidades que delegaron poder a esta ──
+  const { data: delegsRecibidas, error: errDeleg } = await sb.from("delegaciones")
     .select("id_unidad_entrega")
     .eq("id_evento", EV_ID)
     .eq("id_unidad_recibe", unidad.id);
 
+  // DEBUG: mostrar en pantalla qué encontramos
+  const debugEl = document.getElementById("reg-debug");
+  if (debugEl) {
+    if (errDeleg) {
+      debugEl.innerHTML = `<b>ERROR buscando delegaciones:</b> ${errDeleg.message}`;
+      debugEl.style.display = "block";
+    } else if (!delegsRecibidas?.length) {
+      debugEl.innerHTML = `<b>Sin delegaciones</b> para id_unidad_recibe=${unidad.id} ev=${EV_ID}`;
+      debugEl.style.display = "block";
+    } else {
+      debugEl.innerHTML = `<b>${delegsRecibidas.length} delegante(s) encontrados:</b> ${delegsRecibidas.map(d=>d.id_unidad_entrega).join(", ")}`;
+      debugEl.style.display = "block";
+    }
+  }
+
   if (delegsRecibidas?.length) {
-    const upsertsDelegantes = delegsRecibidas.map(d => ({
-      id_evento:     EV_ID,
-      id_unidad:     d.id_unidad_entrega,
-      activo:        false,
-      estado:        "Registrado",
-      hora_registro: horaAhora,
-    }));
-    const { error: errDel } = await sb.from("participantes").upsert(upsertsDelegantes, {
-      onConflict: "id_evento,id_unidad", ignoreDuplicates: false
-    });
-    if (errDel) console.warn("Error registrando delegantes:", errDel.message);
+    let registrados = 0;
+    let errores = [];
+    for (const d of delegsRecibidas) {
+      if (!d.id_unidad_entrega) continue;
+      const { data: existeDel } = await sb.from("participantes")
+        .select("id")
+        .eq("id_evento", EV_ID)
+        .eq("id_unidad", d.id_unidad_entrega)
+        .maybeSingle();
+
+      if (existeDel?.id) {
+        const { error: eUpd } = await sb.from("participantes").update({
+          activo: false, estado: "Registrado", hora_registro: horaAhora
+        }).eq("id", existeDel.id);
+        if (!eUpd) registrados++;
+        else errores.push(`upd(${d.id_unidad_entrega}): ${eUpd.message}`);
+      } else {
+        const { error: eIns } = await sb.from("participantes").insert({
+          id_evento:     EV_ID,
+          id_unidad:     d.id_unidad_entrega,
+          activo:        false,
+          estado:        "Registrado",
+          hora_registro: horaAhora,
+        });
+        if (!eIns) registrados++;
+        else errores.push(`ins(${d.id_unidad_entrega}): ${eIns.message}`);
+      }
+    }
+    if (debugEl) {
+      debugEl.innerHTML += `<br><b>Resultado:</b> ${registrados}/${delegsRecibidas.length} registrados`;
+      if (errores.length) debugEl.innerHTML += `<br><b style="color:red">ERRORES:</b> ${errores.join(" | ")}`;
+    }
   }
 
   btn.disabled = false;
