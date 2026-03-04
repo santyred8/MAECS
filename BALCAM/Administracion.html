@@ -1560,7 +1560,7 @@ function renderParticipantes() {
           <button onclick="verQR('${u.id}','${u.codigo||""}')" title="Ver QR" style="width:28px;height:28px;border-radius:7px;border:1px solid rgba(124,58,237,.2);background:none;color:#7c3aed;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
             <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/></svg>
           </button>
-          <button onclick="enviarWhatsapp('${(u.telefono_1||"").replace(/\D/g,"")}','${u.propietario_1||""}','${u.codigo||""}')" title="WhatsApp" style="width:28px;height:28px;border-radius:7px;border:1px solid rgba(37,211,102,.2);background:none;color:#25d366;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
+          <button onclick="abrirWspUnidad('${u.id}')" title="${(u.telefono_1||u.telefono_2)?'Enviar credenciales por WhatsApp':'Sin número — clic para ingresar'}" style="width:28px;height:28px;border-radius:7px;border:1px solid ${(u.telefono_1||u.telefono_2)?'rgba(37,211,102,.3)':'rgba(245,158,11,.3)'};background:${(u.telefono_1||u.telefono_2)?'none':'rgba(245,158,11,.06)'};color:${(u.telefono_1||u.telefono_2)?'#25d366':'#f59e0b'};cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
             <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
           </button>
           <button onclick="eliminarParticipante('${u.id}')" title="Eliminar registro" style="width:28px;height:28px;border-radius:7px;border:1px solid rgba(239,68,68,.2);background:none;color:#ef4444;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
@@ -1655,10 +1655,64 @@ function verQR(unidadId, codigo) {
   toast(`QR para unidad ${codigo} — próximamente`, "warn");
 }
 
-function enviarWhatsapp(tel, nombre, codigo) {
-  if (!tel) { toast("Sin número de teléfono registrado","warn"); return; }
-  const msg = encodeURIComponent(`Hola ${nombre}, le recordamos que debe registrarse en el evento. Su código de acceso es: ${codigo}`);
-  window.open(`https://wa.me/57${tel}?text=${msg}`, "_blank");
+// ── WHATSAPP CREDENCIALES ────────────────────────────────────────────
+let _wspUnidad = null;
+
+function abrirWspUnidad(unidadId) {
+  const u = p.todos.find(x => String(x.id) === String(unidadId));
+  if (!u) { toast("Unidad no encontrada","err"); return; }
+  _wspUnidad = u;
+  const telRaw = (u.telefono_1 || u.telefono_2 || "").replace(/\D/g,"");
+  if (telRaw.length >= 7) { _enviarWspDirecto(telRaw, u); return; }
+  _abrirModalWsp(u);
+}
+
+function _buildMsgWsp(u) {
+  const base   = window.location.href.split("?")[0].replace(/[^/]*$/, "");
+  const enlace = base + "Login_Participante.html?ev=" + EV_ID + "&org=" + ORG_ID;
+  const tipo   = evData?.tipo === "Asamblea" ? "Asamblea " : "";
+  const nombre = u.propietario_1 || "Propietario";
+  return `Hola ${nombre} 👋, bienvenido(a) a la _${tipo}${evData?.nombre||"el evento"}_, sus datos de conexión son los siguientes:\n\n• *Usuario:* \`${u.usuario||"—"}\`\n• *Contraseña:* \`${u.contrasena||"—"}\`\n• *Enlace:* ${enlace}\n\n_Guarda este mensaje para acceder durante el evento._ 🔐`;
+}
+
+function _enviarWspDirecto(tel, u) {
+  const num = tel.replace(/^57/, "");
+  window.open(`https://wa.me/57${num}?text=${encodeURIComponent(_buildMsgWsp(u))}`, "_blank");
+}
+
+function _abrirModalWsp(u) {
+  document.getElementById("wsp-codigo").textContent     = u.codigo || "—";
+  document.getElementById("wsp-nombre").textContent     = u.propietario_1 || "—";
+  document.getElementById("wsp-usuario").textContent    = u.usuario || "—";
+  document.getElementById("wsp-contrasena").textContent = u.contrasena || "—";
+  document.getElementById("wsp-preview").textContent    = _buildMsgWsp(u);
+  document.getElementById("wsp-telefono").value         = "";
+  const btn = document.getElementById("wsp-btn-enviar");
+  btn.disabled = true; btn.style.opacity = ".45";
+  document.getElementById("modal-wsp").style.display    = "flex";
+  setTimeout(()=>document.getElementById("wsp-telefono").focus(), 80);
+}
+
+function _actualizarPrevioWsp() {
+  const tel  = document.getElementById("wsp-telefono").value.replace(/\D/g,"");
+  const btn  = document.getElementById("wsp-btn-enviar");
+  const ok   = tel.length >= 7;
+  btn.disabled     = !ok;
+  btn.style.opacity= ok ? "1" : ".45";
+  btn.style.cursor = ok ? "pointer" : "not-allowed";
+}
+
+function _enviarDesdeModal() {
+  const tel = document.getElementById("wsp-telefono").value.replace(/\D/g,"");
+  if (tel.length < 7) { toast("Ingresa un número válido","warn"); document.getElementById("wsp-telefono").focus(); return; }
+  _enviarWspDirecto(tel, _wspUnidad);
+  _cerrarModalWsp();
+  toast(`✓ WhatsApp abierto para ${_wspUnidad?.codigo||"la unidad"}`,"ok");
+}
+
+function _cerrarModalWsp() {
+  document.getElementById("modal-wsp").style.display = "none";
+  _wspUnidad = null;
 }
 
 function exportarParticipantesCSV() {
@@ -2754,8 +2808,83 @@ init();
 document.addEventListener("DOMContentLoaded", () => {
   const m = document.getElementById("modal-inactiva");
   if (m) m.addEventListener("click", function(e) { if (e.target === this) cancelarInactiva(); });
+  const mw = document.getElementById("modal-wsp");
+  if (mw) mw.addEventListener("click", function(e) { if (e.target === this) _cerrarModalWsp(); });
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && document.getElementById("modal-wsp")?.style.display !== "none") _cerrarModalWsp();
 });
 </script>
+
+<!-- ── MODAL WHATSAPP ────────────────────────────────── -->
+<div id="modal-wsp" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:20px;width:100%;max-width:420px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.25);animation:fadeUp .25s ease;">
+
+    <!-- Header verde WhatsApp -->
+    <div style="background:linear-gradient(135deg,#075e54,#128c7e);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zm-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        <div>
+          <div style="font-size:14px;font-weight:800;color:#fff;">Enviar credenciales</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.75);">Sin número registrado — ingrésalo para continuar</div>
+        </div>
+      </div>
+      <button onclick="_cerrarModalWsp()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+
+    <div style="padding:18px;display:flex;flex-direction:column;gap:12px;">
+
+      <!-- Datos de la unidad -->
+      <div style="background:#f5f3ff;border:1px solid #ede9fe;border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div>
+          <div style="font-size:10px;color:#7c3aed;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">Unidad</div>
+          <div style="font-size:16px;font-weight:900;color:#4c1d95;" id="wsp-codigo">—</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:#7c3aed;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">Propietario</div>
+          <div style="font-size:12px;font-weight:700;color:#1e1b4b;" id="wsp-nombre">—</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:#7c3aed;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">Usuario</div>
+          <div style="font-size:12px;font-weight:700;color:#059669;font-family:monospace;" id="wsp-usuario">—</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:#7c3aed;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">Contraseña</div>
+          <div style="font-size:12px;font-weight:700;color:#059669;font-family:monospace;" id="wsp-contrasena">—</div>
+        </div>
+      </div>
+
+      <!-- Input teléfono -->
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Número WhatsApp <span style="color:#ef4444;">*</span></label>
+        <div style="display:flex;gap:8px;">
+          <div style="background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:700;color:#64748b;white-space:nowrap;">🇨🇴 +57</div>
+          <input id="wsp-telefono" type="tel" placeholder="3001234567"
+            oninput="_actualizarPrevioWsp()"
+            style="flex:1;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;font-size:14px;font-weight:700;color:#1e1b4b;outline:none;font-family:inherit;"
+            onfocus="this.style.borderColor='#7c3aed'" onblur="this.style.borderColor='#e2e8f0'"/>
+        </div>
+        <div style="margin-top:4px;font-size:11px;color:#94a3b8;">Sin el código de país. Ej: 3001234567</div>
+      </div>
+
+      <!-- Preview mensaje -->
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Vista previa</label>
+        <div id="wsp-preview" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px;font-size:11px;line-height:1.7;color:#166534;white-space:pre-wrap;max-height:140px;overflow-y:auto;font-family:'Courier New',monospace;"></div>
+      </div>
+
+      <!-- Botones -->
+      <div style="display:flex;gap:8px;">
+        <button onclick="_cerrarModalWsp()" style="flex:1;padding:11px;background:#f1f5f9;border:1px solid #e2e8f0;color:#64748b;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">Cancelar</button>
+        <button id="wsp-btn-enviar" onclick="_enviarDesdeModal()" disabled
+          style="flex:2;padding:11px;background:linear-gradient(135deg,#075e54,#128c7e);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:7px;opacity:.45;transition:opacity .2s;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zm-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          Abrir WhatsApp
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
