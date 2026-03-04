@@ -121,6 +121,7 @@ nav{
 /* ══ CONTENIDO TABS ══ */
 .tab-section{display:none;flex-direction:column;gap:16px;}
 .tab-section.on{display:flex;}
+#tab-temporizador.on{gap:0;overflow:hidden;}
 
 /* ══ TAB EVENTO ══ */
 
@@ -919,125 +920,128 @@ nav{
 
       </div><!-- /results -->
     </div>
-    <div id="tab-temporizador" class="tab-section">
+    <div id="tab-temporizador" class="tab-section" style="height:calc(100vh - 178px);min-height:500px;">
 
-      <!-- ══ PANTALLA PRINCIPAL — blanco, para video ══ -->
-      <div id="tmr-stage" style="background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:48px 32px 36px;display:flex;flex-direction:column;align-items:center;gap:0;box-shadow:0 2px 24px rgba(124,58,237,.06);">
+      <div style="display:grid;grid-template-columns:1fr 300px;gap:14px;height:100%;">
 
-        <!-- Etiqueta estado -->
-        <div id="tmr-label" style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.22em;color:#a78bfa;margin-bottom:18px;">Detenido</div>
+        <!-- ═══ IZQUIERDA — pantalla blanca para video ═══ -->
+        <div id="tmr-stage" style="background:#fff;border:1px solid #e2e8f0;border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;box-shadow:0 2px 24px rgba(124,58,237,.06);overflow:hidden;padding:20px;">
 
-        <!-- Ring SVG -->
-        <div style="position:relative;width:min(70vw,520px);height:min(70vw,520px);">
-          <svg viewBox="0 0 520 520" style="position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);">
-            <circle cx="260" cy="260" r="230" fill="none" stroke="#f1f5f9" stroke-width="22"/>
-            <circle id="tmr-ring" cx="260" cy="260" r="230" fill="none"
-              stroke="url(#tmr-grad2)" stroke-width="22"
-              stroke-linecap="round"
-              stroke-dasharray="1445"
-              stroke-dashoffset="0"
-              style="transition:stroke-dashoffset .5s ease;"/>
-            <defs>
-              <linearGradient id="tmr-grad2" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%"   stop-color="#7c3aed"/>
-                <stop offset="100%" stop-color="#ec4899"/>
-              </linearGradient>
-            </defs>
-          </svg>
-          <!-- Tiempo centrado -->
-          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;">
-            <div id="tmr-display"
-              style="font-size:clamp(72px,12vw,148px);font-weight:900;color:#1e1b4b;font-variant-numeric:tabular-nums;letter-spacing:-6px;line-height:1;font-family:'DM Sans',system-ui,sans-serif;">
-              00:00
+          <!-- Estado -->
+          <div id="tmr-label" style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.22em;color:#a78bfa;">Detenido</div>
+
+          <!-- Ring SVG — toma el espacio disponible -->
+          <div style="position:relative;flex:1;width:100%;max-width:min(calc(100vh - 380px), 100%);">
+            <svg viewBox="0 0 500 500" style="position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);">
+              <circle cx="250" cy="250" r="218" fill="none" stroke="#f1f5f9" stroke-width="20"/>
+              <circle id="tmr-ring" cx="250" cy="250" r="218" fill="none"
+                stroke="url(#tmr-grad2)" stroke-width="20"
+                stroke-linecap="round"
+                stroke-dasharray="1370"
+                stroke-dashoffset="0"
+                style="transition:stroke-dashoffset .5s ease;"/>
+              <defs>
+                <linearGradient id="tmr-grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%"   stop-color="#7c3aed"/>
+                  <stop offset="100%" stop-color="#ec4899"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <!-- Número centrado -->
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+              <div id="tmr-display"
+                style="font-size:clamp(56px,8vw,130px);font-weight:900;color:#1e1b4b;font-variant-numeric:tabular-nums;letter-spacing:-4px;line-height:1;font-family:'DM Sans',system-ui,sans-serif;">
+                00:00
+              </div>
             </div>
           </div>
+
+          <!-- Barra lineal -->
+          <div style="width:90%;height:7px;background:#f1f5f9;border-radius:99px;overflow:hidden;flex-shrink:0;">
+            <div id="tmr-bar" style="height:100%;width:100%;background:linear-gradient(90deg,#7c3aed,#ec4899);border-radius:99px;transition:width .5s ease;"></div>
+          </div>
+
+          <!-- Botones -->
+          <div style="display:flex;gap:10px;flex-shrink:0;">
+            <button id="tmr-btn-start" onclick="tmrStartPause()"
+              style="background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff;border:none;border-radius:14px;padding:13px 36px;font-size:15px;font-weight:900;cursor:pointer;display:flex;align-items:center;gap:10px;box-shadow:0 6px 24px rgba(124,58,237,.35);transition:.2s;">
+              <svg id="tmr-ico-play"  width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+              <svg id="tmr-ico-pause" width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style="display:none;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+              <span id="tmr-btn-label">Iniciar</span>
+            </button>
+            <button onclick="tmrReset()" title="Reiniciar"
+              style="background:#f8f7ff;color:#7c3aed;border:1.5px solid #ede9fe;border-radius:14px;padding:13px 16px;cursor:pointer;display:flex;align-items:center;transition:.2s;"
+              onmouseover="this.style.background='#ede9fe'" onmouseout="this.style.background='#f8f7ff'">
+              <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.54"/></svg>
+            </button>
+          </div>
+
+          <!-- Sonido -->
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:#94a3b8;flex-shrink:0;">
+            <input type="checkbox" id="tmr-sonido" checked style="accent-color:#7c3aed;">
+            Sonido al terminar
+          </label>
         </div>
 
-        <!-- Barra de progreso lineal debajo del ring (para video) -->
-        <div style="width:100%;max-width:520px;height:8px;background:#f1f5f9;border-radius:99px;margin-top:28px;overflow:hidden;">
-          <div id="tmr-bar" style="height:100%;width:100%;background:linear-gradient(90deg,#7c3aed,#ec4899);border-radius:99px;transition:width .5s ease;"></div>
-        </div>
+        <!-- ═══ DERECHA — controles apilados ═══ -->
+        <div style="display:flex;flex-direction:column;gap:10px;height:100%;overflow:hidden;">
 
-        <!-- Botones principales -->
-        <div style="display:flex;gap:14px;margin-top:28px;align-items:center;">
-          <button id="tmr-btn-start" onclick="tmrStartPause()"
-            style="background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff;border:none;border-radius:18px;padding:18px 52px;font-size:18px;font-weight:900;cursor:pointer;display:flex;align-items:center;gap:12px;transition:.2s;box-shadow:0 8px 32px rgba(124,58,237,.35);">
-            <svg id="tmr-ico-play"  width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
-            <svg id="tmr-ico-pause" width="20" height="20" fill="currentColor" viewBox="0 0 24 24" style="display:none;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-            <span id="tmr-btn-label">Iniciar</span>
-          </button>
-          <button onclick="tmrReset()" title="Reiniciar"
-            style="background:#f8f7ff;color:#7c3aed;border:1.5px solid #ede9fe;border-radius:18px;padding:18px 20px;cursor:pointer;display:flex;align-items:center;transition:.2s;"
-            onmouseover="this.style.background='#ede9fe'" onmouseout="this.style.background='#f8f7ff'">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.54"/></svg>
-          </button>
-        </div>
-
-        <!-- Sonido -->
-        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:#94a3b8;margin-top:16px;">
-          <input type="checkbox" id="tmr-sonido" checked style="accent-color:#7c3aed;">
-          Sonido al terminar
-        </label>
-      </div>
-
-      <!-- ══ FILA INFERIOR: configurar + presets + historial ══ -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
-
-        <!-- Configurar tiempo -->
-        <div style="background:#fff;border:1px solid #ede9fe;border-radius:18px;padding:18px;">
-          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#7c3aed;margin-bottom:12px;">Configurar tiempo</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
-            <div>
-              <label style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Horas</label>
-              <input id="tmr-in-h" type="number" min="0" max="9" value="0"
-                style="width:100%;padding:8px;border:1.5px solid #ede9fe;border-radius:10px;font-size:20px;font-weight:900;text-align:center;color:#4c1d95;outline:none;font-variant-numeric:tabular-nums;box-sizing:border-box;"
-                onfocus="this.style.borderColor='#7c3aed'" onblur="this.style.borderColor='#ede9fe'"/>
+          <!-- Configurar tiempo -->
+          <div style="background:#fff;border:1px solid #ede9fe;border-radius:16px;padding:14px;flex-shrink:0;">
+            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#7c3aed;margin-bottom:10px;">Configurar tiempo</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;">
+              <div>
+                <label style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:3px;">Horas</label>
+                <input id="tmr-in-h" type="number" min="0" max="9" value="0"
+                  style="width:100%;padding:7px 4px;border:1.5px solid #ede9fe;border-radius:8px;font-size:18px;font-weight:900;text-align:center;color:#4c1d95;outline:none;font-variant-numeric:tabular-nums;box-sizing:border-box;"
+                  onfocus="this.style.borderColor='#7c3aed'" onblur="this.style.borderColor='#ede9fe'"/>
+              </div>
+              <div>
+                <label style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:3px;">Min</label>
+                <input id="tmr-in-m" type="number" min="0" max="59" value="5"
+                  style="width:100%;padding:7px 4px;border:1.5px solid #ede9fe;border-radius:8px;font-size:18px;font-weight:900;text-align:center;color:#4c1d95;outline:none;font-variant-numeric:tabular-nums;box-sizing:border-box;"
+                  onfocus="this.style.borderColor='#7c3aed'" onblur="this.style.borderColor='#ede9fe'"/>
+              </div>
+              <div>
+                <label style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:3px;">Seg</label>
+                <input id="tmr-in-s" type="number" min="0" max="59" value="0"
+                  style="width:100%;padding:7px 4px;border:1.5px solid #ede9fe;border-radius:8px;font-size:18px;font-weight:900;text-align:center;color:#4c1d95;outline:none;font-variant-numeric:tabular-nums;box-sizing:border-box;"
+                  onfocus="this.style.borderColor='#7c3aed'" onblur="this.style.borderColor='#ede9fe'"/>
+              </div>
             </div>
-            <div>
-              <label style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Min</label>
-              <input id="tmr-in-m" type="number" min="0" max="59" value="5"
-                style="width:100%;padding:8px;border:1.5px solid #ede9fe;border-radius:10px;font-size:20px;font-weight:900;text-align:center;color:#4c1d95;outline:none;font-variant-numeric:tabular-nums;box-sizing:border-box;"
-                onfocus="this.style.borderColor='#7c3aed'" onblur="this.style.borderColor='#ede9fe'"/>
+            <button onclick="tmrSetFromInputs()"
+              style="width:100%;padding:8px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;">
+              ↺ Aplicar
+            </button>
+          </div>
+
+          <!-- Presets rápidos -->
+          <div style="background:#fff;border:1px solid #ede9fe;border-radius:16px;padding:14px;flex-shrink:0;">
+            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#7c3aed;margin-bottom:10px;">Presets rápidos</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+              <button onclick="tmrPreset(60)"   class="tmr-preset">1 min</button>
+              <button onclick="tmrPreset(120)"  class="tmr-preset">2 min</button>
+              <button onclick="tmrPreset(180)"  class="tmr-preset">3 min</button>
+              <button onclick="tmrPreset(300)"  class="tmr-preset">5 min</button>
+              <button onclick="tmrPreset(600)"  class="tmr-preset">10 min</button>
+              <button onclick="tmrPreset(900)"  class="tmr-preset">15 min</button>
+              <button onclick="tmrPreset(1800)" class="tmr-preset">30 min</button>
+              <button onclick="tmrPreset(3600)" class="tmr-preset">1 hora</button>
             </div>
-            <div>
-              <label style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Seg</label>
-              <input id="tmr-in-s" type="number" min="0" max="59" value="0"
-                style="width:100%;padding:8px;border:1.5px solid #ede9fe;border-radius:10px;font-size:20px;font-weight:900;text-align:center;color:#4c1d95;outline:none;font-variant-numeric:tabular-nums;box-sizing:border-box;"
-                onfocus="this.style.borderColor='#7c3aed'" onblur="this.style.borderColor='#ede9fe'"/>
+          </div>
+
+          <!-- Historial — toma el espacio restante -->
+          <div style="background:#fff;border:1px solid #ede9fe;border-radius:16px;padding:14px;flex:1;min-height:0;display:flex;flex-direction:column;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-shrink:0;">
+              <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#7c3aed;">Historial</div>
+              <button onclick="tmrLimpiarHistorial()" style="font-size:11px;color:#94a3b8;background:none;border:none;cursor:pointer;">Limpiar</button>
+            </div>
+            <div id="tmr-historial" style="display:flex;flex-direction:column;gap:5px;overflow-y:auto;flex:1;">
+              <div style="text-align:center;padding:16px;color:#cbd5e1;font-size:12px;">Sin registros aún</div>
             </div>
           </div>
-          <button onclick="tmrSetFromInputs()"
-            style="width:100%;padding:10px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;">
-            ↺ Aplicar
-          </button>
-        </div>
 
-        <!-- Presets rápidos -->
-        <div style="background:#fff;border:1px solid #ede9fe;border-radius:18px;padding:18px;">
-          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#7c3aed;margin-bottom:12px;">Presets rápidos</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
-            <button onclick="tmrPreset(60)"   class="tmr-preset">1 min</button>
-            <button onclick="tmrPreset(120)"  class="tmr-preset">2 min</button>
-            <button onclick="tmrPreset(180)"  class="tmr-preset">3 min</button>
-            <button onclick="tmrPreset(300)"  class="tmr-preset">5 min</button>
-            <button onclick="tmrPreset(600)"  class="tmr-preset">10 min</button>
-            <button onclick="tmrPreset(900)"  class="tmr-preset">15 min</button>
-            <button onclick="tmrPreset(1800)" class="tmr-preset">30 min</button>
-            <button onclick="tmrPreset(3600)" class="tmr-preset">1 hora</button>
-          </div>
         </div>
-
-        <!-- Historial -->
-        <div style="background:#fff;border:1px solid #ede9fe;border-radius:18px;padding:18px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-            <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#7c3aed;">Historial</div>
-            <button onclick="tmrLimpiarHistorial()" style="font-size:11px;color:#94a3b8;background:none;border:none;cursor:pointer;">Limpiar</button>
-          </div>
-          <div id="tmr-historial" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;">
-            <div style="text-align:center;padding:20px;color:#cbd5e1;font-size:13px;">Sin registros aún</div>
-          </div>
-        </div>
-
       </div>
 
     </div>
@@ -2947,7 +2951,7 @@ const TMR = {
   historial: [],  // [{label, duracion, ts}]
   _startTs:  0,   // timestamp arranque actual
 };
-const TMR_CIRC = 2 * Math.PI * 230; // 1445 — circunferencia del ring (r=230)
+const TMR_CIRC = 2 * Math.PI * 218; // 1370 — circunferencia del ring (r=218)
 
 function tmrFmt(s) {
   const h = Math.floor(s/3600);
