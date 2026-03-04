@@ -105,6 +105,19 @@ nav{
 .clock-ev-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.4);margin-bottom:2px;}
 .clock-ev-val{font-size:14px;font-weight:700;color:#a78bfa;}
 
+/* Temporizador presets */
+.tmr-preset{
+  padding:9px 6px;border-radius:10px;border:1.5px solid #ede9fe;
+  background:#faf8ff;color:#7c3aed;font-size:13px;font-weight:700;
+  cursor:pointer;transition:.15s;
+}
+.tmr-preset:hover{background:#ede9fe;border-color:#a78bfa;}
+/* Temporizador urgente */
+@keyframes tmr-pulse-ring {
+  0%,100%{opacity:1;} 50%{opacity:.35;}
+}
+.tmr-urgente #tmr-ring { animation: tmr-pulse-ring .6s ease infinite; }
+
 /* ══ CONTENIDO TABS ══ */
 .tab-section{display:none;flex-direction:column;gap:16px;}
 .tab-section.on{display:flex;}
@@ -907,11 +920,126 @@ nav{
       </div><!-- /results -->
     </div>
     <div id="tab-temporizador" class="tab-section">
-      <div class="placeholder">
-        <svg width="60" height="60" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <h3>Temporizador</h3>
-        <p>Control de tiempos por pregunta o intervención</p>
+
+      <!-- ── FILA SUPERIOR: ring + controles ── -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
+
+        <!-- RING PRINCIPAL -->
+        <div style="background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:24px;padding:28px 20px;display:flex;flex-direction:column;align-items:center;gap:0;position:relative;overflow:hidden;">
+          <!-- fondo decorativo -->
+          <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:rgba(167,139,250,.08);pointer-events:none;"></div>
+          <div style="position:absolute;bottom:-60px;left:-30px;width:220px;height:220px;border-radius:50%;background:rgba(217,70,239,.06);pointer-events:none;"></div>
+
+          <!-- SVG ring -->
+          <div style="position:relative;width:200px;height:200px;flex-shrink:0;">
+            <svg viewBox="0 0 200 200" style="position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);">
+              <!-- Track -->
+              <circle cx="100" cy="100" r="82" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="14"/>
+              <!-- Progress -->
+              <circle id="tmr-ring" cx="100" cy="100" r="82" fill="none"
+                stroke="url(#tmr-grad)" stroke-width="14"
+                stroke-linecap="round"
+                stroke-dasharray="515"
+                stroke-dashoffset="0"
+                style="transition:stroke-dashoffset .5s ease;"/>
+              <defs>
+                <linearGradient id="tmr-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#a855f7"/>
+                  <stop offset="100%" stop-color="#ec4899"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <!-- Tiempo centrado -->
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;">
+              <div id="tmr-display" style="font-size:42px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:-2px;line-height:1;">00:00</div>
+              <div id="tmr-label" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.4);">Detenido</div>
+            </div>
+          </div>
+
+          <!-- Botones control -->
+          <div style="display:flex;gap:10px;margin-top:20px;position:relative;z-index:1;">
+            <button id="tmr-btn-start" onclick="tmrStartPause()"
+              style="background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff;border:none;border-radius:14px;padding:12px 28px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;transition:.2s;box-shadow:0 4px 20px rgba(124,58,237,.4);">
+              <svg id="tmr-ico-play" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+              <svg id="tmr-ico-pause" width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style="display:none;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+              <span id="tmr-btn-label">Iniciar</span>
+            </button>
+            <button onclick="tmrReset()"
+              style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:12px 16px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;transition:.2s;">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.54"/></svg>
+            </button>
+          </div>
+
+          <!-- Barra sonido al terminar -->
+          <div style="margin-top:14px;display:flex;align-items:center;gap:8px;position:relative;z-index:1;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:rgba(255,255,255,.5);">
+              <input type="checkbox" id="tmr-sonido" checked style="accent-color:#a855f7;">
+              Sonido al terminar
+            </label>
+          </div>
+        </div>
+
+        <!-- PANEL DERECHO: config + presets -->
+        <div style="display:flex;flex-direction:column;gap:12px;">
+
+          <!-- Configurar tiempo -->
+          <div style="background:#fff;border:1px solid #ede9fe;border-radius:18px;padding:18px;">
+            <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#7c3aed;margin-bottom:14px;">Configurar tiempo</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+              <div>
+                <label style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Horas</label>
+                <input id="tmr-in-h" type="number" min="0" max="9" value="0" oninput="tmrSyncInputs()"
+                  style="width:100%;padding:10px;border:1.5px solid #ede9fe;border-radius:10px;font-size:22px;font-weight:900;text-align:center;color:#4c1d95;outline:none;font-variant-numeric:tabular-nums;"
+                  onfocus="this.style.borderColor='#7c3aed'" onblur="this.style.borderColor='#ede9fe'"/>
+              </div>
+              <div>
+                <label style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Min</label>
+                <input id="tmr-in-m" type="number" min="0" max="59" value="5" oninput="tmrSyncInputs()"
+                  style="width:100%;padding:10px;border:1.5px solid #ede9fe;border-radius:10px;font-size:22px;font-weight:900;text-align:center;color:#4c1d95;outline:none;font-variant-numeric:tabular-nums;"
+                  onfocus="this.style.borderColor='#7c3aed'" onblur="this.style.borderColor='#ede9fe'"/>
+              </div>
+              <div>
+                <label style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Seg</label>
+                <input id="tmr-in-s" type="number" min="0" max="59" value="0" oninput="tmrSyncInputs()"
+                  style="width:100%;padding:10px;border:1.5px solid #ede9fe;border-radius:10px;font-size:22px;font-weight:900;text-align:center;color:#4c1d95;outline:none;font-variant-numeric:tabular-nums;"
+                  onfocus="this.style.borderColor='#7c3aed'" onblur="this.style.borderColor='#ede9fe'"/>
+              </div>
+            </div>
+            <button onclick="tmrSetFromInputs()"
+              style="width:100%;padding:10px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;">
+              ↺ Aplicar tiempo
+            </button>
+          </div>
+
+          <!-- Presets rápidos -->
+          <div style="background:#fff;border:1px solid #ede9fe;border-radius:18px;padding:18px;">
+            <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#7c3aed;margin-bottom:12px;">Presets rápidos</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <button onclick="tmrPreset(60)"    class="tmr-preset">1 min</button>
+              <button onclick="tmrPreset(120)"   class="tmr-preset">2 min</button>
+              <button onclick="tmrPreset(180)"   class="tmr-preset">3 min</button>
+              <button onclick="tmrPreset(300)"   class="tmr-preset">5 min</button>
+              <button onclick="tmrPreset(600)"   class="tmr-preset">10 min</button>
+              <button onclick="tmrPreset(900)"   class="tmr-preset">15 min</button>
+              <button onclick="tmrPreset(1800)"  class="tmr-preset">30 min</button>
+              <button onclick="tmrPreset(3600)"  class="tmr-preset">1 hora</button>
+            </div>
+          </div>
+
+        </div>
       </div>
+
+      <!-- ── HISTORIAL ── -->
+      <div style="background:#fff;border:1px solid #ede9fe;border-radius:18px;padding:18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#7c3aed;">Historial de sesión</div>
+          <button onclick="tmrLimpiarHistorial()" style="font-size:11px;color:#94a3b8;background:none;border:none;cursor:pointer;">Limpiar</button>
+        </div>
+        <div id="tmr-historial" style="display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto;">
+          <div style="text-align:center;padding:20px;color:#cbd5e1;font-size:13px;">Sin registros aún</div>
+        </div>
+      </div>
+
     </div>
     <div id="tab-ruleta" class="tab-section">
       <div class="placeholder">
@@ -2807,6 +2935,196 @@ async function exportarInformePanel(evId, orgId) {
     toast("Error: "+e.message,"err");
   }
 }
+
+// ══════════════════════════════════════════════════════
+// TEMPORIZADOR
+// ══════════════════════════════════════════════════════
+const TMR = {
+  total:     0,   // segundos configurados
+  restantes: 0,   // segundos que quedan
+  corriendo: false,
+  intervalo: null,
+  historial: [],  // [{label, duracion, ts}]
+  _startTs:  0,   // timestamp arranque actual
+};
+const TMR_CIRC = 2 * Math.PI * 82; // 515.2 — circunferencia del ring (r=82)
+
+function tmrFmt(s) {
+  const h = Math.floor(s/3600);
+  const m = Math.floor((s%3600)/60);
+  const ss= s%60;
+  if (h > 0) return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
+  return `${String(m).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
+}
+
+function tmrActualizarUI() {
+  // Texto central
+  document.getElementById("tmr-display").textContent = tmrFmt(TMR.restantes);
+
+  // Label estado
+  const lbl = document.getElementById("tmr-label");
+  if (TMR.corriendo)       lbl.textContent = "En curso";
+  else if (!TMR.total)     lbl.textContent = "Detenido";
+  else if (!TMR.restantes) lbl.textContent = "¡Tiempo!";
+  else                     lbl.textContent = "Pausado";
+
+  // Ring progreso
+  const ring = document.getElementById("tmr-ring");
+  const pct  = TMR.total > 0 ? TMR.restantes / TMR.total : 1;
+  ring.style.strokeDashoffset = TMR_CIRC * (1 - pct);
+
+  // Color urgente (< 10s o < 10%)
+  const urgente = TMR.total > 0 && (TMR.restantes <= 10 || pct < 0.1);
+  const ringWrap = document.getElementById("tab-temporizador");
+  if (urgente && TMR.corriendo) {
+    ring.style.stroke = "#f43f5e";
+    ringWrap.classList.add("tmr-urgente");
+  } else {
+    ring.style.stroke = "url(#tmr-grad)";
+    ringWrap.classList.remove("tmr-urgente");
+  }
+
+  // Botón play/pause
+  document.getElementById("tmr-ico-play").style.display  = TMR.corriendo ? "none" : "block";
+  document.getElementById("tmr-ico-pause").style.display = TMR.corriendo ? "block" : "none";
+  document.getElementById("tmr-btn-label").textContent   = TMR.corriendo ? "Pausar" : (TMR.restantes < TMR.total && TMR.restantes > 0 ? "Reanudar" : "Iniciar");
+}
+
+function tmrSyncInputs() { /* solo sincroniza visual — no resetea el timer */ }
+
+function tmrSetFromInputs() {
+  if (TMR.corriendo) tmrStop();
+  const h = parseInt(document.getElementById("tmr-in-h").value)||0;
+  const m = parseInt(document.getElementById("tmr-in-m").value)||0;
+  const s = parseInt(document.getElementById("tmr-in-s").value)||0;
+  TMR.total = TMR.restantes = h*3600 + m*60 + s;
+  tmrActualizarUI();
+}
+
+function tmrPreset(seg) {
+  if (TMR.corriendo) tmrStop();
+  TMR.total = TMR.restantes = seg;
+  // Actualizar inputs
+  document.getElementById("tmr-in-h").value = Math.floor(seg/3600);
+  document.getElementById("tmr-in-m").value = Math.floor((seg%3600)/60);
+  document.getElementById("tmr-in-s").value = seg%60;
+  tmrActualizarUI();
+  toast(`⏱ ${tmrFmt(seg)} listo — presiona Iniciar`,"ok");
+}
+
+function tmrStartPause() {
+  if (!TMR.total && !TMR.restantes) {
+    tmrSetFromInputs();
+    if (!TMR.total) { toast("Configura un tiempo primero","warn"); return; }
+  }
+  if (TMR.corriendo) {
+    tmrStop();
+  } else {
+    if (TMR.restantes <= 0) { TMR.restantes = TMR.total; }
+    TMR.corriendo = true;
+    TMR._startTs  = Date.now();
+    tmrActualizarUI();
+    TMR.intervalo = setInterval(tmrTick, 250);
+  }
+}
+
+function tmrTick() {
+  if (!TMR.corriendo) return;
+  TMR.restantes = Math.max(0, TMR.total - Math.round((Date.now() - TMR._startTs) / 1000));
+  // Recalcular total para que el ring sea correcto cuando se pausa/reanuda
+  // (guardamos el "restantes" como nuevo punto de partida al reanudar)
+  tmrActualizarUI();
+  if (TMR.restantes <= 0) tmrTerminar();
+}
+
+function tmrStop() {
+  clearInterval(TMR.intervalo);
+  TMR.corriendo = false;
+  // Ajustar total al tiempo restante al momento del pause (para que ring quede correcto al reanudar)
+  const elapsed = Math.round((Date.now() - TMR._startTs) / 1000);
+  TMR.restantes = Math.max(0, TMR.restantes - 0); // ya actualizado en tick
+  // Recalibrar: el nuevo arranque sumará desde 0 otra vez
+  TMR.total     = TMR.restantes; // total = lo que queda (para el ring)
+  // PERO guardamos el original para historial — en TMR._totalOrig
+  tmrActualizarUI();
+}
+
+function tmrReset() {
+  clearInterval(TMR.intervalo);
+  TMR.corriendo = false;
+  // Restaurar desde inputs
+  const h = parseInt(document.getElementById("tmr-in-h").value)||0;
+  const m = parseInt(document.getElementById("tmr-in-m").value)||0;
+  const s = parseInt(document.getElementById("tmr-in-s").value)||0;
+  TMR.total = TMR.restantes = h*3600 + m*60 + s;
+  document.getElementById("tmr-label").textContent = "Detenido";
+  document.getElementById("tmr-ring").style.stroke = "url(#tmr-grad)";
+  document.getElementById("tab-temporizador").classList.remove("tmr-urgente");
+  tmrActualizarUI();
+}
+
+function tmrTerminar() {
+  clearInterval(TMR.intervalo);
+  TMR.corriendo = false;
+  TMR.restantes = 0;
+  tmrActualizarUI();
+
+  // Sonido
+  if (document.getElementById("tmr-sonido").checked) tmrBeep();
+
+  // Guardar en historial
+  const ahora = new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  TMR.historial.unshift({ label: tmrFmt(TMR.total), ts: ahora });
+  tmrRenderHistorial();
+  toast("⏰ ¡Tiempo terminado!","warn");
+}
+
+function tmrBeep() {
+  try {
+    const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+    const beeps = [880, 880, 880, 1100];
+    beeps.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain= ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type      = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, ctx.currentTime + i*0.22);
+      gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + i*0.22 + 0.02);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + i*0.22 + 0.18);
+      osc.start(ctx.currentTime + i*0.22);
+      osc.stop(ctx.currentTime + i*0.22 + 0.2);
+    });
+  } catch(e) { /* Silencioso si el navegador bloquea */ }
+}
+
+function tmrRenderHistorial() {
+  const el = document.getElementById("tmr-historial");
+  if (!TMR.historial.length) {
+    el.innerHTML = `<div style="text-align:center;padding:20px;color:#cbd5e1;font-size:13px;">Sin registros aún</div>`;
+    return;
+  }
+  el.innerHTML = TMR.historial.map((h, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:10px;background:${i===0?'#faf5ff':'#f8fafc'};border:1px solid ${i===0?'#ede9fe':'#f1f5f9'};">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:26px;height:26px;border-radius:8px;background:#ede9fe;display:flex;align-items:center;justify-content:center;">
+          <svg width="12" height="12" fill="none" stroke="#7c3aed" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <span style="font-size:13px;font-weight:700;color:#4c1d95;font-variant-numeric:tabular-nums;">${h.label}</span>
+      </div>
+      <span style="font-size:11px;color:#94a3b8;">${h.ts}</span>
+    </div>`).join("");
+}
+
+function tmrLimpiarHistorial() {
+  TMR.historial = [];
+  tmrRenderHistorial();
+}
+
+// Inicializar display al cargar
+document.addEventListener("DOMContentLoaded", () => {
+  tmrActualizarUI();
+});
 
 init();
 document.addEventListener("DOMContentLoaded", () => {
