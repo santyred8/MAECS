@@ -664,7 +664,7 @@ nav{
                 <th style="padding:12px 10px;text-align:center;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#7c3aed;">Mora</th>
                 <th style="padding:12px 10px;text-align:center;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#7c3aed;" title="Unidad habilitada para participar en este evento">Habilitado</th>
                 <th onclick="pOrden('estado')" style="padding:12px 10px;text-align:center;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#7c3aed;cursor:pointer;">Estado</th>
-                <th style="padding:12px 10px;text-align:center;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#7c3aed;">Delegado</th>
+                <th style="padding:12px 10px;text-align:center;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#7c3aed;" title="Unidad que representa o que cede su poder">Delegado</th>
                 <th onclick="pOrden('hora_registro')" style="padding:12px 10px;text-align:center;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#7c3aed;cursor:pointer;white-space:nowrap;">Hora Registro</th>
                 <th style="padding:12px 10px;text-align:center;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#7c3aed;">En Zoom</th>
                 <th style="padding:12px 10px;text-align:center;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#7c3aed;">Acciones</th>
@@ -1542,19 +1542,57 @@ async function cargarParticipantes() {
     .select("*")
     .eq("id_evento", EV_ID);
 
+  // Cargar delegaciones del evento
+  const { data: delegaciones } = await sb.from("delegaciones")
+    .select("*")
+    .eq("id_evento", EV_ID);
+
   partMap = {};
   (parts||[]).forEach(p => { partMap[p.id_unidad] = p; });
 
-  // Combinar: cada unidad + su estado de participante
-  p.todos = (unidades||[]).map(u => ({
-    ...u,
-    activo:         partMap[u.id]?.activo         ?? false,
-    estado:         partMap[u.id]?.estado          ?? "Sin registrar",
-    delegado:       partMap[u.id]?.delegado        ?? null,
-    hora_registro:  partMap[u.id]?.hora_registro   ?? null,
-    en_zoom:        partMap[u.id]?.en_zoom         ?? false,
-    part_id:        partMap[u.id]?.id              ?? null,
-  }));
+  // Map: id_unidad_entrega → unidad que recibe (para saber quién representa a quién)
+  const delegaMap = {};   // delegaMap[id_entrega] = id_recibe
+  const recibeMap = {};   // recibeMap[id_recibe] = [id_entrega, ...]
+  (delegaciones||[]).forEach(d => {
+    if (d.id_unidad_entrega) {
+      delegaMap[String(d.id_unidad_entrega)] = String(d.id_unidad_recibe);
+      if (!recibeMap[String(d.id_unidad_recibe)]) recibeMap[String(d.id_unidad_recibe)] = [];
+      recibeMap[String(d.id_unidad_recibe)].push(String(d.id_unidad_entrega));
+    }
+  });
+
+  // Construir lookup de código por id
+  const codigoMap = {};
+  (unidades||[]).forEach(u => { codigoMap[String(u.id)] = u.codigo; });
+
+  // Combinar: cada unidad + su estado de participante + info de delegación
+  p.todos = (unidades||[]).map(u => {
+    const uid = String(u.id);
+    const esDelegante = !!delegaMap[uid];              // esta unidad entregó su poder
+    const recibeDeIds = recibeMap[uid] || [];          // ids de unidades cuyo poder recibe esta
+
+    // Código de la unidad que RECIBE el poder de esta (si entregó)
+    const delegadoACodigo = esDelegante
+      ? (codigoMap[delegaMap[uid]] || delegaMap[uid])
+      : null;
+
+    // Códigos de las unidades que DELEGARON en esta
+    const representaCodigos = recibeDeIds.map(id => codigoMap[id] || id);
+
+    return {
+      ...u,
+      activo:           partMap[uid]?.activo         ?? false,
+      estado:           partMap[uid]?.estado          ?? "Sin registrar",
+      delegado:         partMap[uid]?.delegado        ?? null,
+      hora_registro:    partMap[uid]?.hora_registro   ?? null,
+      en_zoom:          partMap[uid]?.en_zoom         ?? false,
+      part_id:          partMap[uid]?.id              ?? null,
+      // delegación
+      esDelegante,
+      delegadoACodigo,
+      representaCodigos,
+    };
+  });
 
   p.filtrados = [...p.todos];
   calcularStatsParticipantes();
@@ -1568,12 +1606,22 @@ function calcularStatsParticipantes() {
   const reg     = p.todos.filter(u => u.estado === "Registrado").length;
   const sinReg  = total - reg;
 
-  // Quórum: suma de coeficientes (ya están en decimal, ej: 0.0388 = 3.88%)
-  // El total debe sumar ~1.0 (100%)
+  // Quórum: suma de coeficientes de registrados + coeficientes de sus delegantes
   const coefReg = p.todos
     .filter(u => u.estado === "Registrado")
-    .reduce((s, u) => s + (toNum(u.coeficiente)), 0);
-  const coefTot = p.todos.reduce((s, u) => s + (toNum(u.coeficiente)), 0);
+    .reduce((s, u) => {
+      let c = toNum(u.coeficiente);
+      // Sumar coeficientes de unidades que le delegaron a esta
+      (u.representaCodigos||[]).forEach(cod => {
+        const delegante = p.todos.find(x => x.codigo === cod);
+        if (delegante) c += toNum(delegante.coeficiente);
+      });
+      return s + c;
+    }, 0);
+  // Excluir delegantes del total (su coeficiente ya lo suma quien los representa)
+  const coefTot = p.todos
+    .filter(u => !u.esDelegante)
+    .reduce((s, u) => s + toNum(u.coeficiente), 0);
 
   // qAct es el coeficiente acumulado de registrados (en decimal, ej: 0.8513 = 85.13%)
   const qAct = coefReg; // decimal, se muestra como porcentaje multiplicando x100
@@ -1696,15 +1744,32 @@ function renderParticipantes() {
       <td style="padding:10px;text-align:center;font-size:12px;font-family:monospace;color:#64748b;">${u.nominal||"—"}</td>
       <td style="padding:10px;text-align:center;">${moraBadge}</td>
       <td style="padding:10px;text-align:center;">
-        <label title="${u.activo ? 'Habilitado — clic para deshabilitar' : 'Deshabilitado — clic para habilitar'}" style="position:relative;width:40px;height:22px;display:inline-block;cursor:pointer;">
-          <input type="checkbox" ${u.activo?"checked":""} onchange="toggleActivo('${u.id}','${u.part_id||""}',this.checked)" style="opacity:0;width:0;height:0;">
-          <span style="position:absolute;inset:0;background:${u.activo?'#7c3aed':'#e2e8f0'};border-radius:22px;transition:.25s;">
-            <span style="position:absolute;width:16px;height:16px;top:3px;left:${u.activo?'21px':'3px'};background:#fff;border-radius:50%;transition:.25s;box-shadow:0 1px 3px rgba(0,0,0,.2);"></span>
-          </span>
-        </label>
+        ${u.esDelegante
+          ? `<div title="Esta unidad entregó su poder — no tiene toggle propio" style="display:inline-flex;align-items:center;gap:4px;background:#fef3c7;border:1px solid #fcd34d;color:#92400e;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;">
+               <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/></svg>
+               Poder cedido
+             </div>`
+          : `<label title="${u.activo ? 'Habilitado — clic para deshabilitar' : 'Deshabilitado — clic para habilitar'}" style="position:relative;width:40px;height:22px;display:inline-block;cursor:pointer;">
+               <input type="checkbox" ${u.activo?"checked":""} onchange="toggleActivo('${u.id}','${u.part_id||""}',this.checked)" style="opacity:0;width:0;height:0;">
+               <span style="position:absolute;inset:0;background:${u.activo?'#7c3aed':'#e2e8f0'};border-radius:22px;transition:.25s;">
+                 <span style="position:absolute;width:16px;height:16px;top:3px;left:${u.activo?'21px':'3px'};background:#fff;border-radius:50%;transition:.25s;box-shadow:0 1px 3px rgba(0,0,0,.2);"></span>
+               </span>
+             </label>`
+        }
       </td>
       <td style="padding:10px;text-align:center;">${estadoBadge}</td>
-      <td style="padding:10px;text-align:center;font-size:12px;color:#64748b;">${u.delegado||"—"}</td>
+      <td style="padding:10px;text-align:center;">
+        ${u.esDelegante
+          ? `<div title="Representado por unidad ${u.delegadoACodigo}" style="display:inline-flex;align-items:center;gap:4px;">
+               <span style="background:#ede9fe;color:#7c3aed;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:800;font-family:monospace;">${u.delegadoACodigo}</span>
+             </div>`
+          : u.representaCodigos?.length
+            ? `<div style="display:flex;flex-direction:column;gap:2px;align-items:center;">
+                 ${u.representaCodigos.map(c=>`<span title="Representa a ${c}" style="background:#d1fae5;color:#065f46;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:800;font-family:monospace;">${c}</span>`).join("")}
+               </div>`
+            : `<span style="color:#94a3b8;font-size:12px;">—</span>`
+        }
+      </td>
       <td style="padding:10px;text-align:center;font-size:12px;font-family:monospace;color:${esReg?'#059669':'#94a3b8'};">${hora}</td>
       <td style="padding:10px;text-align:center;">
         ${u.en_zoom?'<span style="color:#3b82f6;font-size:12px;font-weight:700;">Sí</span>':'<span style="color:#94a3b8;font-size:12px;">No</span>'}
