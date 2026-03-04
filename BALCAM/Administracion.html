@@ -2532,10 +2532,30 @@ async function regLogin() {
     btn.innerHTML = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>Iniciar Sesión`;
     errEl.textContent = "Usuario o contraseña incorrectos.";
     errEl.classList.add("show");
-    // Sacudir formulario
     const fw = document.querySelector(".reg-form");
     fw.style.animation="shake .4s ease";
     setTimeout(()=>fw.style.animation="",500);
+    return;
+  }
+
+  // ── Verificar si esta unidad entregó su poder a otra ──
+  const { data: delegEntregada } = await sb.from("delegaciones")
+    .select("id_unidad_recibe")
+    .eq("id_evento", EV_ID)
+    .eq("id_unidad_entrega", unidad.id)
+    .maybeSingle();
+
+  if (delegEntregada) {
+    // Buscar el código de la unidad que recibe para mostrar en el mensaje
+    const { data: uRecibe } = await sb.from("unidades")
+      .select("codigo,propietario_1")
+      .eq("id", delegEntregada.id_unidad_recibe)
+      .maybeSingle();
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>Iniciar Sesión`;
+    const repCod = uRecibe ? `unidad ${uRecibe.codigo}` : "otra unidad";
+    errEl.textContent = `Esta unidad entregó su poder a la ${repCod}. Solo ella puede registrarse en su nombre.`;
+    errEl.classList.add("show");
     return;
   }
 
@@ -2561,7 +2581,6 @@ async function regLogin() {
   }
 
   // ── Registrar automáticamente las unidades que delegaron su poder a esta ──
-  // Buscar delegaciones donde id_unidad_recibe = esta unidad
   const { data: delegsRecibidas } = await sb.from("delegaciones")
     .select("id_unidad_entrega")
     .eq("id_evento", EV_ID)
@@ -2571,15 +2590,14 @@ async function regLogin() {
     const upsertsDelegantes = delegsRecibidas.map(d => ({
       id_evento:     EV_ID,
       id_unidad:     d.id_unidad_entrega,
-      activo:        false,          // no tienen toggle propio
-      estado:        "Registrado",   // pero quedan como registrados
-      hora_registro: horaAhora,      // misma hora que quien los representa
-      delegado:      unidad.codigo,  // referencia a quien los representa
+      activo:        false,
+      estado:        "Registrado",
+      hora_registro: horaAhora,
     }));
-    // upsert silencioso — no bloquea el flujo si falla
-    await sb.from("participantes").upsert(upsertsDelegantes, {
+    const { error: errDel } = await sb.from("participantes").upsert(upsertsDelegantes, {
       onConflict: "id_evento,id_unidad", ignoreDuplicates: false
-    }).catch(() => {});
+    });
+    if (errDel) console.warn("Error registrando delegantes:", errDel.message);
   }
 
   btn.disabled = false;
