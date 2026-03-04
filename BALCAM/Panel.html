@@ -648,7 +648,98 @@ select.inp option { background:#1e1b4b; color:#fff; }
     </div>
 
   </section>
-  <section id="sec-delegaciones"   class="seccion"><div style="padding:60px;text-align:center;color:rgba(255,255,255,.3);"><h2 style="font-size:22px;font-weight:700;margin-bottom:8px;">Delegaciones</h2><p>Sección en construcción</p></div></section>
+  <!-- ══════════════════════════════════════════════════
+       SECCIÓN DELEGACIONES
+  ══════════════════════════════════════════════════ -->
+  <section id="sec-delegaciones" class="seccion">
+
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px 20px;margin-bottom:16px;">
+      <label style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.35);display:block;margin-bottom:8px;">Trabajar con organización</label>
+      <div style="position:relative;max-width:500px;">
+        <svg width="15" height="15" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2" viewBox="0 0 24 24" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        <select id="del-org-select" onchange="delCambiarOrg()" class="inp" style="padding-left:38px;">
+          <option value="">— Seleccione una organización —</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="del-ev-wrap" style="display:none;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px 20px;margin-bottom:24px;">
+      <label style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.35);display:block;margin-bottom:8px;">Trabajar con evento</label>
+      <div style="position:relative;max-width:500px;">
+        <svg width="15" height="15" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2" viewBox="0 0 24 24" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <select id="del-ev-select" onchange="delCambiarEv()" class="inp" style="padding-left:38px;">
+          <option value="">— Seleccione un evento —</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="del-contenido" style="display:none;">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 style="font-size:22px;font-weight:800;color:#fff;">Delegaciones</h1>
+          <p style="font-size:13px;color:rgba(255,255,255,.4);margin-top:3px;"><span id="del-total">—</span> delegación(es) registradas</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button onclick="abrirDelModal()" style="background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;padding:9px 18px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nuevo</button>
+          <button onclick="cargarDelegaciones()" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#fff;padding:9px 16px;border-radius:10px;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:7px;">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Recargar</button>
+          <button onclick="exportarDelCSV()" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:#4ade80;padding:9px 16px;border-radius:10px;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:7px;">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>
+        </div>
+      </div>
+
+      <div style="background:rgba(168,85,247,.07);border:1px solid rgba(168,85,247,.2);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px;">
+        <svg width="18" height="18" fill="none" stroke="#c4b5fd" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <p style="font-size:13px;color:rgba(255,255,255,.55);line-height:1.6;">Una <strong style="color:#c4b5fd;">delegación (poder)</strong> permite que la <em>unidad que recibe</em> represente a la <em>unidad que entrega</em> en la asamblea — sumando su coeficiente al registro y la votación. Una unidad puede recibir poderes de múltiples unidades.</p>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:16px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:8px;font-size:14px;color:rgba(255,255,255,.45);">
+          Mostrar
+          <select id="del-pagesize" onchange="del.pag=1;renderDelegaciones()" class="inp" style="width:70px;padding:6px 10px;font-size:13px;">
+            <option>10</option><option>25</option><option>50</option>
+          </select>
+          registros
+        </div>
+        <div style="position:relative;">
+          <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2" viewBox="0 0 24 24" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="del-buscar" oninput="filtrarDelegaciones()" type="text" placeholder="Buscar unidad…" class="inp" style="width:240px;padding-left:36px;padding-top:8px;padding-bottom:8px;font-size:13px;">
+        </div>
+      </div>
+
+      <div class="card" style="overflow-x:auto;">
+        <div id="del-loading" style="display:flex;align-items:center;gap:12px;padding:28px 20px;">
+          <div class="spin"></div><span style="font-size:14px;color:rgba(255,255,255,.35);">Cargando…</span>
+        </div>
+        <table class="tbl" id="del-tabla" style="display:none;">
+          <thead><tr>
+            <th style="width:36px;">#</th>
+            <th>Unidad que entrega</th>
+            <th>Unidad que recibe</th>
+            <th>Apoderado de unidad que recibe</th>
+            <th style="text-align:center;min-width:90px;">Acciones</th>
+          </tr></thead>
+          <tbody id="del-tbody"></tbody>
+        </table>
+        <div id="del-empty" style="display:none;padding:48px;text-align:center;color:rgba(255,255,255,.25);">
+          <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 12px;"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v3a4 4 0 0 1-4 4H3"/></svg>
+          <p>No hay delegaciones para este evento</p>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;">
+        <p id="del-info" style="font-size:13px;color:rgba(255,255,255,.3);"></p>
+        <div id="del-paginacion" style="display:flex;align-items:center;gap:6px;"></div>
+      </div>
+    </div>
+
+    <div id="del-sin-org" style="padding:60px;text-align:center;color:rgba(255,255,255,.25);">
+      <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 16px;"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v3a4 4 0 0 1-4 4H3"/></svg>
+      <p style="font-size:16px;font-weight:600;margin-bottom:6px;color:rgba(255,255,255,.4);">Selecciona organización y evento</p>
+      <p style="font-size:13px;">Las delegaciones se gestionan por evento</p>
+    </div>
+
+  </section>
   <section id="sec-codigosqr"      class="seccion"><div style="padding:60px;text-align:center;color:rgba(255,255,255,.3);"><h2 style="font-size:22px;font-weight:700;margin-bottom:8px;">Códigos QR</h2><p>Sección en construcción</p></div></section>
 
 </main>
@@ -1383,6 +1474,7 @@ function ir(id) {
   if (id === "unidades") llenarOrgSelectUnidades();
   if (id === "eventos") llenarOrgSelectEventos();
   if (id === "preguntas") { llenarOrgSelectPreguntas(); }
+  if (id === "delegaciones") { llenarOrgSelectDelegaciones(); }
 }
 
 // ─── STATS ────────────────────────────────────────────────────────────────────
@@ -3919,6 +4011,451 @@ async function exportarInformePanel(evId, orgId) {
 
 async function logout(){await sb.auth.signOut();window.location.href="index.html";}
 
+</script>
+
+
+<!-- ══════════════════════════════════════════════════
+     MODAL DELEGACIONES
+══════════════════════════════════════════════════ -->
+<div id="delModalBg" onclick="cDelModalFuera(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:200;overflow-y:auto;padding:20px;">
+  <div style="background:#1a1040;border:1px solid rgba(168,85,247,.25);border-radius:20px;width:100%;max-width:520px;padding:28px;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;">
+      <h2 id="del-modal-titulo" style="font-size:18px;font-weight:800;color:#fff;">Nueva Delegación</h2>
+      <button onclick="cerrarDelModal()" style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.07);border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+
+    <!-- Org (readonly) -->
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px;">Organización</label>
+      <div id="del-m-org" style="padding:11px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;font-size:14px;color:rgba(255,255,255,.5);">—</div>
+    </div>
+
+    <!-- Evento (readonly) -->
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px;">Evento</label>
+      <div id="del-m-ev" style="padding:11px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;font-size:14px;color:rgba(255,255,255,.5);">—</div>
+    </div>
+
+    <!-- Unidad que RECIBE (select) -->
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;font-weight:700;color:#c4b5fd;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px;">Unidad que recibe <span style="color:#f43f5e;">*</span></label>
+      <select id="del-m-recibe" onchange="delActualizarEntregaOpts()" class="inp" style="width:100%;">
+        <option value="">— Seleccione —</option>
+      </select>
+      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-top:4px;">Esta unidad representará a las demás en la asamblea.</p>
+    </div>
+
+    <!-- Unidades que ENTREGAN (multi-select visual) -->
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;font-weight:700;color:#c4b5fd;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px;">Unidades que entregan poder <span style="color:#f43f5e;">*</span></label>
+      <!-- Tags seleccionadas -->
+      <div id="del-m-tags" style="display:flex;flex-wrap:wrap;gap:6px;min-height:36px;padding:8px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.15);border-radius:10px;margin-bottom:8px;cursor:pointer;" onclick="document.getElementById('del-m-entrega-dd').style.display='block';document.getElementById('del-m-entrega-dd').focus();">
+        <span id="del-m-tags-placeholder" style="font-size:13px;color:rgba(255,255,255,.3);">Haz clic para seleccionar unidades…</span>
+      </div>
+      <!-- Dropdown búsqueda -->
+      <div id="del-m-entrega-dd" style="display:none;background:#1a1040;border:1px solid rgba(168,85,247,.3);border-radius:12px;overflow:hidden;max-height:200px;overflow-y:auto;">
+        <div style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.07);">
+          <input id="del-m-entrega-search" type="text" placeholder="Buscar unidad…" oninput="delFiltrarEntrega()" style="width:100%;background:none;border:none;outline:none;color:#fff;font-size:13px;" />
+        </div>
+        <div id="del-m-entrega-list" style="padding:4px;"></div>
+      </div>
+      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-top:4px;">Puede seleccionar una o varias opciones.</p>
+    </div>
+
+    <!-- Apoderado (texto libre opcional) -->
+    <div style="margin-bottom:24px;">
+      <label style="font-size:11px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px;">Apoderado de la unidad que recibe</label>
+      <input id="del-m-apoderado" type="text" placeholder="Nombre del apoderado (opcional)" class="inp" style="width:100%;box-sizing:border-box;" />
+    </div>
+
+    <!-- Botones -->
+    <div style="display:flex;gap:10px;">
+      <button onclick="cerrarDelModal()" style="flex:1;padding:11px;border-radius:10px;font-size:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);cursor:pointer;">Cancelar</button>
+      <button onclick="guardarDelegacion()" style="flex:2;padding:11px;border-radius:10px;font-size:14px;font-weight:700;background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        Guardar
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// DELEGACIONES
+// ═══════════════════════════════════════════════════════════
+const del = { todos:[], filtrados:[], pag:1, sortKey:"", sortDir:"asc", editId:null, orgId:null, evId:null };
+let delUnidades      = [];   // unidades del evento seleccionado
+let delEntregaSelIds = [];   // IDs de unidades que entregan (multi)
+
+// ─── SELECTORES ───────────────────────────────────────────
+async function llenarOrgSelectDelegaciones() {
+  const sel = document.getElementById("del-org-select");
+  if (sel.options.length > 1) return;
+  const { data } = await sb.from("organizaciones").select("id,nombre,nit").order("nombre");
+  (data||[]).forEach(org => {
+    const op = document.createElement("option");
+    op.value = org.id;
+    op.textContent = (org.nit ? org.nit + " — " : "") + (org.nombre || "Sin nombre");
+    sel.appendChild(op);
+  });
+}
+
+async function delCambiarOrg() {
+  const sel   = document.getElementById("del-org-select");
+  const orgId = sel.value;
+  del.orgId   = orgId || null;
+  del.evId    = null;
+
+  // Resetear evento y contenido
+  document.getElementById("del-ev-wrap").style.display    = orgId ? "block" : "none";
+  document.getElementById("del-contenido").style.display  = "none";
+  document.getElementById("del-sin-org").style.display    = "block";
+
+  if (!orgId) return;
+
+  // Llenar eventos
+  const evSel = document.getElementById("del-ev-select");
+  evSel.innerHTML = "<option value=\'\'>— Seleccione un evento —</option>";
+  const { data } = await sb.from("eventos").select("id,nombre,tipo,fecha").eq("id_organizacion", orgId).order("fecha", {ascending:false});
+  (data||[]).forEach(ev => {
+    const f = ev.fecha ? new Date(ev.fecha).toLocaleDateString("es-CO") : "";
+    evSel.add(new Option(`${ev.nombre}${f ? " - "+f : ""}`, ev.id));
+  });
+}
+
+async function delCambiarEv() {
+  const evId = document.getElementById("del-ev-select").value;
+  del.evId   = evId || null;
+  if (!evId) {
+    document.getElementById("del-contenido").style.display = "none";
+    document.getElementById("del-sin-org").style.display   = "block";
+    return;
+  }
+  document.getElementById("del-sin-org").style.display   = "none";
+  document.getElementById("del-contenido").style.display = "block";
+
+  // Cargar unidades del org para usarlas en el modal
+  const { data: uds } = await sb.from("unidades").select("id,codigo,propietario_1,coeficiente").eq("id_organizacion", del.orgId).order("codigo");
+  delUnidades = uds || [];
+
+  await cargarDelegaciones();
+}
+
+// ─── CRUD PRINCIPAL ───────────────────────────────────────
+async function cargarDelegaciones() {
+  if (!del.evId) return;
+  document.getElementById("del-loading").style.display = "flex";
+  document.getElementById("del-tabla").style.display   = "none";
+  document.getElementById("del-empty").style.display   = "none";
+
+  const { data, error } = await sb
+    .from("delegaciones")
+    .select("*")
+    .eq("id_evento", del.evId)
+    .order("created_at", {ascending:false});
+
+  document.getElementById("del-loading").style.display = "none";
+  if (error) { toast("Error: "+error.message,"err"); return; }
+
+  del.todos     = data || [];
+  del.filtrados = [...del.todos];
+  del.pag       = 1;
+  document.getElementById("del-total").textContent = del.todos.length;
+  renderDelegaciones();
+}
+
+function renderDelegaciones() {
+  const ps    = parseInt(document.getElementById("del-pagesize").value) || 10;
+  const total = del.filtrados.length;
+  const totP  = Math.ceil(total/ps) || 1;
+  if (del.pag > totP) del.pag = totP;
+  const ini   = (del.pag-1)*ps;
+  const slice = del.filtrados.slice(ini, ini+ps);
+  const tbody = document.getElementById("del-tbody");
+  tbody.innerHTML = "";
+
+  if (!slice.length) {
+    document.getElementById("del-tabla").style.display = "none";
+    document.getElementById("del-empty").style.display = "block";
+    document.getElementById("del-info").textContent    = "";
+    document.getElementById("del-paginacion").innerHTML = "";
+    return;
+  }
+
+  document.getElementById("del-tabla").style.display = "table";
+  document.getElementById("del-empty").style.display = "none";
+
+  slice.forEach((d, i) => {
+    // unidades_entrega es array de IDs → buscar códigos
+    const idsEntrega = Array.isArray(d.unidades_entrega) ? d.unidades_entrega : [d.id_unidad_entrega].filter(Boolean);
+    const codEntrega = idsEntrega.map(id => {
+      const u = delUnidades.find(x => String(x.id) === String(id));
+      return u ? u.codigo : id;
+    }).join(", ");
+
+    const uRecibe = delUnidades.find(x => String(x.id) === String(d.id_unidad_recibe));
+    const codRecibe = uRecibe ? uRecibe.codigo : (d.id_unidad_recibe || "—");
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td style="padding:10px 12px;color:rgba(255,255,255,.3);font-size:12px;">${ini+i+1}</td>
+      <td style="padding:10px 12px;font-size:14px;font-weight:700;color:#c4b5fd;font-family:monospace;">${codEntrega || "—"}</td>
+      <td style="padding:10px 12px;font-size:14px;font-weight:700;color:#fff;font-family:monospace;">${codRecibe}</td>
+      <td style="padding:10px 12px;font-size:13px;color:rgba(255,255,255,.55);">${d.apoderado || "—"}</td>
+      <td style="padding:10px 12px;text-align:center;">
+        <div style="display:flex;justify-content:center;gap:6px;">
+          <button onclick="editarDelegacion(\'${d.id}\')" title="Editar" style="background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.25);color:#c4b5fd;width:30px;height:30px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button onclick="eliminarDelegacion(\'${d.id}\')" title="Eliminar" style="background:rgba(244,63,94,.12);border:1px solid rgba(244,63,94,.2);color:#f87171;width:30px;height:30px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+          </button>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById("del-info").textContent = `Mostrando ${ini+1} a ${Math.min(ini+ps,total)} de ${total} registro${total!==1?"s":""}`;
+  delRenderPag(totP);
+}
+
+function delRenderPag(totP) {
+  const c = document.getElementById("del-paginacion"); c.innerHTML = "";
+  const mk = (lbl, pg, dis, on) => {
+    const b = document.createElement("button");
+    b.textContent = lbl; b.disabled = dis;
+    b.style.cssText = `padding:6px 11px;border-radius:8px;font-size:13px;font-weight:600;border:1px solid ${on?"#7c3aed":"rgba(255,255,255,.12)"};background:${on?"#7c3aed":"rgba(255,255,255,.05)"};color:${on?"#fff":"rgba(255,255,255,.5)"};cursor:${dis?"default":"pointer"};`;
+    if (!dis) b.onclick = () => { del.pag = pg; renderDelegaciones(); };
+    return b;
+  };
+  c.appendChild(mk("«", 1, del.pag===1));
+  c.appendChild(mk("‹", del.pag-1, del.pag===1));
+  let s = Math.max(1, del.pag-2), e = Math.min(totP, s+4);
+  for (let i=s; i<=e; i++) c.appendChild(mk(i, i, false, i===del.pag));
+  c.appendChild(mk("›", del.pag+1, del.pag===totP));
+  c.appendChild(mk("»", totP, del.pag===totP));
+}
+
+function filtrarDelegaciones() {
+  const q = document.getElementById("del-buscar").value.toLowerCase().trim();
+  if (!q) { del.filtrados = [...del.todos]; del.pag=1; renderDelegaciones(); return; }
+  del.filtrados = del.todos.filter(d => {
+    const uR = delUnidades.find(x => String(x.id) === String(d.id_unidad_recibe));
+    const idsE = Array.isArray(d.unidades_entrega) ? d.unidades_entrega : [d.id_unidad_entrega].filter(Boolean);
+    const codsE = idsE.map(id => { const u=delUnidades.find(x=>String(x.id)===String(id)); return u?u.codigo:""; }).join(" ");
+    const hay = [(uR?.codigo||""), codsE, (d.apoderado||"")].join(" ").toLowerCase();
+    return hay.includes(q);
+  });
+  del.pag = 1; renderDelegaciones();
+}
+
+// ─── MODAL ────────────────────────────────────────────────
+function abrirDelModal(data) {
+  del.editId = data?.id || null;
+  delEntregaSelIds = [];
+
+  document.getElementById("del-modal-titulo").textContent = data ? "Editar Delegación" : "Nueva Delegación";
+
+  // Info org/evento (readonly)
+  const orgSel = document.getElementById("del-org-select");
+  const evSel  = document.getElementById("del-ev-select");
+  document.getElementById("del-m-org").textContent = orgSel.options[orgSel.selectedIndex]?.text || "—";
+  document.getElementById("del-m-ev").textContent  = evSel.options[evSel.selectedIndex]?.text  || "—";
+
+  // Llenar select "recibe"
+  const recibeEl = document.getElementById("del-m-recibe");
+  recibeEl.innerHTML = "<option value=\'\'>— Seleccione —</option>";
+  delUnidades.forEach(u => {
+    const op = new Option(`${u.codigo}${u.propietario_1 ? " — "+u.propietario_1 : ""}`, u.id);
+    recibeEl.add(op);
+  });
+
+  // Valores si edición
+  if (data) {
+    recibeEl.value = data.id_unidad_recibe || "";
+    delEntregaSelIds = Array.isArray(data.unidades_entrega) ? [...data.unidades_entrega] : [data.id_unidad_entrega].filter(Boolean);
+    document.getElementById("del-m-apoderado").value = data.apoderado || "";
+  } else {
+    recibeEl.value = "";
+    document.getElementById("del-m-apoderado").value = "";
+  }
+
+  delActualizarEntregaOpts();
+  delActualizarTags();
+
+  document.getElementById("del-m-entrega-dd").style.display = "none";
+  document.getElementById("del-m-entrega-search").value = "";
+  document.getElementById("delModalBg").style.display = "flex";
+}
+
+function cerrarDelModal() {
+  document.getElementById("delModalBg").style.display = "none";
+  del.editId = null;
+  delEntregaSelIds = [];
+}
+function cDelModalFuera(e) { if (e.target === document.getElementById("delModalBg")) cerrarDelModal(); }
+
+// Construir lista de unidades que entregan (excluyendo la que recibe)
+function delActualizarEntregaOpts() {
+  const recibeId = document.getElementById("del-m-recibe").value;
+  delFiltrarEntrega();
+  // Quitar la que recibe de los seleccionados
+  if (recibeId) delEntregaSelIds = delEntregaSelIds.filter(id => String(id) !== String(recibeId));
+  delActualizarTags();
+}
+
+function delFiltrarEntrega() {
+  const recibeId = document.getElementById("del-m-recibe").value;
+  const q = (document.getElementById("del-m-entrega-search").value || "").toLowerCase();
+  const list = document.getElementById("del-m-entrega-list");
+  list.innerHTML = "";
+  const filtered = delUnidades.filter(u => {
+    if (String(u.id) === String(recibeId)) return false; // excluir la que recibe
+    const hay = `${u.codigo} ${u.propietario_1||""}`.toLowerCase();
+    return !q || hay.includes(q);
+  });
+  if (!filtered.length) {
+    list.innerHTML = "<p style=\'padding:12px;font-size:13px;color:rgba(255,255,255,.3);\'>Sin resultados</p>";
+    return;
+  }
+  filtered.forEach(u => {
+    const sel = delEntregaSelIds.some(id => String(id) === String(u.id));
+    const item = document.createElement("div");
+    item.style.cssText = `display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;transition:.15s;background:${sel?"rgba(168,85,247,.15)":"transparent"};`;
+    item.onmouseover = () => { if(!sel) item.style.background="rgba(255,255,255,.05)"; };
+    item.onmouseout  = () => { if(!sel) item.style.background="transparent"; };
+    item.innerHTML = `
+      <div style="width:16px;height:16px;border-radius:4px;border:1.5px solid ${sel?"#a855f7":"rgba(255,255,255,.2)"};background:${sel?"#a855f7":"transparent"};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        ${sel ? "<svg width=\'10\' height=\'10\' fill=\'none\' stroke=\'#fff\' stroke-width=\'3\' viewBox=\'0 0 24 24\'><polyline points=\'20 6 9 17 4 12\'/></svg>" : ""}
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#fff;font-family:monospace;">${u.codigo}</div>
+        ${u.propietario_1 ? "<div style=\'font-size:11px;color:rgba(255,255,255,.4);\'>"+u.propietario_1+"</div>" : ""}
+      </div>`;
+    item.onclick = () => {
+      const idx = delEntregaSelIds.findIndex(id => String(id)===String(u.id));
+      if (idx >= 0) delEntregaSelIds.splice(idx, 1);
+      else delEntregaSelIds.push(u.id);
+      delFiltrarEntrega();
+      delActualizarTags();
+    };
+    list.appendChild(item);
+  });
+}
+
+function delActualizarTags() {
+  const container = document.getElementById("del-m-tags");
+  const placeholder = document.getElementById("del-m-tags-placeholder");
+  // Quitar tags existentes (no el placeholder)
+  [...container.querySelectorAll(".del-tag")].forEach(t => t.remove());
+  if (!delEntregaSelIds.length) {
+    placeholder.style.display = "block"; return;
+  }
+  placeholder.style.display = "none";
+  delEntregaSelIds.forEach(id => {
+    const u = delUnidades.find(x => String(x.id) === String(id));
+    if (!u) return;
+    const tag = document.createElement("span");
+    tag.className = "del-tag";
+    tag.style.cssText = "display:inline-flex;align-items:center;gap:5px;background:rgba(168,85,247,.2);border:1px solid rgba(168,85,247,.35);color:#c4b5fd;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;";
+    tag.innerHTML = `${u.codigo} <span onclick="delQuitarTag(\'${u.id}\')" style="cursor:pointer;opacity:.6;font-size:14px;line-height:1;">×</span>`;
+    container.insertBefore(tag, placeholder);
+  });
+}
+
+function delQuitarTag(id) {
+  delEntregaSelIds = delEntregaSelIds.filter(x => String(x) !== String(id));
+  delActualizarTags();
+  delFiltrarEntrega();
+}
+
+// Cerrar dropdown al clic fuera
+document.addEventListener("click", e => {
+  const dd  = document.getElementById("del-m-entrega-dd");
+  const tags = document.getElementById("del-m-tags");
+  if (!dd || !tags) return;
+  if (!dd.contains(e.target) && !tags.contains(e.target)) dd.style.display = "none";
+});
+
+// ─── GUARDAR ──────────────────────────────────────────────
+async function guardarDelegacion() {
+  const recibeId = document.getElementById("del-m-recibe").value;
+  if (!recibeId) { toast("Selecciona la unidad que recibe el poder","warn"); return; }
+  if (!delEntregaSelIds.length) { toast("Selecciona al menos una unidad que entrega poder","warn"); return; }
+
+  const apoderado = document.getElementById("del-m-apoderado").value.trim();
+
+  // Guardar una fila por cada unidad que entrega
+  const filas = delEntregaSelIds.map(idEntrega => ({
+    id_evento:        del.evId,
+    id_organizacion:  del.orgId,
+    id_unidad_recibe: recibeId,
+    id_unidad_entrega:idEntrega,
+    unidades_entrega: delEntregaSelIds,  // array completo para referencia
+    apoderado:        apoderado || null
+  }));
+
+  let error = null;
+  if (del.editId) {
+    // Edición: actualizar el registro existente
+    ({ error } = await sb.from("delegaciones").update({
+      id_unidad_recibe:  recibeId,
+      id_unidad_entrega: delEntregaSelIds[0],
+      unidades_entrega:  delEntregaSelIds,
+      apoderado:         apoderado || null
+    }).eq("id", del.editId));
+  } else {
+    // Nuevo: insertar todas las filas
+    ({ error } = await sb.from("delegaciones").insert(filas));
+  }
+
+  if (error) { toast("Error: "+error.message,"err"); console.error(error); return; }
+  toast(del.editId ? "Delegación actualizada" : `${filas.length} delegación(es) guardada(s)`,"ok");
+  cerrarDelModal();
+  await cargarDelegaciones();
+}
+
+// ─── EDITAR ───────────────────────────────────────────────
+function editarDelegacion(id) {
+  const d = del.todos.find(x => String(x.id) === String(id));
+  if (!d) return;
+  abrirDelModal(d);
+}
+
+// ─── ELIMINAR ─────────────────────────────────────────────
+async function eliminarDelegacion(id) {
+  const d = del.todos.find(x => String(x.id) === String(id));
+  const uR = delUnidades.find(x => String(x.id) === String(d?.id_unidad_recibe));
+  const idsE = Array.isArray(d?.unidades_entrega) ? d.unidades_entrega : [d?.id_unidad_entrega].filter(Boolean);
+  const codE = idsE.map(i => { const u=delUnidades.find(x=>String(x.id)===String(i)); return u?u.codigo:i; }).join(", ");
+  if (!confirm(`¿Eliminar delegación de ${codE} → ${uR?.codigo||"?"}?`)) return;
+  const { error } = await sb.from("delegaciones").delete().eq("id", id);
+  if (error) { toast("Error: "+error.message,"err"); return; }
+  toast("Delegación eliminada","ok");
+  await cargarDelegaciones();
+}
+
+// ─── EXPORTAR CSV ─────────────────────────────────────────
+function exportarDelCSV() {
+  if (!del.filtrados.length) { toast("No hay datos","warn"); return; }
+  const hdrs = ["#","Unidad entrega","Unidad recibe","Apoderado"];
+  const rows = del.filtrados.map((d,i) => {
+    const idsE = Array.isArray(d.unidades_entrega) ? d.unidades_entrega : [d.id_unidad_entrega].filter(Boolean);
+    const codE = idsE.map(id => { const u=delUnidades.find(x=>String(x.id)===String(id)); return u?u.codigo:id; }).join(" | ");
+    const uR   = delUnidades.find(x=>String(x.id)===String(d.id_unidad_recibe));
+    return [i+1, codE, uR?.codigo||"—", d.apoderado||""].join(",");
+  });
+  const blob = new Blob([hdrs.join(",")+"
+"+rows.join("
+")],{type:"text/csv;charset=utf-8;"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `delegaciones_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast("CSV descargado","ok");
+}
 </script>
 
 </body>
