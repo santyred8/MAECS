@@ -1223,6 +1223,28 @@ async function votar(pregId) {
     return;
   }
 
+  // Votar automáticamente en nombre de las unidades que delegaron su poder
+  const { data: delegantes } = await sb.from("delegaciones")
+    .select("id_unidad_entrega")
+    .eq("id_evento", EV_ID)
+    .eq("id_unidad_recibe", SS.unidadId);
+
+  if (delegantes && delegantes.length > 0) {
+    for (const d of delegantes) {
+      if (!d.id_unidad_entrega) continue;
+      // Obtener el coeficiente propio de la unidad delegante
+      const { data: uDel } = await sb.from("unidades")
+        .select("coeficiente").eq("id", d.id_unidad_entrega);
+      const coefDel = uDel && uDel.length > 0
+        ? parseFloat(String(uDel[0].coeficiente||0).replace(",",".")) || 0
+        : 0;
+      await sb.from("votos").upsert({
+        id_pregunta: pregId, id_evento: EV_ID,
+        id_unidad: d.id_unidad_entrega, respuesta: sel.texto, coeficiente: coefDel,
+      }, { onConflict: "id_pregunta,id_unidad" });
+    }
+  }
+
   const esCambio = !!misVotos[pregId];
   misVotos[pregId] = sel.texto;
   toast(esCambio ? "✓ Respuesta actualizada" : "✓ Voto registrado", "ok");
