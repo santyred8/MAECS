@@ -4356,7 +4356,43 @@ async function guardarDelegacion() {
     ({ error } = await sb.from('delegaciones').insert(filas));
   }
   if (error) { toast('Error: '+error.message,'err'); if(btn){btn.disabled=false;btn.textContent='Guardar';} return; }
-  toast(del.editId ? 'Delegación actualizada' : delEntregaSelIds.length+' delegación(es) guardada(s)','ok');
+
+  // ── Si es delegación nueva, copiar votos existentes del que recibe al que entrega ──
+  if (!del.editId) {
+    // Obtener el evento para saber a qué evento pertenece
+    const evId = del.evId;
+
+    // Buscar votos que ya tiene la unidad que RECIBE el poder
+    const { data: votosExist } = await sb.from('votos')
+      .select('id_pregunta,respuesta,coeficiente')
+      .eq('id_evento', evId)
+      .eq('id_unidad', recibeId);
+
+    if (votosExist && votosExist.length > 0) {
+      // Para cada unidad que entregó su poder, copiar esos votos con su propio coeficiente
+      for (const idE of delEntregaSelIds) {
+        // Obtener coeficiente propio de la unidad que entrega
+        const uDel = delUnidades.find(x => String(x.id) === String(idE));
+        const coefDel = parseFloat(String(uDel?.coeficiente||0).replace(',','.')) || 0;
+
+        const votosACopiar = votosExist.map(v => ({
+          id_pregunta:  v.id_pregunta,
+          id_evento:    evId,
+          id_unidad:    idE,
+          respuesta:    v.respuesta,
+          coeficiente:  coefDel,
+        }));
+
+        await sb.from('votos').upsert(votosACopiar, { onConflict: 'id_pregunta,id_unidad' });
+      }
+      toast(delEntregaSelIds.length + ' delegación(es) guardada(s) — ' + votosExist.length + ' voto(s) retroactivos copiados', 'ok');
+    } else {
+      toast(delEntregaSelIds.length + ' delegación(es) guardada(s)', 'ok');
+    }
+  } else {
+    toast('Delegación actualizada', 'ok');
+  }
+
   cerrarDelModal();
   await cargarDelegaciones();
 }
