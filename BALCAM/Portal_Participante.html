@@ -503,6 +503,23 @@ function iniciarPolling() {
 
 // ── POLL EVENTO — detecta cambios de config ───────────
 async function pollEvento() {
+  // Verificar si el participante sigue registrado — si lo quitaron, cerrar sesión
+  const { data: partCheck } = await sb.from("participantes")
+    .select("estado,activo")
+    .eq("id_evento", EV_ID)
+    .eq("id_unidad", SS.unidadId)
+    .maybeSingle();
+  if (!partCheck || partCheck.estado !== "Registrado") {
+    // Lo sacaron del registro — limpiar sesión y redirigir
+    ["part_unidad_id","part_codigo","part_nombre","part_ev_id","part_org_id"]
+      .forEach(k => localStorage.removeItem(k));
+    clearInterval(pollingInt);
+    clearInterval(_heartbeatInt);
+    alert("Tu registro fue removido por la administración. Serás redirigido al inicio.");
+    location.replace("Login_Participante.html?ev=" + (EV_ID||"") + "&org=" + (ORG_ID||""));
+    return;
+  }
+
   const { data } = await sb.from("eventos")
     .select("id,nombre,estado,tipo,ocultar_graficos,permitir_voto_mora,permitir_cambiar_respuestas,fecha,quorum_minimo")
     .eq("id", EV_ID).single();
