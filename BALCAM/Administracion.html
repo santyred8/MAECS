@@ -1861,14 +1861,45 @@ async function toggleActivo(unidadId, partId, val) {
 async function eliminarParticipante(unidadId) {
   const part = partMap[unidadId];
   if (!part) { toast("Sin registro activo","warn"); return; }
-  await sb.from("participantes").delete().eq("id",part.id);
+  if (!confirm("¿Eliminar el registro de esta unidad?")) return;
+
+  // Eliminar registro principal
+  await sb.from("participantes").delete().eq("id", part.id);
   delete partMap[unidadId];
   const u = p.todos.find(x=>x.id==unidadId);
   if (u) { u.activo=false; u.estado="Sin registrar"; u.hora_registro=null; u.part_id=null; }
+
+  // Eliminar también los registros de sus delegantes
+  const { data: delegantes } = await sb.from("delegaciones")
+    .select("id_unidad_entrega")
+    .eq("id_evento", EV_ID)
+    .eq("id_unidad_recibe", unidadId);
+
+  if (delegantes && delegantes.length > 0) {
+    for (const d of delegantes) {
+      if (!d.id_unidad_entrega) continue;
+      const partDel = partMap[d.id_unidad_entrega];
+      if (partDel) {
+        await sb.from("participantes").delete().eq("id", partDel.id);
+        delete partMap[d.id_unidad_entrega];
+      } else {
+        // Por si no está en el map local, borrar directo por id_unidad
+        await sb.from("participantes")
+          .delete()
+          .eq("id_evento", EV_ID)
+          .eq("id_unidad", d.id_unidad_entrega);
+      }
+      const uDel = p.todos.find(x=>String(x.id)===String(d.id_unidad_entrega));
+      if (uDel) { uDel.activo=false; uDel.estado="Sin registrar"; uDel.hora_registro=null; uDel.part_id=null; }
+    }
+    toast("✓ Registro eliminado (+ " + delegantes.length + " delegante(s))", "ok");
+  } else {
+    toast("✓ Registro eliminado", "ok");
+  }
+
   p.filtrados = [...p.todos];
   calcularStatsParticipantes();
   aplicarPOrden(); renderParticipantes();
-  toast("✓ Registro eliminado","ok");
 }
 
 function verQR(unidadId, codigo) {
@@ -2561,19 +2592,17 @@ async function regLogin() {
 
   const horaAhora = new Date().toISOString();
 
-  // ── Verificar si tiene el constraint upsert o hacer insert directo ──
-  // Primero chequear si ya existe para hacer update vs insert
-  const { data: partExist } = await sb.from("participantes")
+  // Registrar la unidad principal
+  const { data: partRows } = await sb.from("participantes")
     .select("id")
     .eq("id_evento", EV_ID)
-    .eq("id_unidad", unidad.id)
-    .maybeSingle();
+    .eq("id_unidad", unidad.id);
 
   let upsertError = null;
-  if (partExist?.id) {
+  if (partRows && partRows.length > 0) {
     const { error } = await sb.from("participantes").update({
       activo: true, estado: "Registrado", hora_registro: horaAhora
-    }).eq("id", partExist.id);
+    }).eq("id", partRows[0].id);
     upsertError = error;
   } else {
     const { error } = await sb.from("participantes").insert({
@@ -2590,57 +2619,40 @@ async function regLogin() {
     errEl.classList.add("show"); return;
   }
 
-  // ── Registrar automáticamente las unidades que delegaron poder a esta ──
-  const unidadIdNum = Number(unidad.id);
-
-  const { data: delegsRecibidas, error: errDeleg } = await sb.from("delegaciones")
+  // ── Registrar las unidades que delegaron su poder a esta ──
+  const { data: delegsRows, error: errDeleg } = await sb.from("delegaciones")
     .select("id_unidad_entrega")
     .eq("id_evento", EV_ID)
-    .eq("id_unidad_recibe", unidadIdNum);
+    .eq("id_unidad_recibe", unidad.id);
 
-  // DEBUG TEMPORAL - alert para ver exactamente qué pasa
-  if (errDeleg) {
-    alert("ERROR delegaciones: " + errDeleg.message);
-  } else if (!delegsRecibidas?.length) {
-    alert("Sin delegaciones encontradas.\nid_unidad_recibe=" + unidadIdNum + "\nid_evento=" + EV_ID + "\nTipo id: " + typeof unidadIdNum);
-  } else {
-    let resumen = delegsRecibidas.length + " delegante(s) encontrados: " + delegsRecibidas.map(d=>d.id_unidad_entrega).join(", ");
-    
-    let registrados = 0;
-    let errores = [];
-    for (const d of delegsRecibidas) {
+  alert("DEBUG — delegaciones encontradas: " + (delegsRows ? delegsRows.length : "null") +
+        "\nError: " + (errDeleg ? errDeleg.message : "ninguno") +
+        "\nid_unidad_recibe buscado: " + unidad.id +
+        "\nEV_ID: " + EV_ID);
+
+  if (!errDeleg && delegsRows && delegsRows.length > 0) {
+    for (const d of delegsRows) {
       if (!d.id_unidad_entrega) continue;
-      const idEntregaNum = Number(d.id_unidad_entrega);
 
-      const { data: existeDel, error: eCheck } = await sb.from("participantes")
+      const { data: delPart } = await sb.from("participantes")
         .select("id")
         .eq("id_evento", EV_ID)
-        .eq("id_unidad", idEntregaNum)
-        .maybeSingle();
+        .eq("id_unidad", d.id_unidad_entrega);
 
-      if (eCheck) { errores.push("check(" + idEntregaNum + "):" + eCheck.message); continue; }
-
-      if (existeDel?.id) {
-        const { error: eUpd } = await sb.from("participantes").update({
+      if (delPart && delPart.length > 0) {
+        await sb.from("participantes").update({
           activo: false, estado: "Registrado", hora_registro: horaAhora
-        }).eq("id", existeDel.id);
-        if (!eUpd) registrados++;
-        else errores.push("upd(" + idEntregaNum + "):" + eUpd.message);
+        }).eq("id", delPart[0].id);
       } else {
-        const { error: eIns } = await sb.from("participantes").insert({
+        await sb.from("participantes").insert({
           id_evento:     EV_ID,
-          id_unidad:     idEntregaNum,
+          id_unidad:     d.id_unidad_entrega,
           activo:        false,
           estado:        "Registrado",
           hora_registro: horaAhora,
         });
-        if (!eIns) registrados++;
-        else errores.push("ins(" + idEntregaNum + "):" + eIns.message);
       }
     }
-    resumen += "\nRegistrados: " + registrados + "/" + delegsRecibidas.length;
-    if (errores.length) resumen += "\nERRORES: " + errores.join(" | ");
-    alert(resumen);
   }
 
   btn.disabled = false;
