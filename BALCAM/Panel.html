@@ -3579,7 +3579,7 @@ const BALCAM_LOGO_B64 = "/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAH
 async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
   const [
     {data:org}, {data:ev}, {data:unis},
-    {data:parts}, {data:pregs}, {data:vTodos}
+    {data:parts}, {data:pregs}, {data:vTodos}, {data:delegs}
   ] = await Promise.all([
     sb.from("organizaciones").select("*").eq("id",ORG_ID_ARG).single(),
     sb.from("eventos").select("*").eq("id",EV_ID_ARG).single(),
@@ -3587,6 +3587,7 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
     sb.from("participantes").select("*").eq("id_evento",EV_ID_ARG),
     sb.from("preguntas").select("*").eq("id_evento",EV_ID_ARG).in("estado",["Activa","Cerrada"]).order("orden"),
     sb.from("votos").select("*").eq("id_evento",EV_ID_ARG),
+    sb.from("delegaciones").select("*").eq("id_evento",EV_ID_ARG),
   ]);
   if (!ev || !unis) throw new Error("No se pudieron cargar los datos");
 
@@ -3598,8 +3599,24 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
     votoMap[v.id_pregunta][v.id_unidad] = v;
   });
 
+  // Map de delegaciones: id_entrega → id_recibe (y viceversa)
+  const delegaAMap  = {}; // quién representa a quién: delegaAMap[id_entrega] = id_recibe
+  const representaMap = {}; // representaMap[id_recibe] = [id_entrega, ...]
+  (delegs||[]).forEach(d => {
+    if (d.id_unidad_entrega && d.id_unidad_recibe) {
+      delegaAMap[String(d.id_unidad_entrega)]  = String(d.id_unidad_recibe);
+      if (!representaMap[String(d.id_unidad_recibe)]) representaMap[String(d.id_unidad_recibe)] = [];
+      representaMap[String(d.id_unidad_recibe)].push(String(d.id_unidad_entrega));
+    }
+  });
+
   const toN  = v => parseFloat(String(v||0).replace(",","."))||0;
-  const unisReg     = unis.filter(u => partMap[u.id]?.activo);
+  // Registrado = activo true O delegante (activo false pero estado Registrado)
+  const esRegistrado = u => {
+    const p = partMap[u.id];
+    return p && p.estado === "Registrado";
+  };
+  const unisReg     = unis.filter(u => esRegistrado(u));
   const quorumFinal = unisReg.reduce((s,u) => s+toN(u.coeficiente), 0);
   const quorumMin   = toN(ev.quorum_minimo);
 
@@ -3739,11 +3756,22 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
   wsQ.getRow(rQ).height = 24; rQ++;
 
   // Datos
-  const unisOrd = [...unis].sort((a,b)=>(partMap[b.id]?.activo?1:0)-(partMap[a.id]?.activo?1:0));
+  const unisOrd = [...unis].sort((a,b)=>(esRegistrado(b)?1:0)-(esRegistrado(a)?1:0));
   unisOrd.forEach((u,i) => {
-    const reg = partMap[u.id]?.activo;
+    const reg      = esRegistrado(u);
+    const esDel    = reg && partMap[u.id]?.activo === false; // delegante
+    const uidStr   = String(u.id);
+    const repCod   = delegaAMap[uidStr]
+      ? (unis.find(x=>String(x.id)===delegaAMap[uidStr])?.codigo || delegaAMap[uidStr])
+      : null;
+    const repPor   = representaMap[uidStr]
+      ? representaMap[uidStr].map(id=>unis.find(x=>String(x.id)===id)?.codigo||id).join(", ")
+      : null;
     const alt = i%2===0;
-    const bg  = reg ? (alt?WHT:VRD_L) : (alt?WHT:RJO_L);
+    const bg  = reg ? (esDel ? AMB : (alt?WHT:VRD_L)) : (alt?WHT:RJO_L);
+    const estadoTxt = !reg ? "—" : esDel ? "Poder cedido → " + repCod : repPor ? "Registrado (rep. " + repPor + ")" : "Registrado";
+    const estadoBg  = !reg ? RJO : esDel ? AMB : VRD;
+    const estadoFg  = !reg ? RJO_D : esDel ? AMB_D : VRD_D;
     setC(wsQ,rQ,1,i+1,                    {bg,align:"center",border:true});
     setC(wsQ,rQ,2,u.contenedor||"—",       {bg,align:"center",border:true});
     setC(wsQ,rQ,3,u.codigo||"—",           {bg,align:"center",border:true,bold:true});
@@ -3751,7 +3779,7 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
     setC(wsQ,rQ,5,u.propietario_1||"—",    {bg,align:"left",  border:true});
     setC(wsQ,rQ,6,fP(toN(u.coeficiente)),  {bg,align:"center",border:true});
     setC(wsQ,rQ,7,"100%",                  {bg,align:"center",border:true,fg:GR3});
-    setC(wsQ,rQ,8,reg?"Registrado":"—",    {bold:reg,bg:reg?VRD:RJO,fg:reg?VRD_D:RJO_D,align:"center",border:true});
+    setC(wsQ,rQ,8,estadoTxt,              {bold:reg,bg:estadoBg,fg:estadoFg,align:"center",border:true,wrap:true});
     setC(wsQ,rQ,9,fH(partMap[u.id]?.hora_registro),{bg,align:"center",fg:GR3,border:true});
     camposAct.forEach((ca,ci) => setC(wsQ,rQ,10+ci,u[ca]||"—",{bg,align:"center",border:true}));
     wsQ.getRow(rQ).height = 22; rQ++;
@@ -3790,7 +3818,7 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
     });
     const votaron   = unisReg.filter(u =>  votosP[u.id]);
     const sinVotar  = unisReg.filter(u => !votosP[u.id]);
-    const unisNoReg = unis.filter(u => !partMap[u.id]?.activo);
+    const unisNoReg = unis.filter(u => !esRegistrado(u));
     const totVCoef  = votaron.reduce((s,u) => s+toN(u.coeficiente), 0);
     const svCoef    = sinVotar.reduce((s,u) => s+toN(u.coeficiente), 0);
     const pctVoto  = quorumFinal>0 ? totVCoef/quorumFinal : 0;
@@ -3876,21 +3904,31 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
 
     todas.forEach((u, idx) => {
       const v      = votosP[u.id];
-      const isReg  = !!partMap[u.id]?.activo;
+      const isReg  = esRegistrado(u);
+      const esDel  = isReg && partMap[u.id]?.activo === false;
+      const uidStr = String(u.id);
+      const repCod = delegaAMap[uidStr]
+        ? (unis.find(x=>String(x.id)===delegaAMap[uidStr])?.codigo || "?")
+        : null;
       const coef   = toN(u.coeficiente);
       const qPct   = v && quorumFinal>0 ? coef/quorumFinal : null;
       const alt    = idx%2===0;
-      const rbg  = v ? (alt?WHT:GR1) : isReg ? (alt?RJO_L:RJO) : (alt?WHT:GR2);
-      const rfg  = v ? BLK : isReg ? RJO_D : GR3;
+      const rbg  = v ? (alt?WHT:GR1) : isReg ? (esDel?(alt?AMB:"FEF9C3"):(alt?RJO_L:RJO)) : (alt?WHT:GR2);
+      const rfg  = v ? BLK : isReg ? (esDel?AMB_D:RJO_D) : GR3;
 
       // Color respuesta según opción
-      let rBg = isReg ? RJO : GR2;
-      let rFg = isReg ? RJO_D : GR3;
+      let rBg = isReg ? (esDel?AMB:RJO) : GR2;
+      let rFg = isReg ? (esDel?AMB_D:RJO_D) : GR3;
       if (v) {
         const ri  = opcs.indexOf(v.respuesta);
         const col = opColors[(ri>=0?ri:0) % opColors.length];
         rBg = col.bg; rFg = col.fg;
       }
+
+      const respTxt = v ? v.respuesta
+        : esDel ? "Poder cedido → " + repCod
+        : isReg ? "Sin voto"
+        : "No registrado";
 
       // Tabla izquierda (cols 1-10)
       setC(wsP,rP,1, idx+1,                    {bg:rbg,fg:rfg,align:"center",border:true});
@@ -3901,7 +3939,7 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
       setC(wsP,rP,6, fP(coef),                  {bg:rbg,fg:rfg,align:"center",border:true});
       setC(wsP,rP,7, qPct!==null?fP(qPct):"—",  {bg:rbg,fg:qPct?rfg:GR3,align:"center",border:true});
       setC(wsP,rP,8, v?"100%":"—",              {bg:rbg,fg:GR3,align:"center",border:true});
-      setC(wsP,rP,9, v?v.respuesta:(isReg?"Sin voto":"No registrado"), {bold:!!v,italic:!v,bg:rBg,fg:rFg,align:"center",border:true});
+      setC(wsP,rP,9, respTxt,                   {bold:!!v,italic:!v&&!esDel,bg:rBg,fg:rFg,align:"center",border:true,wrap:true});
       setC(wsP,rP,10,fH(v?.created_at),         {bg:rbg,fg:GR3,align:"center",border:true});
 
       // GAP col 11
