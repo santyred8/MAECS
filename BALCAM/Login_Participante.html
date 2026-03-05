@@ -322,6 +322,19 @@ async function doLogin() {
     return;
   }
 
+  // ── Verificar si esta unidad cedió su poder ──
+  const { data: delCedida } = await sb.from("delegaciones")
+    .select("id_unidad_recibe")
+    .eq("id_evento", EV_ID)
+    .eq("id_unidad_entrega", unidad.id);
+  if (delCedida && delCedida.length > 0) {
+    const { data: uRec } = await sb.from("unidades").select("codigo").eq("id", delCedida[0].id_unidad_recibe);
+    const cod = (uRec && uRec.length > 0) ? uRec[0].codigo : "otra unidad";
+    setBtnLoad(false);
+    showErr("Esta unidad cedió su poder a la unidad " + cod + ". Solo ella puede ingresar en su nombre.");
+    return;
+  }
+
   // ── Verificar si ya está registrado (para las validaciones) ──
   const { data: partExist } = await sb.from("participantes")
     .select("hora_registro,device_id,session_ping")
