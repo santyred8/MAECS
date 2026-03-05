@@ -2591,23 +2591,24 @@ async function regLogin() {
   }
 
   // ── Registrar automáticamente las unidades que delegaron poder a esta ──
+  // Forzar número para el bigint de Supabase
+  const unidadIdNum = Number(unidad.id);
+
   const { data: delegsRecibidas, error: errDeleg } = await sb.from("delegaciones")
     .select("id_unidad_entrega")
     .eq("id_evento", EV_ID)
-    .eq("id_unidad_recibe", unidad.id);
+    .eq("id_unidad_recibe", unidadIdNum);
 
-  // DEBUG: mostrar en pantalla qué encontramos
+  // DEBUG visible en pantalla
   const debugEl = document.getElementById("reg-debug");
   if (debugEl) {
+    debugEl.style.display = "block";
     if (errDeleg) {
-      debugEl.innerHTML = `<b>ERROR buscando delegaciones:</b> ${errDeleg.message}`;
-      debugEl.style.display = "block";
+      debugEl.innerHTML = `❌ <b>ERROR delegaciones:</b> ${errDeleg.message}`;
     } else if (!delegsRecibidas?.length) {
-      debugEl.innerHTML = `<b>Sin delegaciones</b> para id_unidad_recibe=${unidad.id} ev=${EV_ID}`;
-      debugEl.style.display = "block";
+      debugEl.innerHTML = `ℹ️ Sin poderes delegados (id_recibe=${unidadIdNum}, ev=${EV_ID})`;
     } else {
-      debugEl.innerHTML = `<b>${delegsRecibidas.length} delegante(s) encontrados:</b> ${delegsRecibidas.map(d=>d.id_unidad_entrega).join(", ")}`;
-      debugEl.style.display = "block";
+      debugEl.innerHTML = `✅ <b>${delegsRecibidas.length} poder(es):</b> IDs ${delegsRecibidas.map(d=>d.id_unidad_entrega).join(", ")}`;
     }
   }
 
@@ -2616,10 +2617,12 @@ async function regLogin() {
     let errores = [];
     for (const d of delegsRecibidas) {
       if (!d.id_unidad_entrega) continue;
+      const idEntregaNum = Number(d.id_unidad_entrega);
+
       const { data: existeDel } = await sb.from("participantes")
         .select("id")
         .eq("id_evento", EV_ID)
-        .eq("id_unidad", d.id_unidad_entrega)
+        .eq("id_unidad", idEntregaNum)
         .maybeSingle();
 
       if (existeDel?.id) {
@@ -2627,22 +2630,22 @@ async function regLogin() {
           activo: false, estado: "Registrado", hora_registro: horaAhora
         }).eq("id", existeDel.id);
         if (!eUpd) registrados++;
-        else errores.push(`upd(${d.id_unidad_entrega}): ${eUpd.message}`);
+        else errores.push(`upd(${idEntregaNum}):${eUpd.message}`);
       } else {
         const { error: eIns } = await sb.from("participantes").insert({
           id_evento:     EV_ID,
-          id_unidad:     d.id_unidad_entrega,
+          id_unidad:     idEntregaNum,
           activo:        false,
           estado:        "Registrado",
           hora_registro: horaAhora,
         });
         if (!eIns) registrados++;
-        else errores.push(`ins(${d.id_unidad_entrega}): ${eIns.message}`);
+        else errores.push(`ins(${idEntregaNum}):${eIns.message}`);
       }
     }
     if (debugEl) {
-      debugEl.innerHTML += `<br><b>Resultado:</b> ${registrados}/${delegsRecibidas.length} registrados`;
-      if (errores.length) debugEl.innerHTML += `<br><b style="color:red">ERRORES:</b> ${errores.join(" | ")}`;
+      debugEl.innerHTML += ` → <b>${registrados}/${delegsRecibidas.length} registrados</b>`;
+      if (errores.length) debugEl.innerHTML += `<br>❌ <b>ERRORES:</b> ${errores.join(" | ")}`;
     }
   }
 
