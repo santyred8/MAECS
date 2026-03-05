@@ -834,11 +834,11 @@ async function cargarPreguntas() {
 
 // ── STATS PARTICIPACIÓN ───────────────────────────────
 async function cargarStatsParticipacion() {
-  // Solo participantes activos (activo = true)
+  // Todos los registrados — incluyendo delegantes (activo=false pero estado=Registrado)
   const { count: totalPart } = await sb.from("participantes")
     .select("*", { count:"exact", head:true })
     .eq("id_evento", EV_ID)
-    .eq("activo", true);
+    .eq("estado", "Registrado");
 
   // Votos únicos por unidad
   const { data: votosUniq } = await sb.from("votos")
