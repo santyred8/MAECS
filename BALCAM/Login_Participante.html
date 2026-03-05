@@ -379,6 +379,26 @@ async function doLogin() {
   upsertData.session_ping = null;
   await sb.from("participantes").upsert(upsertData, {onConflict:"id_evento,id_unidad"});
 
+  // Registrar automáticamente las unidades que delegaron su poder a esta
+  const horaRegistro = upsertData.hora_registro || new Date().toISOString();
+  const { data: delegsRecibidas } = await sb.from("delegaciones")
+    .select("id_unidad_entrega")
+    .eq("id_evento", EV_ID)
+    .eq("id_unidad_recibe", unidad.id);
+
+  if (delegsRecibidas && delegsRecibidas.length > 0) {
+    for (const d of delegsRecibidas) {
+      if (!d.id_unidad_entrega) continue;
+      await sb.from("participantes").upsert({
+        id_evento:     EV_ID,
+        id_unidad:     d.id_unidad_entrega,
+        activo:        false,
+        estado:        "Registrado",
+        hora_registro: horaRegistro,
+      }, {onConflict:"id_evento,id_unidad"});
+    }
+  }
+
   setBtnLoad(false);
 
   const hora = new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
