@@ -2156,7 +2156,7 @@ async function cargarUnidadesAdmin() {
 }
 
 async function cargarParticipAdmin() {
-  const { data } = await sb.from("participantes").select("id_unidad,estado").eq("id_evento", EV_ID).eq("activo", true);
+  const { data } = await sb.from("participantes").select("id_unidad,estado,activo").eq("id_evento", EV_ID).eq("estado", "Registrado");
   admParticip = data || [];
 }
 
@@ -2447,15 +2447,19 @@ function renderResultados() {
   }
   let sinCoefTotal2 = 0;
   sinVotarIds.forEach((id,i) => {
-    // Coerción de tipos para que funcione con IDs numéricos o string
-    const u = admUnidades.find(u => String(u.id) === String(id));
+    const u    = admUnidades.find(u => String(u.id) === String(id));
+    const part = admParticip.find(p => String(p.id_unidad) === String(id));
+    const esDelegante = part && part.activo === false;
     const coef = toNumAdmin(u?.coeficiente || 0);
     sinCoefTotal2 += coef;
     sinTbody.innerHTML += `<tr style="border-bottom:1px solid #fff0f0;${i%2===0?'':'background:#fff8f8'}">
       <td style="padding:8px 10px;text-align:center;font-size:11px;color:#94a3b8;width:30px;">${i+1}</td>
       <td style="padding:8px 10px;font-size:12px;color:#64748b;">${u?.tipo||"—"}</td>
       <td style="padding:8px 10px;font-size:12px;color:#64748b;">${u?.contenedor||"—"}</td>
-      <td style="padding:8px 10px;font-weight:700;color:#1e1b4b;">${u?.codigo||String(id)}</td>
+      <td style="padding:8px 10px;font-weight:700;color:#1e1b4b;">
+        ${u?.codigo||String(id)}
+        ${esDelegante ? '<span style="margin-left:5px;background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;">Poder cedido</span>' : ''}
+      </td>
       <td style="padding:8px 10px;text-align:right;font-weight:700;color:#dc2626;">${fmtPct(coef)}</td>
       <td style="padding:8px 10px;text-align:center;font-weight:700;color:#dc2626;">1</td>
     </tr>`;
