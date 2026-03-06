@@ -544,7 +544,7 @@ body{
 
   /* Panel flotante de preguntas desde abajo */
   #mobile-vote-panel {
-    display: none;
+    display: block;
     position: fixed;
     bottom: 0; left: 0; right: 0;
     z-index: 9999;
@@ -557,9 +557,11 @@ body{
     transition: transform .35s cubic-bezier(.34,1.56,.64,1);
     max-height: 85vh;
     overflow-y: auto;
+    pointer-events: none;
   }
   #mobile-vote-panel.visible {
     transform: translateY(0);
+    pointer-events: all;
   }
   .mvp-handle {
     width: 36px; height: 4px;
@@ -636,19 +638,20 @@ body{
   .mvp-res-fill { height: 100%; border-radius: 20px; transition: width .6s ease; min-width: 3px; }
   .mvp-res-pct { font-size: 11px; font-weight: 800; color: #c4b5fd; min-width: 36px; text-align: right; }
 
-  /* Nav botón de votar flotante (cuando panel está cerrado) */
+  /* FAB votar — visible siempre en mobile cuando hay preguntas */
   #mobile-vote-fab {
     display: none;
-    position: fixed; bottom: 20px; left: 50%;
+    position: fixed; bottom: 24px; left: 50%;
     transform: translateX(-50%);
     z-index: 9998;
     background: linear-gradient(135deg, var(--p), var(--pink));
     color: #fff; border: none; border-radius: 40px;
-    padding: 12px 24px; font-size: 14px; font-weight: 800;
+    padding: 14px 28px; font-size: 15px; font-weight: 800;
     cursor: pointer; font-family: 'Outfit', sans-serif;
     box-shadow: 0 4px 24px rgba(124,58,237,.5);
     white-space: nowrap;
     animation: fab-pulse 2s ease infinite;
+    align-items: center; gap: 8px;
   }
   @keyframes fab-pulse {
     0%,100% { box-shadow: 0 4px 24px rgba(124,58,237,.5); }
@@ -720,13 +723,7 @@ body{
   </div>
 </div>
 
-<!-- ZOOM BARRA ACTIVA (visible cuando está en reunión) -->
-<div id="zoom-active-bar" style="display:none;background:rgba(26,106,255,.12);border-bottom:1px solid rgba(26,106,255,.2);padding:6px 16px;align-items:center;justify-content:space-between;gap:8px;position:fixed;left:0;width:var(--zoom-col-w,460px);z-index:95;top:56px;">
-  <span style="font-size:11px;color:rgba(255,255,255,.6);font-weight:600;">🔴 En reunión</span>
-  <button onclick="salirZoom()" style="background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.4);color:#f87171;padding:4px 12px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif;">
-    ✕ Salir
-  </button>
-</div>
+<!-- zoom-active-bar removido -->
 
 <!-- ZOOM CONTAINER (desktop split) -->
 <div id="zoom-container-wrapper" style="display:none;width:100%;background:#000;position:relative;">
@@ -2170,6 +2167,7 @@ function abrirZoomMobile() {
   document.body.classList.add("zoom-mobile-mode");
 
   // Si hay preguntas activas mostrar FAB
+  mostrarFabMobile();
   if (preguntas.length > 0) {
     document.getElementById("mobile-vote-fab").style.display = "flex";
   }
@@ -2183,12 +2181,31 @@ function salirZoomMobile() {
   cerrarMobilePanel();
 }
 
+// ── Detectar cuando usuario sale de Zoom desde adentro ───────────────
+window.addEventListener("message", (ev) => {
+  try {
+    const d = typeof ev.data === "string" ? JSON.parse(ev.data) : ev.data;
+    const s = String(ev.data || "");
+    if (d?.type === "leave" || d?.method === "leaveMeeting" ||
+        s.includes("meeting_end") || s.includes("leaveWebinar") ||
+        s.includes('"type":"leave"')) {
+      salirZoom();
+    }
+  } catch(e) {}
+});
+
 // ── Panel flotante mobile ─────────────────────────────────────────────
 let _mobilePregActual = null;
 let _mobileOpcionSel  = null;
 
+function mostrarFabMobile() {
+  if (window.innerWidth >= 900) return;
+  const sinVotar = preguntas.find(p => !misVotos[p.id]);
+  const fab = document.getElementById("mobile-vote-fab");
+  if (fab) fab.style.display = sinVotar ? "flex" : "none";
+}
+
 function abrirMobilePanel() {
-  // Mostrar la primera pregunta activa sin votar, o la primera activa
   const sinVotar = preguntas.find(p => !misVotos[p.id]);
   const target   = sinVotar || preguntas[0];
   if (!target) return;
@@ -2297,24 +2314,16 @@ function navMobilePreg(dir) {
 
 // Actualizar panel si está abierto cuando llegan nuevas preguntas
 function actualizarMobilePanelSiAbierto() {
-  if (!document.body.classList.contains("zoom-mobile-mode")) return;
+  mostrarFabMobile();
   const panel = document.getElementById("mobile-vote-panel");
-  const fab   = document.getElementById("mobile-vote-fab");
-  const sinVotar = preguntas.find(p => !misVotos[p.id]);
-  if (sinVotar) {
-    if (!panel.classList.contains("visible")) {
-      if (fab) fab.style.display = "flex";
-    }
+  if (panel?.classList.contains("visible") && _mobilePregActual) {
+    renderMobilePanel(_mobilePregActual);
   }
 }
 
 function unirseZoom() {
   if (!evData?.zoom_meeting_id) { toast("No hay reunión configurada","warn"); return; }
-
-  if (esMobile()) {
-    abrirZoomMobile();
-    return;
-  }
+  if (esMobile()) { abrirZoomMobile(); return; }
 
   const n  = String(evData.zoom_meeting_id).replace(/\s/g,"");
   const p  = evData.zoom_password || "";
@@ -2324,12 +2333,11 @@ function unirseZoom() {
   document.getElementById("zoom-iframe").src = url;
   document.getElementById("zoom-container-wrapper").style.display = "block";
   document.getElementById("zoom-join-bar").style.display = "none";
-  document.getElementById("zoom-active-bar").style.display = "flex";
 
-  // Recalcular tamaños por si cambió la ventana
+  // Fullscreen por defecto: zoom ocupa toda la pantalla disponible
   if (!_zoomResizadoManual) {
-    _zoomColW = Math.round(window.innerWidth  * 0.65);
-    _zoomH    = Math.round(window.innerHeight * 0.85);
+    _zoomColW = window.innerWidth;
+    _zoomH    = window.innerHeight - 56;
   }
 
   document.documentElement.style.setProperty("--zoom-col-w", _zoomColW + "px");
@@ -2342,24 +2350,15 @@ function unirseZoom() {
 let _zoomResizadoManual = false;
 
 function salirZoom() {
-  // Limpiar iframe
   const iframe = document.getElementById("zoom-iframe");
   if (iframe) iframe.src = "";
-  // Ocultar contenedor
   const wrapper = document.getElementById("zoom-container-wrapper");
-  if (wrapper) {
-    wrapper.style.display = "none";
-    wrapper.classList.remove("pip");
-  }
+  if (wrapper) { wrapper.style.display = "none"; wrapper.classList.remove("pip"); }
   _zoomPip = false;
-  // Quitar split layout
+  _zoomResizadoManual = false; // reset para próxima vez
   document.body.classList.remove("with-zoom-split");
-  // Mostrar barra de unirse, ocultar barra activa
   const bar = document.getElementById("zoom-join-bar");
   if (bar) bar.style.display = "flex";
-  const activeBar = document.getElementById("zoom-active-bar");
-  if (activeBar) activeBar.style.display = "none";
-  // Limpiar stats sidebar
   const stats = document.getElementById("zoom-sidebar-stats");
   if (stats) stats.innerHTML = "";
 }
@@ -2517,13 +2516,19 @@ function mostrarNotifPregunta() {
   // Mobile con zoom: abrir panel flotante directamente
   if (document.body.classList.contains("zoom-mobile-mode")) {
     actualizarMobilePanelSiAbierto();
-    // Abrir panel automáticamente con la nueva pregunta
     const sinVotar = preguntas.find(p => !misVotos[p.id]);
     if (sinVotar) {
       renderMobilePanel(sinVotar);
       document.getElementById("mobile-vote-panel").classList.add("visible");
       document.getElementById("mobile-vote-fab").style.display = "none";
     }
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    return;
+  }
+
+  // Mobile sin zoom: mostrar FAB
+  if (window.innerWidth < 900) {
+    mostrarFabMobile();
     if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
     return;
   }
