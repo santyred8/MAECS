@@ -2508,11 +2508,12 @@ function salirZoom() {
 
 function togglePanelDerecho() {
   const cerrado = document.body.classList.toggle("panel-cerrado");
-  // Al reabrir, restaurar ancho original del zoom
   if (!cerrado) {
     document.documentElement.style.setProperty("--zoom-col-w", _zoomColW + "px");
   }
 }
+
+function togglePip() {
   const wrapper = document.getElementById("zoom-container-wrapper");
   const btn     = document.getElementById("btn-pip");
   _zoomPip = !_zoomPip;
