@@ -3,15 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<!-- Zoom Meeting SDK -->
-<link type="text/css" rel="stylesheet" href="https://source.zoom.us/2.18.2/css/bootstrap.css">
-<link type="text/css" rel="stylesheet" href="https://source.zoom.us/2.18.2/css/react-select.css">
-<script src="https://source.zoom.us/2.18.2/lib/vendor/react.min.js"></script>
-<script src="https://source.zoom.us/2.18.2/lib/vendor/react-dom.min.js"></script>
-<script src="https://source.zoom.us/2.18.2/lib/vendor/redux.min.js"></script>
-<script src="https://source.zoom.us/2.18.2/lib/vendor/redux-thunk.min.js"></script>
-<script src="https://source.zoom.us/2.18.2/lib/vendor/lodash.min.js"></script>
-<script src="https://source.zoom.us/zoom-meeting-2.18.2.min.js"></script>
+<!-- Zoom Meeting SDK 5.1.2 -->
+<script src="https://source.zoom.us/5.1.2/lib/vendor/react.min.js"></script>
+<script src="https://source.zoom.us/5.1.2/lib/vendor/react-dom.min.js"></script>
+<script src="https://source.zoom.us/5.1.2/lib/vendor/redux.min.js"></script>
+<script src="https://source.zoom.us/5.1.2/lib/vendor/redux-thunk.min.js"></script>
+<script src="https://source.zoom.us/5.1.2/zoom-meeting-5.1.2.min.js"></script>
 <title>BALCAM — Portal de Votación</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -1724,7 +1721,7 @@ async function unirseZoom() {
     const { signature, sdkKey } = json;
 
     // Preparar Zoom SDK
-    ZoomMtg.setZoomJSLib("https://source.zoom.us/2.18.2/lib", "/av");
+    // ZoomMtg.setZoomJSLib se usa el default 5.1.2
     ZoomMtg.preLoadWasm();
     ZoomMtg.prepareWebSDK();
 
