@@ -3,13 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<!-- Zoom Meeting SDK 5.1.2 - Component View (embebido) -->
-<script src="https://source.zoom.us/5.1.2/lib/vendor/react.min.js"></script>
-<script src="https://source.zoom.us/5.1.2/lib/vendor/react-dom.min.js"></script>
-<script src="https://source.zoom.us/5.1.2/lib/vendor/redux.min.js"></script>
-<script src="https://source.zoom.us/5.1.2/lib/vendor/redux-thunk.min.js"></script>
-<script src="https://source.zoom.us/5.1.2/lib/vendor/lodash.min.js"></script>
-<script src="https://source.zoom.us/5.1.2/zoom-meeting-embedded-5.1.2.min.js"></script>
+<!-- Zoom: se usa Web Client vía iframe, no requiere SDK -->
 <title>BALCAM — Portal de Votación</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -360,8 +354,7 @@ body{
 
 <!-- ZOOM CONTAINER -->
 <div id="zoom-container-wrapper" style="display:none;width:100%;background:#000;position:relative;">
-  <div id="zmmtg-root"></div>
-  <div id="zoom-meeting-container" style="width:100%;height:500px;max-height:55vh;"></div>
+  <iframe id="zoom-iframe" src="" allow="camera;microphone;fullscreen;display-capture" style="width:100%;height:520px;border:none;display:block;"></iframe>
   <button onclick="salirZoom()" style="position:absolute;top:10px;right:10px;background:rgba(239,68,68,.85);border:none;color:#fff;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;z-index:100;">✕ Salir de reunión</button>
 </div>
 
@@ -1698,81 +1691,22 @@ document.addEventListener("visibilitychange", () => {
 init();
 
 
-// ── ZOOM MEETING SDK (Component View embebido) ───────────────────────
-const ZOOM_SIGNATURE_URL = "https://maecs-q5ob.vercel.app/api/zoom-signature";
-let zmClient = null;
+// ── ZOOM (iframe Web Client) ──────────────────────────────────────────
+function unirseZoom() {
+  if (!evData?.zoom_meeting_id) { toast("No hay reunión configurada","warn"); return; }
 
-async function unirseZoom() {
-  const btn = document.getElementById("zoom-join-btn");
-  btn.disabled = true;
-  btn.textContent = "Conectando…";
+  const meetingNumber = String(evData.zoom_meeting_id).replace(/\s/g,"");
+  const password      = evData.zoom_password || "";
+  const userName      = encodeURIComponent((SS.nombre || ("Unidad " + SS.codigo)).substring(0,50));
+  const url           = `https://app.zoom.us/wc/${meetingNumber}/join?prefer=1&pwd=${password}&uname=${userName}`;
 
-  try {
-    if (!evData || !evData.zoom_meeting_id) throw new Error("No hay Meeting ID configurado para este evento");
-    const meetingNumber = String(evData.zoom_meeting_id).replace(/\s/g,"");
-    const password      = evData.zoom_password || "";
-    const userName      = (SS.nombre || ("Unidad " + SS.codigo)).substring(0, 50);
-
-    // Obtener firma del servidor Vercel
-    const res = await fetch(ZOOM_SIGNATURE_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ meetingNumber, role: 0 })
-    });
-    const json = await res.json();
-    if (json.error) throw new Error(json.error);
-    const { signature, sdkKey } = json;
-
-    // Mostrar contenedor
-    document.getElementById("zoom-container-wrapper").style.display = "block";
-    document.getElementById("zoom-join-bar").style.display = "none";
-
-    // Component View - se embebe dentro del div
-    zmClient = ZoomMtgEmbedded.createClient();
-    const rootElement = document.getElementById("zoom-meeting-container");
-
-    await zmClient.init({
-      zoomAppRoot: rootElement,
-      language: "es-ES",
-      assetPath: "https://source.zoom.us/5.1.2/lib",
-      sdkKey: sdkKey,
-      customize: {
-        video: {
-          isResizable: true,
-          viewSizes: {
-            default: {
-              width: Math.min(window.innerWidth - 20, 900),
-              height: 480
-            }
-          }
-        },
-        meetingInfo: ["topic","host","mn","pwd","telPwd","invite","participant","dc","enctype"],
-      }
-    });
-
-    await zmClient.join({
-      signature,
-      meetingNumber,
-      password,
-      userName,
-      userEmail: "",
-    });
-
-    console.log("Zoom: unido correctamente");
-
-  } catch(e) {
-    console.error("Zoom error:", e);
-    toast("Error al unirse: " + (e.message || e.reason || "Intenta de nuevo"), "err");
-    document.getElementById("zoom-container-wrapper").style.display = "none";
-    if (evData?.zoom_meeting_id) document.getElementById("zoom-join-bar").style.display = "flex";
-    const btn2 = document.getElementById("zoom-join-btn");
-    if (btn2) { btn2.disabled = false; btn2.textContent = "🎥 Unirse"; }
-  }
+  document.getElementById("zoom-iframe").src = url;
+  document.getElementById("zoom-container-wrapper").style.display = "block";
+  document.getElementById("zoom-join-bar").style.display = "none";
 }
 
 function salirZoom() {
-  try { if (zmClient) zmClient.leaveMeeting(); } catch(e) {}
-  zmClient = null;
+  document.getElementById("zoom-iframe").src = "";
   document.getElementById("zoom-container-wrapper").style.display = "none";
   if (evData?.zoom_meeting_id) document.getElementById("zoom-join-bar").style.display = "flex";
   const btn = document.getElementById("zoom-join-btn");
