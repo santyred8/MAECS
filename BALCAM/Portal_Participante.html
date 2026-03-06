@@ -4,12 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <!-- Zoom Meeting SDK -->
-<script src="https://source.zoom.us/3.1.2/lib/vendor/react.min.js"></script>
-<script src="https://source.zoom.us/3.1.2/lib/vendor/react-dom.min.js"></script>
-<script src="https://source.zoom.us/3.1.2/lib/vendor/redux.min.js"></script>
-<script src="https://source.zoom.us/3.1.2/lib/vendor/redux-thunk.min.js"></script>
-<script src="https://source.zoom.us/3.1.2/lib/vendor/lodash.min.js"></script>
-<script src="https://source.zoom.us/zoom-meeting-embedded-3.1.2.min.js"></script>
+<link type="text/css" rel="stylesheet" href="https://source.zoom.us/2.18.2/css/bootstrap.css">
+<link type="text/css" rel="stylesheet" href="https://source.zoom.us/2.18.2/css/react-select.css">
+<script src="https://source.zoom.us/2.18.2/lib/vendor/react.min.js"></script>
+<script src="https://source.zoom.us/2.18.2/lib/vendor/react-dom.min.js"></script>
+<script src="https://source.zoom.us/2.18.2/lib/vendor/redux.min.js"></script>
+<script src="https://source.zoom.us/2.18.2/lib/vendor/redux-thunk.min.js"></script>
+<script src="https://source.zoom.us/2.18.2/lib/vendor/lodash.min.js"></script>
+<script src="https://source.zoom.us/zoom-meeting-2.18.2.min.js"></script>
 <title>BALCAM — Portal de Votación</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -1698,9 +1700,8 @@ document.addEventListener("visibilitychange", () => {
 init();
 
 
-// ── ZOOM MEETING SDK ─────────────────────────────────────────────────
+// ── ZOOM MEETING SDK (Client View) ───────────────────────────────────
 const ZOOM_SIGNATURE_URL = "https://maecs-q5ob.vercel.app/api/zoom-signature";
-let zoomClient = null;
 
 async function unirseZoom() {
   const btn = document.getElementById("zoom-join-btn");
@@ -1710,47 +1711,51 @@ async function unirseZoom() {
   try {
     const meetingNumber = String(evData.zoom_meeting_id).replace(/\s/g,"");
     const password      = evData.zoom_password || "";
-    const userName      = SS.nombre || ("Unidad " + SS.codigo);
+    const userName      = (SS.nombre || ("Unidad " + SS.codigo)).substring(0, 50);
 
     // Obtener firma del servidor Vercel
-    const res  = await fetch(ZOOM_SIGNATURE_URL, {
+    const res = await fetch(ZOOM_SIGNATURE_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ meetingNumber, role: 0 })
     });
-    const { signature, sdkKey, error } = await res.json();
-    if (error) throw new Error(error);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    const { signature, sdkKey } = json;
 
-    // Inicializar SDK
-    const { ZoomMtgEmbedded } = window.ZoomMtgEmbedded
-      ? window
-      : { ZoomMtgEmbedded: ZoomMtgEmbedded };
+    // Preparar Zoom SDK
+    ZoomMtg.setZoomJSLib("https://source.zoom.us/2.18.2/lib", "/av");
+    ZoomMtg.preLoadWasm();
+    ZoomMtg.prepareWebSDK();
 
-    zoomClient = ZoomMtgEmbedded.createClient();
-    const meetingSDKElement = document.getElementById("zoom-meeting-container");
-
-    await zoomClient.init({
-      zoomAppRoot: meetingSDKElement,
-      language: "es-ES",
-      customize: {
-        video: { isResizable: true, viewSizes: { default: { width: window.innerWidth > 768 ? 800 : window.innerWidth - 20, height: 450 } } },
-        meetingInfo: ["topic","host","mn","pwd","telPwd","invite","participant","dc","enctype"],
-        toolbar: { buttons: [{ text:"Cerrar", className:"CustomButton", onClick(){ salirZoom(); } }] }
-      }
-    });
-
-    await zoomClient.join({
-      signature,
-      sdkKey,
-      meetingNumber,
-      password,
-      userName,
-      userEmail: "",
-    });
-
-    // Mostrar el contenedor de zoom
+    // Mostrar contenedor
     document.getElementById("zoom-container-wrapper").style.display = "block";
     document.getElementById("zoom-join-bar").style.display = "none";
+
+    ZoomMtg.init({
+      leaveUrl: window.location.href,
+      success: () => {
+        ZoomMtg.join({
+          signature,
+          sdkKey,
+          meetingNumber,
+          passWord: password,
+          userName,
+          userEmail: "",
+          success: () => { console.log("Zoom: unido OK"); },
+          error: (e) => {
+            console.error("Zoom error:", e);
+            toast("Error al unirse: " + (e.reason || JSON.stringify(e)), "err");
+            salirZoom();
+          }
+        });
+      },
+      error: (e) => {
+        console.error("Zoom init error:", e);
+        toast("Error al inicializar Zoom: " + JSON.stringify(e), "err");
+        salirZoom();
+      }
+    });
 
   } catch(e) {
     console.error("Zoom error:", e);
@@ -1761,10 +1766,7 @@ async function unirseZoom() {
 }
 
 function salirZoom() {
-  if (zoomClient) {
-    try { zoomClient.leaveMeeting(); } catch(e) {}
-    zoomClient = null;
-  }
+  try { ZoomMtg.leaveMeeting({}); } catch(e) {}
   document.getElementById("zoom-container-wrapper").style.display = "none";
   if (evData?.zoom_meeting_id) {
     document.getElementById("zoom-join-bar").style.display = "flex";
