@@ -1793,10 +1793,11 @@ async function votar(pregId) {
   // Stats en segundo plano
   cargarStatsParticipacion().then(() => actualizarStatsInPlace());
 
-  // Gráfica
+  // Gráfica — forzar refresh inmediato y resetear cache para que el próximo poll también refresque
   if (!evData?.ocultar_graficos) {
     delete portalCharts[pregId];
     delete portalChartCache[pregId];
+    delete _votosCountCache[pregId]; // fuerza que el próximo poll detecte cambio
     setTimeout(() => cargarYActualizarGrafica(pregId), 80);
   }
 }
