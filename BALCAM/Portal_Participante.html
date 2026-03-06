@@ -41,8 +41,8 @@ body{
 .nav-brand span{color:var(--pink);}
 .nav-divider{width:1px;height:20px;background:rgba(255,255,255,.1);flex-shrink:0;}
 .nav-org-block{display:flex;flex-direction:column;gap:1px;min-width:0;overflow:hidden;}
-.nav-org{font-size:12px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.nav-tipo{font-size:10px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nav-org{font-size:13px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.2px;}
+.nav-tipo{font-size:10px;font-weight:600;color:var(--pink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.06em;}
 .nav-ev{
   background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.25);
   border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;
@@ -56,15 +56,22 @@ body{
 .nav-logout{
   flex-shrink:0;
   display:flex;align-items:center;gap:6px;
-  background:rgba(239,68,68,.1);
-  border:1px solid rgba(239,68,68,.2);
-  color:rgba(248,113,113,.85);
-  padding:6px 12px;border-radius:8px;
+  background:transparent;
+  border:1px solid rgba(255,255,255,.1);
+  color:rgba(255,255,255,.45);
+  padding:6px 10px;border-radius:8px;
   font-size:11px;font-weight:700;cursor:pointer;
-  transition:background .15s,border-color .15s;
+  transition:all .2s;
   font-family:'Outfit',sans-serif;
+  letter-spacing:.02em;
 }
-.nav-logout:hover{background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.4);color:#f87171;}
+.nav-logout:hover{
+  background:rgba(239,68,68,.12);
+  border-color:rgba(239,68,68,.35);
+  color:#f87171;
+}
+.nav-logout-text{ display:none; }
+@media(min-width:640px){ .nav-logout-text{ display:inline; } }
 
 /* ── LAYOUT ── */
 .layout{display:flex;min-height:calc(100vh - 56px);}
@@ -143,6 +150,44 @@ body{
 }
 .esp-ev-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:4px;}
 .esp-ev-nombre{font-size:15px;font-weight:800;color:#fff;}
+
+/* ── PREGUNTA CERRADA (historial compacto) ── */
+.preg-cerrada-wrap {
+  margin-bottom:6px;border-radius:12px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+}
+.preg-cerrada-inner {
+  display:flex;align-items:center;gap:12px;padding:11px 14px;
+}
+.preg-cerrada-icon {
+  flex-shrink:0;width:28px;height:28px;border-radius:8px;
+  background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.2);
+  display:flex;align-items:center;justify-content:center;
+}
+.preg-cerrada-info {
+  flex:1;min-width:0;
+}
+.preg-cerrada-label {
+  font-size:10px;font-weight:700;color:rgba(248,113,113,.65);
+  text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;
+}
+.preg-cerrada-titulo {
+  font-size:13px;font-weight:700;color:rgba(255,255,255,.65);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.preg-cerrada-voto {
+  flex-shrink:0;display:flex;align-items:center;gap:5px;
+  padding:5px 11px;border-radius:20px;
+  background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);
+  font-size:12px;font-weight:700;color:#4ade80;
+  max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.preg-cerrada-novoto {
+  flex-shrink:0;padding:5px 10px;border-radius:20px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  font-size:11px;color:var(--muted);
+}
 
 /* ── PREGUNTA ── */
 .pregunta-card{
@@ -731,24 +776,28 @@ body{
 <nav class="nav">
   <div class="nav-brand">BAL<span>CAM</span></div>
   <div class="nav-divider"></div>
+  <!-- Organización + tipo asamblea -->
   <div class="nav-org-block">
     <div id="nav-org" class="nav-org">—</div>
     <div id="nav-tipo" class="nav-tipo">—</div>
   </div>
   <div class="nav-spacer"></div>
+  <!-- Nombre evento (centro) -->
   <div id="nav-ev" class="nav-ev">Cargando…</div>
   <div class="nav-divider"></div>
+  <!-- Usuario -->
   <div class="nav-user">
     <div id="nav-nombre" class="nav-nombre">—</div>
     <div id="nav-unidad" class="nav-unidad">—</div>
   </div>
+  <!-- Botón salir rediseñado -->
   <button onclick="cerrarSesion()" class="nav-logout" title="Cerrar sesión">
-    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-      <polyline points="16 17 21 12 16 7"/>
-      <line x1="21" y1="12" x2="9" y2="12"/>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+      <polyline points="10 17 15 12 10 7"/>
+      <line x1="15" y1="12" x2="3" y2="12"/>
     </svg>
-    Salir
+    <span class="nav-logout-text">Salir</span>
   </button>
 </nav>
 
@@ -1253,25 +1302,30 @@ async function pollPreguntas() {
     delete _votosCountCache[p.id];
     const miVoto = misVotos[p.id];
     // Reemplazar card con versión compacta
-    card.style.cssText = "margin-bottom:6px;padding:0;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);";
+    card.style.cssText = "margin-bottom:6px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);";
     const body = document.getElementById(`preg-body-${p.id}`);
     if (body) {
-      body.style.cssText = "display:flex;align-items:center;gap:12px;padding:11px 16px;";
+      body.style.cssText = "display:flex;align-items:center;gap:12px;padding:11px 14px;";
       body.innerHTML = `
-        <div style="flex-shrink:0;display:flex;align-items:center;justify-content:center;
-          width:30px;height:30px;border-radius:8px;background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.2);">
-          <svg width="13" height="13" fill="none" stroke="#f87171" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <div style="flex-shrink:0;width:28px;height:28px;border-radius:8px;
+          background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.2);
+          display:flex;align-items:center;justify-content:center;">
+          <svg width="12" height="12" fill="none" stroke="#f87171" stroke-width="2.5" viewBox="0 0 24 24">
+            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
         </div>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:10px;font-weight:700;color:rgba(248,113,113,.7);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Cerrada</div>
-          <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.titulo||"Sin título"}</div>
+          <div style="font-size:10px;font-weight:700;color:rgba(248,113,113,.65);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Cerrada</div>
+          <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.titulo||"Sin título"}</div>
         </div>
         ${miVoto
-          ? `<div style="flex-shrink:0;display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);">
-              <svg width="11" height="11" fill="none" stroke="#4ade80" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-              <span style="font-size:12px;font-weight:700;color:#4ade80;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${miVoto}</span>
+          ? `<div style="flex-shrink:0;display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;
+              background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);
+              font-size:12px;font-weight:700;color:#4ade80;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              <svg width="10" height="10" fill="none" stroke="#4ade80" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              ${miVoto}
              </div>`
-          : `<span style="flex-shrink:0;font-size:11px;color:var(--muted);font-style:italic;">Sin voto</span>`
+          : `<div style="flex-shrink:0;padding:5px 10px;border-radius:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);font-size:11px;color:var(--muted);">Sin voto</div>`
         }`;
       // Quitar preg-head si existe
       const head = card.querySelector(".preg-head");
@@ -1597,24 +1651,24 @@ function renderEsperando(icon, titulo, sub, sinAnim=false) {
 
 function renderHistorialCerrada(p) {
   const miVoto = misVotos[p.id];
-  return `<div class="pregunta-card" id="preg-${p.id}" data-estado="cerrada"
-    style="margin-bottom:6px;padding:0;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);">
-    <div id="preg-body-${p.id}" style="display:flex;align-items:center;gap:12px;padding:11px 16px;">
-      <div style="flex-shrink:0;display:flex;align-items:center;justify-content:center;
-        width:30px;height:30px;border-radius:8px;background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.2);">
-        <svg width="13" height="13" fill="none" stroke="#f87171" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+  return `<div class="preg-cerrada-wrap" id="preg-${p.id}" data-estado="cerrada">
+    <div id="preg-body-${p.id}" class="preg-cerrada-inner">
+      <div class="preg-cerrada-icon">
+        <svg width="12" height="12" fill="none" stroke="#f87171" stroke-width="2.5" viewBox="0 0 24 24">
+          <rect x="3" y="11" width="18" height="11" rx="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
       </div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:10px;font-weight:700;color:rgba(248,113,113,.7);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Cerrada</div>
-        <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.titulo||"Sin título"}</div>
+      <div class="preg-cerrada-info">
+        <div class="preg-cerrada-label">Cerrada</div>
+        <div class="preg-cerrada-titulo">${p.titulo||"Sin título"}</div>
       </div>
       ${miVoto
-        ? `<div style="flex-shrink:0;display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;
-            background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);">
-            <svg width="11" height="11" fill="none" stroke="#4ade80" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-            <span style="font-size:12px;font-weight:700;color:#4ade80;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${miVoto}</span>
+        ? `<div class="preg-cerrada-voto">
+            <svg width="10" height="10" fill="none" stroke="#4ade80" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>${miVoto}</span>
            </div>`
-        : `<span style="flex-shrink:0;font-size:11px;color:var(--muted);font-style:italic;">Sin voto</span>`
+        : `<div class="preg-cerrada-novoto">Sin voto</div>`
       }
     </div>
   </div>`;
