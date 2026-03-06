@@ -408,52 +408,96 @@ body{
 #zoom-resize-handle:hover{background:rgba(124,58,237,.6);}
 #zoom-resize-handle::after{content:'';width:40px;height:3px;background:rgba(255,255,255,.3);border-radius:3px;}
 
-/* Split layout desktop */
+/* Split layout desktop — Zoom izquierda, preguntas derecha */
 @media(min-width:900px){
-  .with-zoom-split .layout {
-    display:grid!important;
-    grid-template-columns:var(--zoom-col-w, 480px) 1fr;
-    grid-template-rows:auto;
-    max-width:100%!important;
+  /* Wrapper global cuando zoom está activo */
+  body.with-zoom-split {
+    overflow:hidden;
+    height:100vh;
+  }
+
+  /* El zoom + barra de join ocupan la columna izquierda fija */
+  body.with-zoom-split #zoom-join-bar,
+  body.with-zoom-split #zoom-container-wrapper {
+    position:fixed!important;
+    left:0;top:56px;
+    width:var(--zoom-col-w, 460px)!important;
+    z-index:80;
+  }
+  body.with-zoom-split #zoom-join-bar {
+    height:52px;
+    border-right:1px solid rgba(26,106,255,.2);
+  }
+  body.with-zoom-split #zoom-container-wrapper {
+    top:calc(56px);
+    height:var(--zoom-h, 340px)!important;
+    border-right:1px solid rgba(26,106,255,.2);
+  }
+
+  /* Handle de resize horizontal (columna) */
+  #zoom-col-handle {
+    display:none;
+    position:fixed;
+    top:56px;bottom:0;
+    width:6px;
+    background:rgba(124,58,237,.2);
+    cursor:col-resize;
+    z-index:200;
+    left:var(--zoom-col-w, 460px);
+    transform:translateX(-3px);
+    transition:background .15s;
+  }
+  #zoom-col-handle:hover, #zoom-col-handle.dragging {
+    background:rgba(124,58,237,.7);
+  }
+  body.with-zoom-split #zoom-col-handle { display:block; }
+
+  /* Layout principal se desplaza a la derecha */
+  body.with-zoom-split .layout {
+    margin-left:var(--zoom-col-w, 460px)!important;
+    max-width:calc(100vw - var(--zoom-col-w, 460px))!important;
     padding:0!important;
-    margin:0!important;
-    gap:0!important;
+    height:calc(100vh - 56px);
+    overflow-y:auto;
+    display:block!important;
   }
-  .with-zoom-split .sidebar {
-    grid-column:1;grid-row:2;
-    position:sticky;top:56px;
-    padding:20px 16px 20px 20px;
-    border-right:1px solid rgba(124,58,237,.15);
-    height:calc(100vh - 56px);overflow-y:auto;
+  body.with-zoom-split .sidebar {
+    display:none!important;
   }
-  .with-zoom-split .main {
-    grid-column:2;grid-row:1/3;
-    padding:20px 24px;
-    max-height:calc(100vh - 56px);overflow-y:auto;
+  body.with-zoom-split .main {
     max-width:100%!important;
+    margin:0!important;
+    padding:20px 24px 40px!important;
   }
-  .with-zoom-split #zoom-container-wrapper {
-    grid-column:1;grid-row:1;
-    position:relative;top:0;
-    height:var(--zoom-h, 300px)!important;
+
+  /* Sidebar de stats debajo del zoom */
+  #zoom-sidebar-stats {
+    display:none;
+    position:fixed;
+    left:0;
+    width:var(--zoom-col-w, 460px);
+    bottom:0;
+    background:rgba(15,10,30,.95);
+    border-top:1px solid rgba(124,58,237,.2);
+    border-right:1px solid rgba(26,106,255,.2);
+    padding:12px 16px;
+    z-index:80;
+    overflow-y:auto;
   }
-  .with-zoom-split #zoom-join-bar {
-    grid-column:1;grid-row:1;
-    position:relative;top:0;
-  }
-  .with-zoom-split #zoom-container-wrapper.pip {
-    position:fixed!important;bottom:20px;right:20px;
-    grid-column:unset;grid-row:unset;
+  body.with-zoom-split #zoom-sidebar-stats { display:block; }
+
+  /* PiP — sale del layout fijo */
+  body.with-zoom-split #zoom-container-wrapper.pip {
+    position:fixed!important;
+    bottom:20px!important;right:20px!important;
+    left:auto!important;top:auto!important;
     width:300px!important;height:200px!important;
+    border-radius:14px;
+    border:2px solid rgba(26,106,255,.4);
+    box-shadow:0 8px 40px rgba(0,0,0,.7);
   }
-  /* Divisor arrastrable vertical */
-  .col-divider {
-    grid-column:1;grid-row:1/3;
-    width:5px;background:transparent;cursor:col-resize;
-    position:absolute;right:0;top:0;bottom:0;z-index:100;
-    display:flex;align-items:center;justify-content:center;
-  }
-  .col-divider:hover{background:rgba(124,58,237,.3);}
+  body.with-zoom-split #zoom-container-wrapper.pip ~ #zoom-col-handle,
+  body.pip-mode #zoom-col-handle { display:none!important; }
 }
 
 /* Mobile: botón abrir zoom en nueva pestaña */
@@ -526,6 +570,8 @@ body{
   </div>
   <div id="zoom-resize-handle" onmousedown="iniciarResize(event)" style="display:none;"></div>
 </div>
+<!-- Stats debajo del zoom en desktop split -->
+<div id="zoom-sidebar-stats"></div>
 
 <!-- BOTÓN UNIRSE (cuando hay zoom_meeting_id en el evento) -->
 <div id="zoom-join-bar" style="display:none;background:linear-gradient(135deg,#1a6aff,#0052cc);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
@@ -537,6 +583,9 @@ body{
     🎥 Unirse
   </button>
 </div>
+
+<!-- Handle resize columna zoom -->
+<div id="zoom-col-handle" onmousedown="iniciarResizeCol(event)"></div>
 
 <!-- LAYOUT WRAPPER -->
 <div class="layout">
@@ -1891,9 +1940,10 @@ function abrirZoomMobile() {
   window.open(`https://zoom.us/j/${meetingNumber}?pwd=${password}`, "_blank");
 }
 
+let _zoomColW = 460;
+
 function unirseZoom() {
   if (!evData?.zoom_meeting_id) { toast("No hay reunión configurada","warn"); return; }
-
   if (esMobile()) { abrirZoomMobile(); return; }
 
   const meetingNumber = String(evData.zoom_meeting_id).replace(/\s/g,"");
@@ -1901,75 +1951,53 @@ function unirseZoom() {
   const userName      = encodeURIComponent((SS.nombre || ("Unidad " + SS.codigo)).substring(0,50));
   const url           = `https://app.zoom.us/wc/${meetingNumber}/join?prefer=1&pwd=${password}&uname=${userName}`;
 
-  const wrapper = document.getElementById("zoom-container-wrapper");
-  wrapper.style.height = _zoomH + "px";
   document.getElementById("zoom-iframe").src = url;
-  wrapper.style.display = "block";
+  document.getElementById("zoom-container-wrapper").style.display = "block";
   document.getElementById("zoom-join-bar").style.display = "none";
 
-  // Activar split layout en desktop
-  document.body.classList.add("with-zoom-split");
+  document.documentElement.style.setProperty("--zoom-col-w", _zoomColW + "px");
   document.documentElement.style.setProperty("--zoom-h", _zoomH + "px");
-  document.documentElement.style.setProperty("--zoom-col-w", "480px");
-
-  // Mostrar handle de resize
+  document.body.classList.add("with-zoom-split");
   document.getElementById("zoom-resize-handle").style.display = "flex";
+  actualizarZoomSidebarStats();
 }
 
-function salirZoom() {
-  document.getElementById("zoom-iframe").src = "";
-  const wrapper = document.getElementById("zoom-container-wrapper");
-  wrapper.style.display = "none";
-  wrapper.classList.remove("minimized","pip");
-  _zoomMinimizado = false;
-  _zoomPip = false;
-  document.body.classList.remove("with-zoom-split");
-  if (evData?.zoom_meeting_id) {
-    document.getElementById("zoom-join-bar").style.display = "flex";
-  }
-  const btn = document.getElementById("zoom-join-btn");
-  if (btn) { btn.disabled = false; btn.textContent = "🎥 Unirse"; }
+function actualizarZoomSidebarStats() {
+  const el = document.getElementById("zoom-sidebar-stats");
+  if (!el || !document.body.classList.contains("with-zoom-split")) return;
+  const total   = statsGlobal.totalPart || 0;
+  const votaron = statsGlobal.totalVotaron || 0;
+  const coef    = (statsGlobal.coefVotado * 100).toFixed(1);
+  el.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div style="text-align:center;"><div style="font-size:22px;font-weight:900;color:#fff;">' + votaron + '<span style="font-size:12px;color:var(--muted);">/' + total + '</span></div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Votando</div></div><div style="text-align:center;"><div style="font-size:22px;font-weight:900;color:#a855f7;">' + coef + '%</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Coef. votado</div></div></div>';
 }
 
-function toggleMinimizar() {
-  const wrapper = document.getElementById("zoom-container-wrapper");
-  const btn     = document.getElementById("btn-min");
-  _zoomMinimizado = !_zoomMinimizado;
-  wrapper.classList.toggle("minimized", _zoomMinimizado);
-  btn.textContent = _zoomMinimizado ? "▲" : "▼";
-  btn.title = _zoomMinimizado ? "Expandir" : "Minimizar";
-}
-
-function togglePip() {
-  const wrapper = document.getElementById("zoom-container-wrapper");
-  const btn     = document.getElementById("btn-pip");
-  _zoomPip = !_zoomPip;
-  wrapper.classList.toggle("pip", _zoomPip);
-  btn.textContent = _zoomPip ? "⊞" : "⊡";
-  btn.title = _zoomPip ? "Salir de flotante" : "Modo flotante";
-  if (_zoomPip) {
-    document.body.classList.remove("with-zoom-split");
-  } else {
-    document.body.classList.add("with-zoom-split");
-    wrapper.style.height = _zoomH + "px";
-    document.documentElement.style.setProperty("--zoom-h", _zoomH + "px");
-  }
-}
-
-// ── Resize arrastrando el handle ─────────────────────────────────────
 function iniciarResize(e) {
   e.preventDefault();
-  const startY  = e.clientY;
-  const startH  = _zoomH;
+  const startY = e.clientY, startH = _zoomH;
   const wrapper = document.getElementById("zoom-container-wrapper");
-
-  function onMove(e) {
-    const newH = Math.max(180, Math.min(window.innerHeight * 0.75, startH + (e.clientY - startY)));
+  function onMove(ev) {
+    const newH = Math.max(180, Math.min(window.innerHeight * 0.8, startH + (ev.clientY - startY)));
     _zoomH = newH;
     wrapper.style.height = newH + "px";
     document.documentElement.style.setProperty("--zoom-h", newH + "px");
   }
+  function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
+  document.addEventListener("mousemove", onMove);
+  document.addEventListener("mouseup", onUp);
+}
+
+function iniciarResizeCol(e) {
+  e.preventDefault();
+  const startX = e.clientX, startW = _zoomColW;
+  const handle = document.getElementById("zoom-col-handle");
+  if(handle) handle.classList.add("dragging");
+  function onMove(ev) {
+    const newW = Math.max(280, Math.min(window.innerWidth * 0.7, startW + (ev.clientX - startX)));
+    _zoomColW = newW;
+    document.documentElement.style.setProperty("--zoom-col-w", newW + "px");
+  }
   function onUp() {
+    if(handle) handle.classList.remove("dragging");
     document.removeEventListener("mousemove", onMove);
     document.removeEventListener("mouseup", onUp);
   }
