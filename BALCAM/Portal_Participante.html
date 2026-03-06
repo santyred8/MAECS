@@ -933,28 +933,31 @@ function iniciarPolling() {
   }, 5000); // 5s — balance entre responsividad y carga
 }
 
-// Solo consulta votos si el conteo cambió — evita queries inútiles
+// Actualiza gráficas solo si cambió la distribución de votos (no solo el total)
 async function actualizarGraficasSiCambiaron() {
   const pregIdsConGrafica = Object.keys(portalCharts);
   if (!pregIdsConGrafica.length) return;
 
-  // Una sola query para contar votos de todas las preguntas activas con gráfica
+  // Una sola query con respuesta y pregunta
   const { data } = await sb.from("votos")
-    .select("id_pregunta")
+    .select("id_pregunta,respuesta")
     .eq("id_evento", EV_ID)
     .in("id_pregunta", pregIdsConGrafica);
 
   if (!data) return;
 
-  // Contar por pregunta
-  const conteos = {};
-  data.forEach(v => { conteos[v.id_pregunta] = (conteos[v.id_pregunta] || 0) + 1; });
+  // Construir hash de distribución por pregunta: "A:50|B:30|C:20"
+  const distribuciones = {};
+  data.forEach(v => {
+    if (!distribuciones[v.id_pregunta]) distribuciones[v.id_pregunta] = {};
+    distribuciones[v.id_pregunta][v.respuesta] = (distribuciones[v.id_pregunta][v.respuesta] || 0) + 1;
+  });
 
-  // Solo refrescar las que cambiaron
   for (const pregId of pregIdsConGrafica) {
-    const nuevoConteo = conteos[pregId] || 0;
-    if (nuevoConteo !== (_votosCountCache[pregId] || 0)) {
-      _votosCountCache[pregId] = nuevoConteo;
+    const dist = distribuciones[pregId] || {};
+    const hash = Object.entries(dist).sort().map(([k,v]) => `${k}:${v}`).join("|");
+    if (hash !== (_votosCountCache[pregId] || "")) {
+      _votosCountCache[pregId] = hash;
       cargarYActualizarGrafica(pregId);
     }
   }
