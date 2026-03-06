@@ -457,6 +457,24 @@ body{
     background:rgba(124,58,237,.7);
   }
   body.with-zoom-split #zoom-col-handle { display:block; }
+  body.with-zoom-split #btn-cerrar-panel { display:flex !important; }
+
+  /* Panel derecho cerrado — zoom ocupa todo */
+  body.with-zoom-split.panel-cerrado .layout {
+    display:none !important;
+  }
+  body.with-zoom-split.panel-cerrado #zoom-container-wrapper {
+    width:100vw !important;
+  }
+  body.with-zoom-split.panel-cerrado #zoom-col-handle {
+    display:none !important;
+  }
+  body.with-zoom-split.panel-cerrado #btn-abrir-panel {
+    display:flex !important;
+  }
+  body.with-zoom-split.panel-cerrado #zoom-sidebar-stats {
+    width:100vw !important;
+  }
 
   /* Layout principal desplazado a la derecha */
   body.with-zoom-split .layout {
@@ -740,7 +758,26 @@ body{
 <div id="zoom-sidebar-stats"></div>
 
 <!-- Handle resize columna zoom (barra vertical arrastrable) -->
-<div id="zoom-col-handle" onmousedown="iniciarResizeCol(event)" title="Arrastra para ajustar ancho"></div>
+<div id="zoom-col-handle" onmousedown="iniciarResizeCol(event)" title="Arrastra para ajustar ancho">
+  <!-- Botón cerrar panel derecho -->
+  <button id="btn-cerrar-panel" onclick="togglePanelDerecho()" title="Cerrar panel de preguntas"
+    style="position:absolute;top:50%;transform:translateY(-50%);right:-14px;
+    width:28px;height:28px;border-radius:50%;background:rgba(239,68,68,.8);
+    border:2px solid rgba(239,68,68,.4);color:#fff;font-size:13px;font-weight:900;
+    cursor:pointer;z-index:201;display:none;align-items:center;justify-content:center;
+    box-shadow:0 2px 8px rgba(0,0,0,.4);line-height:1;">✕</button>
+</div>
+
+<!-- Botón reabrir panel (cuando está cerrado) -->
+<button id="btn-abrir-panel" onclick="togglePanelDerecho()" title="Ver preguntas"
+  style="display:none;position:fixed;right:16px;top:50%;transform:translateY(-50%);
+  z-index:201;background:linear-gradient(135deg,var(--p),var(--p2));
+  color:#fff;border:none;border-radius:12px;padding:10px 14px;
+  font-size:12px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif;
+  box-shadow:0 4px 16px rgba(124,58,237,.5);writing-mode:vertical-rl;
+  text-orientation:mixed;letter-spacing:.05em;">
+  📋 Ver preguntas
+</button>
 
 <!-- LAYOUT WRAPPER -->
 <div class="layout">
@@ -2469,7 +2506,13 @@ function salirZoom() {
   if (stats) stats.innerHTML = "";
 }
 
-function togglePip() {
+function togglePanelDerecho() {
+  const cerrado = document.body.classList.toggle("panel-cerrado");
+  // Al reabrir, restaurar ancho original del zoom
+  if (!cerrado) {
+    document.documentElement.style.setProperty("--zoom-col-w", _zoomColW + "px");
+  }
+}
   const wrapper = document.getElementById("zoom-container-wrapper");
   const btn     = document.getElementById("btn-pip");
   _zoomPip = !_zoomPip;
