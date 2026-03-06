@@ -332,6 +332,148 @@ body{
 .mora-titulo{font-size:22px;font-weight:900;color:#fca5a5;margin-bottom:10px;}
 .mora-sub{font-size:14px;color:rgba(255,255,255,.7);line-height:1.6;margin-bottom:14px;}
 .mora-contacto{font-size:12px;color:rgba(255,255,255,.4);border-top:1px solid rgba(255,255,255,.1);padding-top:14px;margin-top:14px;}
+
+/* ══ ZOOM + PREGUNTAS SPLIT LAYOUT ══════════════════════════════════ */
+
+/* Notificación nueva pregunta */
+#notif-nueva-preg {
+  display:none;
+  position:fixed;top:64px;left:50%;transform:translateX(-50%);
+  z-index:9999;
+  background:linear-gradient(135deg,#7c3aed,#d946ef);
+  border-radius:16px;padding:14px 24px;
+  box-shadow:0 8px 40px rgba(124,58,237,.6);
+  animation:notif-in .4s cubic-bezier(.34,1.56,.64,1);
+  cursor:pointer;border:none;font-family:'Outfit',sans-serif;
+  display:none;align-items:center;gap:12px;
+  max-width:90vw;
+}
+@keyframes notif-in{from{opacity:0;transform:translateX(-50%) translateY(-20px) scale(.9);}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1);}}
+#notif-nueva-preg .notif-icon{font-size:22px;animation:bounce-bell .6s ease infinite alternate;}
+@keyframes bounce-bell{from{transform:rotate(-15deg);}to{transform:rotate(15deg);}}
+#notif-nueva-preg .notif-text{color:#fff;font-weight:800;font-size:14px;white-space:nowrap;}
+#notif-nueva-preg .notif-sub{color:rgba(255,255,255,.75);font-size:11px;margin-top:1px;}
+
+/* Barra Zoom */
+#zoom-join-bar {
+  display:none;
+  background:linear-gradient(135deg,rgba(26,106,255,.15),rgba(0,82,204,.1));
+  border-bottom:1px solid rgba(26,106,255,.25);
+  padding:10px 20px;
+  align-items:center;justify-content:space-between;gap:12px;
+  position:sticky;top:56px;z-index:90;
+  backdrop-filter:blur(10px);
+}
+
+/* Contenedor Zoom wrapper */
+#zoom-container-wrapper {
+  position:sticky;top:56px;z-index:88;
+  background:#000;
+  border-bottom:1px solid rgba(26,106,255,.2);
+  transition:height .3s ease;
+}
+#zoom-container-wrapper.minimized { height:0!important; overflow:hidden; }
+
+/* Controles de zoom */
+#zoom-controls {
+  position:absolute;top:8px;right:8px;z-index:100;
+  display:flex;gap:6px;
+}
+.zoom-ctrl-btn {
+  background:rgba(0,0,0,.6);backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.15);color:#fff;
+  width:30px;height:30px;border-radius:8px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;transition:.15s;
+}
+.zoom-ctrl-btn:hover{background:rgba(255,255,255,.15);}
+
+/* Zoom PiP flotante */
+#zoom-container-wrapper.pip {
+  position:fixed!important;
+  bottom:20px;right:20px;
+  width:300px!important;height:200px!important;
+  border-radius:14px;overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,.7);
+  border:2px solid rgba(26,106,255,.4);
+  z-index:9990;top:auto;
+}
+
+/* Resize handle */
+#zoom-resize-handle {
+  width:100%;height:6px;background:rgba(124,58,237,.3);
+  cursor:ns-resize;display:flex;align-items:center;justify-content:center;
+  transition:.15s;
+}
+#zoom-resize-handle:hover{background:rgba(124,58,237,.6);}
+#zoom-resize-handle::after{content:'';width:40px;height:3px;background:rgba(255,255,255,.3);border-radius:3px;}
+
+/* Split layout desktop */
+@media(min-width:900px){
+  .with-zoom-split .layout {
+    display:grid!important;
+    grid-template-columns:var(--zoom-col-w, 480px) 1fr;
+    grid-template-rows:auto;
+    max-width:100%!important;
+    padding:0!important;
+    margin:0!important;
+    gap:0!important;
+  }
+  .with-zoom-split .sidebar {
+    grid-column:1;grid-row:2;
+    position:sticky;top:56px;
+    padding:20px 16px 20px 20px;
+    border-right:1px solid rgba(124,58,237,.15);
+    height:calc(100vh - 56px);overflow-y:auto;
+  }
+  .with-zoom-split .main {
+    grid-column:2;grid-row:1/3;
+    padding:20px 24px;
+    max-height:calc(100vh - 56px);overflow-y:auto;
+    max-width:100%!important;
+  }
+  .with-zoom-split #zoom-container-wrapper {
+    grid-column:1;grid-row:1;
+    position:relative;top:0;
+    height:var(--zoom-h, 300px)!important;
+  }
+  .with-zoom-split #zoom-join-bar {
+    grid-column:1;grid-row:1;
+    position:relative;top:0;
+  }
+  .with-zoom-split #zoom-container-wrapper.pip {
+    position:fixed!important;bottom:20px;right:20px;
+    grid-column:unset;grid-row:unset;
+    width:300px!important;height:200px!important;
+  }
+  /* Divisor arrastrable vertical */
+  .col-divider {
+    grid-column:1;grid-row:1/3;
+    width:5px;background:transparent;cursor:col-resize;
+    position:absolute;right:0;top:0;bottom:0;z-index:100;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .col-divider:hover{background:rgba(124,58,237,.3);}
+}
+
+/* Mobile: botón abrir zoom en nueva pestaña */
+.zoom-mobile-btn {
+  width:100%;padding:12px;border-radius:14px;
+  background:linear-gradient(135deg,#1a6aff,#0052cc);
+  color:#fff;border:none;font-size:14px;font-weight:800;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+  margin-bottom:16px;font-family:'Outfit',sans-serif;
+}
+@media(min-width:900px){ .zoom-mobile-btn{display:none!important;} }
+
+/* Compactar preguntas cuando hay zoom */
+.with-zoom-split .pregunta-card { margin-bottom:14px; }
+.with-zoom-split .preg-head { padding:14px 16px; }
+.with-zoom-split .preg-titulo { font-size:15px; }
+.with-zoom-split .preg-body { padding:14px 16px; }
+.with-zoom-split .opcion { padding:10px 12px; }
+.with-zoom-split .op-text { font-size:13px; }
+.with-zoom-split .btn-votar { padding:11px; font-size:13px; }
 </style>
 </head>
 <body>
@@ -352,10 +494,37 @@ body{
   </button>
 </nav>
 
+<!-- NOTIFICACIÓN NUEVA PREGUNTA -->
+<button id="notif-nueva-preg" onclick="scrollAlPrimer()" style="display:none;">
+  <span class="notif-icon">🔔</span>
+  <div>
+    <div class="notif-text">¡Nueva pregunta activa!</div>
+    <div class="notif-sub">Toca para ir a votar</div>
+  </div>
+</button>
+
+<!-- ZOOM JOIN BAR -->
+<div id="zoom-join-bar" style="display:none;">
+  <div>
+    <div style="font-size:13px;font-weight:700;color:#fff;">📹 Reunión virtual activa</div>
+    <div style="font-size:11px;color:rgba(255,255,255,.5);" id="zoom-meeting-id-label"></div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <button onclick="unirseZoom()" id="zoom-join-btn" style="background:#1a6aff;color:#fff;border:none;padding:8px 18px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;">
+      🎥 Unirse
+    </button>
+  </div>
+</div>
+
 <!-- ZOOM CONTAINER -->
 <div id="zoom-container-wrapper" style="display:none;width:100%;background:#000;position:relative;">
-  <iframe id="zoom-iframe" src="" allow="camera;microphone;fullscreen;display-capture" style="width:100%;height:520px;border:none;display:block;"></iframe>
-  <button onclick="salirZoom()" style="position:absolute;top:10px;right:10px;background:rgba(239,68,68,.85);border:none;color:#fff;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;z-index:100;">✕ Salir de reunión</button>
+  <iframe id="zoom-iframe" src="" allow="camera;microphone;fullscreen;display-capture" style="width:100%;height:100%;min-height:300px;border:none;display:block;"></iframe>
+  <div id="zoom-controls">
+    <button class="zoom-ctrl-btn" onclick="togglePip()" title="Modo flotante" id="btn-pip">⊡</button>
+    <button class="zoom-ctrl-btn" onclick="toggleMinimizar()" title="Minimizar" id="btn-min">▼</button>
+    <button class="zoom-ctrl-btn" onclick="salirZoom()" title="Salir de reunión" style="background:rgba(239,68,68,.6);">✕</button>
+  </div>
+  <div id="zoom-resize-handle" onmousedown="iniciarResize(event)" style="display:none;"></div>
 </div>
 
 <!-- BOTÓN UNIRSE (cuando hay zoom_meeting_id en el evento) -->
@@ -384,6 +553,11 @@ body{
 
   <!-- MAIN CONTENT -->
   <div class="main" id="main">
+    <div id="zoom-mobile-wrap" style="display:none;">
+      <button class="zoom-mobile-btn" onclick="abrirZoomMobile()">
+        🎥 Unirse a la reunión de Zoom
+      </button>
+    </div>
     <div style="display:flex;justify-content:center;padding:60px 0;">
       <div class="spin-dark"></div>
     </div>
@@ -809,6 +983,11 @@ async function pollPreguntas() {
         main.appendChild(div.firstElementChild);
       }
     });
+
+    // 🔔 Notificación si ya había cargado antes (no es la carga inicial)
+    if (window._yaInicializado) {
+      mostrarNotifPregunta();
+    }
   }
 
   // Actualizar lista global de activas
@@ -837,14 +1016,21 @@ async function cargarEvento() {
 
   // Mostrar barra de Zoom si el evento tiene reunión
   if (data.zoom_meeting_id) {
-    const bar = document.getElementById("zoom-join-bar");
-    if (bar) {
-      bar.style.display = "flex";
-      document.getElementById("zoom-meeting-id-label").textContent = "Meeting ID: " + data.zoom_meeting_id;
+    document.getElementById("zoom-meeting-id-label").textContent = "Meeting ID: " + data.zoom_meeting_id;
+    if (window.innerWidth >= 900) {
+      // Desktop: barra sticky arriba
+      const bar = document.getElementById("zoom-join-bar");
+      if (bar) bar.style.display = "flex";
+    } else {
+      // Mobile: botón dentro del main
+      const mw = document.getElementById("zoom-mobile-wrap");
+      if (mw) mw.style.display = "block";
     }
   }
 
   await cargarPreguntas();
+  // Marcar que ya cargó — a partir de aquí las nuevas preguntas muestran notificación
+  window._yaInicializado = true;
 }
 
 // ── CARGAR UNIDAD INFO ────────────────────────────────
@@ -1692,25 +1878,121 @@ init();
 
 
 // ── ZOOM (iframe Web Client) ──────────────────────────────────────────
+let _zoomMinimizado = false;
+let _zoomPip        = false;
+let _zoomH          = 340; // altura inicial desktop
+
+function esMobile() { return window.innerWidth < 900; }
+
+function abrirZoomMobile() {
+  if (!evData?.zoom_meeting_id) { toast("No hay reunión configurada","warn"); return; }
+  const meetingNumber = String(evData.zoom_meeting_id).replace(/\s/g,"");
+  const password      = evData.zoom_password || "";
+  window.open(`https://zoom.us/j/${meetingNumber}?pwd=${password}`, "_blank");
+}
+
 function unirseZoom() {
   if (!evData?.zoom_meeting_id) { toast("No hay reunión configurada","warn"); return; }
+
+  if (esMobile()) { abrirZoomMobile(); return; }
 
   const meetingNumber = String(evData.zoom_meeting_id).replace(/\s/g,"");
   const password      = evData.zoom_password || "";
   const userName      = encodeURIComponent((SS.nombre || ("Unidad " + SS.codigo)).substring(0,50));
   const url           = `https://app.zoom.us/wc/${meetingNumber}/join?prefer=1&pwd=${password}&uname=${userName}`;
 
+  const wrapper = document.getElementById("zoom-container-wrapper");
+  wrapper.style.height = _zoomH + "px";
   document.getElementById("zoom-iframe").src = url;
-  document.getElementById("zoom-container-wrapper").style.display = "block";
+  wrapper.style.display = "block";
   document.getElementById("zoom-join-bar").style.display = "none";
+
+  // Activar split layout en desktop
+  document.body.classList.add("with-zoom-split");
+  document.documentElement.style.setProperty("--zoom-h", _zoomH + "px");
+  document.documentElement.style.setProperty("--zoom-col-w", "480px");
+
+  // Mostrar handle de resize
+  document.getElementById("zoom-resize-handle").style.display = "flex";
 }
 
 function salirZoom() {
   document.getElementById("zoom-iframe").src = "";
-  document.getElementById("zoom-container-wrapper").style.display = "none";
-  if (evData?.zoom_meeting_id) document.getElementById("zoom-join-bar").style.display = "flex";
+  const wrapper = document.getElementById("zoom-container-wrapper");
+  wrapper.style.display = "none";
+  wrapper.classList.remove("minimized","pip");
+  _zoomMinimizado = false;
+  _zoomPip = false;
+  document.body.classList.remove("with-zoom-split");
+  if (evData?.zoom_meeting_id) {
+    document.getElementById("zoom-join-bar").style.display = "flex";
+  }
   const btn = document.getElementById("zoom-join-btn");
   if (btn) { btn.disabled = false; btn.textContent = "🎥 Unirse"; }
+}
+
+function toggleMinimizar() {
+  const wrapper = document.getElementById("zoom-container-wrapper");
+  const btn     = document.getElementById("btn-min");
+  _zoomMinimizado = !_zoomMinimizado;
+  wrapper.classList.toggle("minimized", _zoomMinimizado);
+  btn.textContent = _zoomMinimizado ? "▲" : "▼";
+  btn.title = _zoomMinimizado ? "Expandir" : "Minimizar";
+}
+
+function togglePip() {
+  const wrapper = document.getElementById("zoom-container-wrapper");
+  const btn     = document.getElementById("btn-pip");
+  _zoomPip = !_zoomPip;
+  wrapper.classList.toggle("pip", _zoomPip);
+  btn.textContent = _zoomPip ? "⊞" : "⊡";
+  btn.title = _zoomPip ? "Salir de flotante" : "Modo flotante";
+  if (_zoomPip) {
+    document.body.classList.remove("with-zoom-split");
+  } else {
+    document.body.classList.add("with-zoom-split");
+    wrapper.style.height = _zoomH + "px";
+    document.documentElement.style.setProperty("--zoom-h", _zoomH + "px");
+  }
+}
+
+// ── Resize arrastrando el handle ─────────────────────────────────────
+function iniciarResize(e) {
+  e.preventDefault();
+  const startY  = e.clientY;
+  const startH  = _zoomH;
+  const wrapper = document.getElementById("zoom-container-wrapper");
+
+  function onMove(e) {
+    const newH = Math.max(180, Math.min(window.innerHeight * 0.75, startH + (e.clientY - startY)));
+    _zoomH = newH;
+    wrapper.style.height = newH + "px";
+    document.documentElement.style.setProperty("--zoom-h", newH + "px");
+  }
+  function onUp() {
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("mouseup", onUp);
+  }
+  document.addEventListener("mousemove", onMove);
+  document.addEventListener("mouseup", onUp);
+}
+
+// ── Notificación nueva pregunta ───────────────────────────────────────
+let _notifTimer = null;
+function mostrarNotifPregunta() {
+  const notif = document.getElementById("notif-nueva-preg");
+  if (!notif) return;
+  notif.style.display = "flex";
+  if (_notifTimer) clearTimeout(_notifTimer);
+  _notifTimer = setTimeout(() => { notif.style.display = "none"; }, 6000);
+  // Vibrar en móvil
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+}
+
+function scrollAlPrimer() {
+  document.getElementById("notif-nueva-preg").style.display = "none";
+  const primera = document.querySelector(".pregunta-card");
+  if (primera) primera.scrollIntoView({ behavior:"smooth", block:"center" });
 }
 
 </script>
