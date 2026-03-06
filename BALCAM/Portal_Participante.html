@@ -1724,19 +1724,20 @@ async function votar(pregId) {
     .eq("id_unidad_recibe", SS.unidadId);
 
   if (delegantes && delegantes.length > 0) {
-    for (const d of delegantes) {
-      if (!d.id_unidad_entrega) continue;
-      // Obtener el coeficiente propio de la unidad delegante
-      const { data: uDel } = await sb.from("unidades")
-        .select("coeficiente").eq("id", d.id_unidad_entrega);
-      const coefDel = uDel && uDel.length > 0
-        ? parseFloat(String(uDel[0].coeficiente||0).replace(",",".")) || 0
-        : 0;
-      await sb.from("votos").upsert({
+    // Obtener coeficientes de todos los delegantes en una sola query
+    const idsDel = delegantes.map(d => d.id_unidad_entrega).filter(Boolean);
+    const { data: unidadesDel } = await sb.from("unidades")
+      .select("id,coeficiente").in("id", idsDel);
+    const coefMap = {};
+    (unidadesDel||[]).forEach(u => { coefMap[u.id] = parseFloat(String(u.coeficiente||0).replace(",",".")) || 0; });
+
+    // Upsert todos en paralelo
+    await Promise.all(idsDel.map(idDel =>
+      sb.from("votos").upsert({
         id_pregunta: pregId, id_evento: EV_ID,
-        id_unidad: d.id_unidad_entrega, respuesta: sel.texto, coeficiente: coefDel,
-      }, { onConflict: "id_pregunta,id_unidad" });
-    }
+        id_unidad: idDel, respuesta: sel.texto, coeficiente: coefMap[idDel] || 0,
+      }, { onConflict: "id_pregunta,id_unidad" })
+    ));
   }
 
   const esCambio = !!misVotos[pregId];
@@ -2299,11 +2300,48 @@ async function votarMobile() {
   if (!_mobileOpcionSel || !_mobilePregActual) return;
   const btn = document.getElementById("mvp-btn-votar");
   if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spin"></div> Votando…'; }
-  await registrarVoto(_mobilePregActual.id, _mobileOpcionSel);
-  // Actualizar resultados en el panel
-  setTimeout(() => {
-    if (_mobilePregActual) renderMobilePanel(_mobilePregActual);
-  }, 500);
+
+  const pregId = _mobilePregActual.id;
+  const coef   = parseFloat(String(unidadInfo?.coeficiente||0).replace(",",".")) || 0;
+
+  // Insertar voto propio
+  const { error } = await sb.from("votos").upsert({
+    id_pregunta: pregId, id_evento: EV_ID,
+    id_unidad: SS.unidadId, respuesta: _mobileOpcionSel, coeficiente: coef,
+  }, { onConflict: "id_pregunta,id_unidad" });
+
+  if (error) {
+    toast("Error al votar: " + (error.message||"Intenta de nuevo"), "err");
+    if (btn) { btn.disabled = false; btn.innerHTML = '✓ Confirmar voto'; }
+    return;
+  }
+
+  // Delegantes en paralelo
+  const { data: delegantes } = await sb.from("delegaciones")
+    .select("id_unidad_entrega")
+    .eq("id_evento", EV_ID)
+    .eq("id_unidad_recibe", SS.unidadId);
+
+  if (delegantes?.length > 0) {
+    const idsDel = delegantes.map(d => d.id_unidad_entrega).filter(Boolean);
+    const { data: uDels } = await sb.from("unidades").select("id,coeficiente").in("id", idsDel);
+    const coefMap = {};
+    (uDels||[]).forEach(u => { coefMap[u.id] = parseFloat(String(u.coeficiente||0).replace(",",".")) || 0; });
+    await Promise.all(idsDel.map(id =>
+      sb.from("votos").upsert({
+        id_pregunta: pregId, id_evento: EV_ID,
+        id_unidad: id, respuesta: _mobileOpcionSel, coeficiente: coefMap[id]||0,
+      }, { onConflict: "id_pregunta,id_unidad" })
+    ));
+  }
+
+  misVotos[pregId] = _mobileOpcionSel;
+  toast("✓ Voto registrado", "ok");
+
+  // Re-render panel con resultado
+  setTimeout(() => { if (_mobilePregActual) renderMobilePanel(_mobilePregActual); }, 200);
+  // Actualizar stats
+  cargarStatsParticipacion().then(() => actualizarStatsInPlace());
 }
 
 function navMobilePreg(dir) {
@@ -2334,9 +2372,9 @@ function unirseZoom() {
   document.getElementById("zoom-container-wrapper").style.display = "block";
   document.getElementById("zoom-join-bar").style.display = "none";
 
-  // Fullscreen por defecto: zoom ocupa toda la pantalla disponible
+  // Split 65/35 por defecto (zoom izquierda, preguntas derecha)
   if (!_zoomResizadoManual) {
-    _zoomColW = window.innerWidth;
+    _zoomColW = Math.round(window.innerWidth * 0.62);
     _zoomH    = window.innerHeight - 56;
   }
 
