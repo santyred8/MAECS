@@ -910,25 +910,54 @@ async function pingSession(esLimpieza = false) {
 }
 
 let _pollingBusy = false;
+let _votosCountCache = {}; // cache: pregId → total votos
+
 function iniciarPolling() {
   if (pollingInt) clearInterval(pollingInt);
   pollingInt = setInterval(async () => {
     if (document.hidden || _pollingBusy) return;
     _pollingBusy = true;
     try {
-      // pollEvento y pollPreguntas en paralelo — no comparten estado crítico
       await Promise.all([pollEvento(), pollPreguntas()]);
-      // Stats y gráficas en segundo plano, sin await — no bloquean UI
+      // Stats en background
       cargarStatsParticipacion().then(() => actualizarStatsInPlace());
+      // Gráficas: solo si cambió el conteo de votos en alguna pregunta activa
       if (!evData?.ocultar_graficos) {
-        Object.keys(portalCharts).forEach(pregId => cargarYActualizarGrafica(pregId));
+        actualizarGraficasSiCambiaron();
       }
     } catch(e) {
       console.warn("Poll error:", e);
     } finally {
       _pollingBusy = false;
     }
-  }, 3000); // 3s en lugar de 6s — más responsivo
+  }, 5000); // 5s — balance entre responsividad y carga
+}
+
+// Solo consulta votos si el conteo cambió — evita queries inútiles
+async function actualizarGraficasSiCambiaron() {
+  const pregIdsConGrafica = Object.keys(portalCharts);
+  if (!pregIdsConGrafica.length) return;
+
+  // Una sola query para contar votos de todas las preguntas activas con gráfica
+  const { data } = await sb.from("votos")
+    .select("id_pregunta")
+    .eq("id_evento", EV_ID)
+    .in("id_pregunta", pregIdsConGrafica);
+
+  if (!data) return;
+
+  // Contar por pregunta
+  const conteos = {};
+  data.forEach(v => { conteos[v.id_pregunta] = (conteos[v.id_pregunta] || 0) + 1; });
+
+  // Solo refrescar las que cambiaron
+  for (const pregId of pregIdsConGrafica) {
+    const nuevoConteo = conteos[pregId] || 0;
+    if (nuevoConteo !== (_votosCountCache[pregId] || 0)) {
+      _votosCountCache[pregId] = nuevoConteo;
+      cargarYActualizarGrafica(pregId);
+    }
+  }
 }
 
 // ── POLL EVENTO — detecta cambios de config ───────────
@@ -1147,6 +1176,7 @@ async function pollPreguntas() {
     // Destruir chart
     if (portalCharts[p.id]) { portalCharts[p.id].destroy(); delete portalCharts[p.id]; }
     delete portalChartCache[p.id];
+    delete _votosCountCache[p.id];
     const miVoto = misVotos[p.id];
     const body = document.getElementById(`preg-body-${p.id}`);
     if (body) {
