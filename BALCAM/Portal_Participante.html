@@ -2399,6 +2399,9 @@ async function votarMobile() {
   misVotos[pregId] = _mobileOpcionSel;
   toast("✓ Voto registrado", "ok");
 
+  // Forzar refresh de gráfica en próximo poll (mismo fix que PC)
+  delete _votosCountCache[pregId];
+
   // Re-render panel con resultado
   setTimeout(() => { if (_mobilePregActual) renderMobilePanel(_mobilePregActual); }, 200);
   // Actualizar stats
