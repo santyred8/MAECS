@@ -916,23 +916,19 @@ function iniciarPolling() {
     if (document.hidden || _pollingBusy) return;
     _pollingBusy = true;
     try {
-      // Secuencial: evento primero, luego preguntas, luego stats
-      // Así evitamos que pollPreguntas modifique DOM mientras pollEvento lo lee
-      await pollEvento();
-      await pollPreguntas();
-      await cargarStatsParticipacion();
-      actualizarStatsInPlace();
+      // pollEvento y pollPreguntas en paralelo — no comparten estado crítico
+      await Promise.all([pollEvento(), pollPreguntas()]);
+      // Stats y gráficas en segundo plano, sin await — no bloquean UI
+      cargarStatsParticipacion().then(() => actualizarStatsInPlace());
       if (!evData?.ocultar_graficos) {
-        for (const pregId of Object.keys(portalCharts)) {
-          await cargarYActualizarGrafica(pregId);
-        }
+        Object.keys(portalCharts).forEach(pregId => cargarYActualizarGrafica(pregId));
       }
     } catch(e) {
       console.warn("Poll error:", e);
     } finally {
       _pollingBusy = false;
     }
-  }, 6000);
+  }, 3000); // 3s en lugar de 6s — más responsivo
 }
 
 // ── POLL EVENTO — detecta cambios de config ───────────
@@ -1236,6 +1232,22 @@ async function pollPreguntas() {
   preguntas = activas;
   preguntasCerradas = cerradas;
   actualizarNumeracionPreguntas();
+
+  // Mobile: actualizar FAB y panel si está abierto
+  mostrarFabMobile();
+  if (document.body.classList.contains("zoom-mobile-mode")) {
+    const panel = document.getElementById("mobile-vote-panel");
+    if (panel?.classList.contains("visible") && _mobilePregActual) {
+      // Si la pregunta actual se cerró, redirigir a primera activa o primera cerrada
+      const sigueActiva = activas.find(a => a.id === _mobilePregActual.id);
+      if (!sigueActiva) {
+        const nueva = activas[0] || cerradas[0];
+        if (nueva) renderMobilePanel(nueva);
+      } else {
+        renderMobilePanel(sigueActiva);
+      }
+    }
+  }
 }
 
 // Actualizar "Pregunta X de N" en todos los cards
@@ -2199,12 +2211,14 @@ function mostrarFabMobile() {
   if (window.innerWidth >= 900) return;
   const fab = document.getElementById("mobile-vote-fab");
   if (!fab) return;
-  fab.style.display = preguntas.length > 0 ? "flex" : "none";
+  // Mostrar si hay preguntas activas O cerradas (para ver resultados)
+  const hayAlgo = preguntas.length > 0 || preguntasCerradas.length > 0;
+  fab.style.display = hayAlgo ? "flex" : "none";
 }
 
 function abrirMobilePanel() {
   const sinVotar = preguntas.find(p => !misVotos[p.id]);
-  const target   = sinVotar || preguntas[0];
+  const target   = sinVotar || preguntas[0] || preguntasCerradas[preguntasCerradas.length - 1];
   if (!target) return;
   renderMobilePanel(target);
   document.getElementById("mobile-vote-panel").classList.add("visible");
@@ -2227,46 +2241,53 @@ function renderMobilePanel(preg) {
   _mobileOpcionSel  = misVotos[preg.id] || null;
   const opciones     = Array.isArray(preg.opciones) ? preg.opciones : [];
   const letras       = "ABCDEFGHIJKLMN";
+  const esCerrada    = preg.estado === "Cerrada" || !!preguntasCerradas.find(c => c.id === preg.id);
   const yaVoto       = !!misVotos[preg.id];
-  const puedeCambiar = yaVoto && !!evData?.permitir_cambiar_respuestas;
+  const puedeCambiar = yaVoto && !!evData?.permitir_cambiar_respuestas && !esCerrada;
+  const mostrarOpciones = (!yaVoto || puedeCambiar) && !esCerrada;
 
-  // Opciones — siempre visibles si puede cambiar o no ha votado
-  const mostrarOpciones = !yaVoto || puedeCambiar;
-  let opcionesHtml = opciones.map((op, i) => {
+  let opcionesHtml = mostrarOpciones ? opciones.map((op, i) => {
     const sel = _mobileOpcionSel === op ? "selected" : "";
     return `<div class="mvp-opcion ${sel}" onclick="selMobileOpcion(this,'${op.replace(/'/g,"\\'")}')">
       <div class="mvp-op-radio"><div class="mvp-op-check"></div></div>
       <div class="mvp-op-letra">${letras[i]}</div>
       <div class="mvp-op-text">${op}</div>
     </div>`;
-  }).join("");
+  }).join("") : "";
+
+  let estadoBadge = esCerrada
+    ? `<div style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;background:rgba(220,38,38,.15);border:1px solid rgba(220,38,38,.3);font-size:10px;font-weight:700;color:#f87171;margin-bottom:10px;">🔒 Cerrada</div>`
+    : "";
 
   let votadoHtml = "";
   if (yaVoto) {
     votadoHtml = `<div class="mvp-votado">
-      ✓ Votaste: <strong>${misVotos[preg.id]}</strong>
+      ✓ Tu voto: <strong>${misVotos[preg.id]}</strong>
       ${puedeCambiar ? '<span style="font-size:10px;opacity:.7;margin-left:6px;">puedes cambiar</span>' : ""}
     </div>`;
+  } else if (esCerrada) {
+    votadoHtml = `<div style="padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.05);font-size:12px;color:var(--muted);margin-bottom:10px;">Sin voto registrado</div>`;
   }
 
-  let resHtml = yaVoto ? renderMobileResultados(preg.id, opciones) : "";
-
+  // Navegación entre todas (activas + cerradas)
+  const todas = [...preguntas, ...preguntasCerradas];
+  const idx = todas.findIndex(p => p.id === preg.id);
   let navHtml = "";
-  if (preguntas.length > 1) {
-    const idx = preguntas.indexOf(preg);
+  if (todas.length > 1) {
     navHtml = `<div style="display:flex;gap:8px;justify-content:center;margin-top:12px;">
-      ${idx > 0 ? `<button onclick="navMobilePreg(-1)" style="flex:1;padding:8px;border-radius:10px;background:rgba(255,255,255,.08);border:none;color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">← Anterior</button>` : ""}
-      <span style="flex-shrink:0;font-size:11px;color:var(--muted);align-self:center;">${idx+1}/${preguntas.length}</span>
-      ${idx < preguntas.length-1 ? `<button onclick="navMobilePreg(1)" style="flex:1;padding:8px;border-radius:10px;background:rgba(255,255,255,.08);border:none;color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">Siguiente →</button>` : ""}
+      ${idx > 0 ? `<button onclick="navMobilePreg(-1)" style="flex:1;padding:8px;border-radius:10px;background:rgba(255,255,255,.08);border:none;color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">← Ant</button>` : ""}
+      <span style="flex-shrink:0;font-size:11px;color:var(--muted);align-self:center;">${idx+1}/${todas.length}</span>
+      ${idx < todas.length-1 ? `<button onclick="navMobilePreg(1)" style="flex:1;padding:8px;border-radius:10px;background:rgba(255,255,255,.08);border:none;color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">Sig →</button>` : ""}
     </div>`;
   }
 
-  // Botón votar: mostrar si no ha votado O si puede cambiar
-  const mostrarBtn = !yaVoto || puedeCambiar;
+  const mostrarBtn = (!yaVoto || puedeCambiar) && !esCerrada;
   const btnLabel   = yaVoto ? "Cambiar respuesta" : "Confirmar voto";
+  const resHtml    = yaVoto ? renderMobileResultados(preg.id, opciones) : "";
 
   document.getElementById("mvp-body").innerHTML = `
     <div class="mvp-titulo">${preg.titulo || "Pregunta"}</div>
+    ${estadoBadge}
     ${votadoHtml}
     ${mostrarOpciones ? `<div class="mvp-opciones" id="mvp-opciones">${opcionesHtml}</div>` : ""}
     ${mostrarBtn ? `<button class="mvp-btn-votar" id="mvp-btn-votar" onclick="votarMobile()" ${!_mobileOpcionSel?"disabled":""}>
@@ -2354,9 +2375,10 @@ async function votarMobile() {
 }
 
 function navMobilePreg(dir) {
-  const idx = preguntas.indexOf(_mobilePregActual);
-  const nuevo = preguntas[idx + dir];
-  if (nuevo) renderMobilePanel(nuevo);
+  const todas = [...preguntas, ...preguntasCerradas];
+  const idx   = todas.findIndex(p => p.id === _mobilePregActual?.id);
+  const nueva = todas[idx + dir];
+  if (nueva) renderMobilePanel(nueva);
 }
 
 // Actualizar panel si está abierto cuando llegan nuevas preguntas
