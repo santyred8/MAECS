@@ -410,31 +410,37 @@ body{
 
 /* Split layout desktop — Zoom izquierda, preguntas derecha */
 @media(min-width:900px){
-  /* Wrapper global cuando zoom está activo */
   body.with-zoom-split {
     overflow:hidden;
     height:100vh;
   }
 
-  /* El zoom + barra de join ocupan la columna izquierda fija */
-  body.with-zoom-split #zoom-join-bar,
+  /* Zoom fijo en columna izquierda */
   body.with-zoom-split #zoom-container-wrapper {
     position:fixed!important;
     left:0;top:56px;
     width:var(--zoom-col-w, 460px)!important;
-    z-index:80;
-  }
-  body.with-zoom-split #zoom-join-bar {
-    height:52px;
-    border-right:1px solid rgba(26,106,255,.2);
-  }
-  body.with-zoom-split #zoom-container-wrapper {
-    top:calc(56px);
     height:var(--zoom-h, 340px)!important;
+    z-index:80;
     border-right:1px solid rgba(26,106,255,.2);
   }
 
-  /* Handle de resize horizontal (columna) */
+  /* Barra activa (En reunión / Salir) — debajo del zoom */
+  body.with-zoom-split #zoom-active-bar {
+    position:fixed!important;
+    left:0;
+    top:calc(56px + var(--zoom-h, 340px));
+    width:var(--zoom-col-w, 460px)!important;
+    z-index:82;
+    border-right:1px solid rgba(26,106,255,.2);
+  }
+
+  /* Join bar oculta cuando hay zoom activo */
+  body.with-zoom-split #zoom-join-bar {
+    display:none!important;
+  }
+
+  /* Handle de resize horizontal */
   #zoom-col-handle {
     display:none;
     position:fixed;
@@ -452,7 +458,7 @@ body{
   }
   body.with-zoom-split #zoom-col-handle { display:block; }
 
-  /* Layout principal se desplaza a la derecha */
+  /* Layout principal desplazado a la derecha */
   body.with-zoom-split .layout {
     margin-left:var(--zoom-col-w, 460px)!important;
     max-width:calc(100vw - var(--zoom-col-w, 460px))!important;
@@ -470,7 +476,7 @@ body{
     padding:20px 24px 40px!important;
   }
 
-  /* Sidebar de stats debajo del zoom */
+  /* Stats debajo del zoom */
   #zoom-sidebar-stats {
     display:none;
     position:fixed;
@@ -486,7 +492,7 @@ body{
   }
   body.with-zoom-split #zoom-sidebar-stats { display:block; }
 
-  /* PiP — sale del layout fijo */
+  /* PiP */
   body.with-zoom-split #zoom-container-wrapper.pip {
     position:fixed!important;
     bottom:20px!important;right:20px!important;
@@ -496,8 +502,7 @@ body{
     border:2px solid rgba(26,106,255,.4);
     box-shadow:0 8px 40px rgba(0,0,0,.7);
   }
-  body.with-zoom-split #zoom-container-wrapper.pip ~ #zoom-col-handle,
-  body.pip-mode #zoom-col-handle { display:none!important; }
+  body.with-zoom-split #zoom-container-wrapper.pip ~ #zoom-col-handle { display:none!important; }
 }
 
 /* Mobile: botón abrir zoom en nueva pestaña */
@@ -708,8 +713,18 @@ body{
     <div style="font-size:13px;font-weight:700;color:#fff;">📹 Reunión virtual activa</div>
     <div style="font-size:11px;color:rgba(255,255,255,.5);" id="zoom-meeting-id-label"></div>
   </div>
-  <button onclick="unirseZoom()" id="zoom-join-btn" style="background:#1a6aff;color:#fff;border:none;padding:8px 20px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;">
-    🎥 Unirse a la reunión
+  <div style="display:flex;gap:8px;align-items:center;">
+    <button onclick="unirseZoom()" id="zoom-join-btn" style="background:#1a6aff;color:#fff;border:none;padding:8px 20px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;">
+      🎥 Unirse a la reunión
+    </button>
+  </div>
+</div>
+
+<!-- ZOOM BARRA ACTIVA (visible cuando está en reunión) -->
+<div id="zoom-active-bar" style="display:none;background:rgba(26,106,255,.12);border-bottom:1px solid rgba(26,106,255,.2);padding:6px 16px;align-items:center;justify-content:space-between;gap:8px;position:fixed;left:0;width:var(--zoom-col-w,460px);z-index:95;top:56px;">
+  <span style="font-size:11px;color:rgba(255,255,255,.6);font-weight:600;">🔴 En reunión</span>
+  <button onclick="salirZoom()" style="background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.4);color:#f87171;padding:4px 12px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif;">
+    ✕ Salir
   </button>
 </div>
 
@@ -718,7 +733,6 @@ body{
   <iframe id="zoom-iframe" src="" allow="camera;microphone;fullscreen;display-capture" style="width:100%;height:100%;min-height:300px;border:none;display:block;"></iframe>
   <div id="zoom-controls" style="position:absolute;top:8px;right:8px;z-index:100;display:flex;gap:6px;">
     <button class="zoom-ctrl-btn" onclick="togglePip()" title="Modo flotante" id="btn-pip">⊡</button>
-    <button class="zoom-ctrl-btn" onclick="salirZoom()" title="Salir de reunión" style="background:rgba(239,68,68,.6);">✕ Salir</button>
   </div>
   <div id="zoom-resize-handle" style="width:100%;height:8px;background:rgba(124,58,237,.25);cursor:ns-resize;display:none;align-items:center;justify-content:center;position:absolute;bottom:0;left:0;">
     <div style="width:40px;height:3px;background:rgba(255,255,255,.3);border-radius:3px;"></div>
@@ -1403,6 +1417,28 @@ function renderMain() {
   }
 
   main.innerHTML = html;
+
+  // FIX: Restaurar botón zoom mobile si existe en este evento
+  if (evData?.zoom_meeting_id && !esDesktop()) {
+    const mw = document.getElementById("zoom-mobile-wrap");
+    if (!mw) {
+      const div = document.createElement("div");
+      div.id = "zoom-mobile-wrap";
+      div.style.marginBottom = "16px";
+      div.innerHTML = `<div style="background:linear-gradient(135deg,rgba(26,106,255,.15),rgba(0,82,204,.1));border:1px solid rgba(26,106,255,.3);border-radius:16px;padding:16px 20px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+          <div style="font-size:28px;">📹</div>
+          <div>
+            <div style="font-size:14px;font-weight:800;color:#fff;">Reunión virtual activa</div>
+          </div>
+        </div>
+        <button onclick="abrirZoomMobile()" style="width:100%;padding:12px;border-radius:12px;background:linear-gradient(135deg,#1a6aff,#0052cc);color:#fff;border:none;font-size:14px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif;">
+          🎥 Unirse a la reunión de Zoom
+        </button>
+      </div>`;
+      main.insertBefore(div, main.firstChild);
+    }
+  }
 
   // Cargar gráficas para preguntas ya votadas (y mora: mostrar a todos)
   if (!evData?.ocultar_graficos && evData?.estado === "En curso") {
@@ -2288,6 +2324,7 @@ function unirseZoom() {
   document.getElementById("zoom-iframe").src = url;
   document.getElementById("zoom-container-wrapper").style.display = "block";
   document.getElementById("zoom-join-bar").style.display = "none";
+  document.getElementById("zoom-active-bar").style.display = "flex";
 
   // Recalcular tamaños por si cambió la ventana
   if (!_zoomResizadoManual) {
@@ -2305,14 +2342,26 @@ function unirseZoom() {
 let _zoomResizadoManual = false;
 
 function salirZoom() {
-  document.getElementById("zoom-iframe").src = "";
-  document.getElementById("zoom-container-wrapper").style.display = "none";
-  document.getElementById("zoom-container-wrapper").classList.remove("pip");
-  _zoomPip = false;
-  document.body.classList.remove("with-zoom-split");
-  if (evData?.zoom_meeting_id) {
-    document.getElementById("zoom-join-bar").style.display = "flex";
+  // Limpiar iframe
+  const iframe = document.getElementById("zoom-iframe");
+  if (iframe) iframe.src = "";
+  // Ocultar contenedor
+  const wrapper = document.getElementById("zoom-container-wrapper");
+  if (wrapper) {
+    wrapper.style.display = "none";
+    wrapper.classList.remove("pip");
   }
+  _zoomPip = false;
+  // Quitar split layout
+  document.body.classList.remove("with-zoom-split");
+  // Mostrar barra de unirse, ocultar barra activa
+  const bar = document.getElementById("zoom-join-bar");
+  if (bar) bar.style.display = "flex";
+  const activeBar = document.getElementById("zoom-active-bar");
+  if (activeBar) activeBar.style.display = "none";
+  // Limpiar stats sidebar
+  const stats = document.getElementById("zoom-sidebar-stats");
+  if (stats) stats.innerHTML = "";
 }
 
 function togglePip() {
