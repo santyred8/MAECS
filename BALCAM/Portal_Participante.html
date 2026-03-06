@@ -539,53 +539,41 @@ body{
 </nav>
 
 <!-- NOTIFICACIÓN NUEVA PREGUNTA -->
-<button id="notif-nueva-preg" onclick="scrollAlPrimer()" style="display:none;">
-  <span class="notif-icon">🔔</span>
-  <div>
-    <div class="notif-text">¡Nueva pregunta activa!</div>
-    <div class="notif-sub">Toca para ir a votar</div>
+<button id="notif-nueva-preg" onclick="scrollAlPrimer()" style="display:none;position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:9999;background:linear-gradient(135deg,#7c3aed,#d946ef);border-radius:16px;padding:14px 24px;box-shadow:0 8px 40px rgba(124,58,237,.6);cursor:pointer;border:none;font-family:'Outfit',sans-serif;align-items:center;gap:12px;max-width:90vw;">
+  <span style="font-size:22px;">🔔</span>
+  <div style="text-align:left;">
+    <div style="color:#fff;font-weight:800;font-size:14px;">¡Nueva pregunta activa!</div>
+    <div style="color:rgba(255,255,255,.75);font-size:11px;margin-top:1px;">Toca para ir a votar</div>
   </div>
 </button>
 
-<!-- ZOOM JOIN BAR -->
-<div id="zoom-join-bar" style="display:none;">
+<!-- ZOOM JOIN BAR (solo desktop, sticky) -->
+<div id="zoom-join-bar" style="display:none;background:linear-gradient(135deg,rgba(26,106,255,.18),rgba(0,82,204,.12));border-bottom:1px solid rgba(26,106,255,.25);padding:10px 20px;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:56px;z-index:90;backdrop-filter:blur(10px);">
   <div>
     <div style="font-size:13px;font-weight:700;color:#fff;">📹 Reunión virtual activa</div>
     <div style="font-size:11px;color:rgba(255,255,255,.5);" id="zoom-meeting-id-label"></div>
   </div>
-  <div style="display:flex;gap:8px;align-items:center;">
-    <button onclick="unirseZoom()" id="zoom-join-btn" style="background:#1a6aff;color:#fff;border:none;padding:8px 18px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;">
-      🎥 Unirse
-    </button>
-  </div>
-</div>
-
-<!-- ZOOM CONTAINER -->
-<div id="zoom-container-wrapper" style="display:none;width:100%;background:#000;position:relative;">
-  <iframe id="zoom-iframe" src="" allow="camera;microphone;fullscreen;display-capture" style="width:100%;height:100%;min-height:300px;border:none;display:block;"></iframe>
-  <div id="zoom-controls">
-    <button class="zoom-ctrl-btn" onclick="togglePip()" title="Modo flotante" id="btn-pip">⊡</button>
-    <button class="zoom-ctrl-btn" onclick="toggleMinimizar()" title="Minimizar" id="btn-min">▼</button>
-    <button class="zoom-ctrl-btn" onclick="salirZoom()" title="Salir de reunión" style="background:rgba(239,68,68,.6);">✕</button>
-  </div>
-  <div id="zoom-resize-handle" onmousedown="iniciarResize(event)" style="display:none;"></div>
-</div>
-<!-- Stats debajo del zoom en desktop split -->
-<div id="zoom-sidebar-stats"></div>
-
-<!-- BOTÓN UNIRSE (cuando hay zoom_meeting_id en el evento) -->
-<div id="zoom-join-bar" style="display:none;background:linear-gradient(135deg,#1a6aff,#0052cc);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-  <div style="color:#fff;">
-    <div style="font-size:13px;font-weight:700;">📹 Reunión virtual activa</div>
-    <div style="font-size:11px;opacity:.75;" id="zoom-meeting-id-label"></div>
-  </div>
-  <button onclick="unirseZoom()" id="zoom-join-btn" style="background:#fff;color:#1a6aff;border:none;padding:8px 18px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;">
-    🎥 Unirse
+  <button onclick="unirseZoom()" id="zoom-join-btn" style="background:#1a6aff;color:#fff;border:none;padding:8px 20px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;">
+    🎥 Unirse a la reunión
   </button>
 </div>
 
-<!-- Handle resize columna zoom -->
-<div id="zoom-col-handle" onmousedown="iniciarResizeCol(event)"></div>
+<!-- ZOOM CONTAINER (desktop split) -->
+<div id="zoom-container-wrapper" style="display:none;width:100%;background:#000;position:relative;">
+  <iframe id="zoom-iframe" src="" allow="camera;microphone;fullscreen;display-capture" style="width:100%;height:100%;min-height:300px;border:none;display:block;"></iframe>
+  <div id="zoom-controls" style="position:absolute;top:8px;right:8px;z-index:100;display:flex;gap:6px;">
+    <button class="zoom-ctrl-btn" onclick="togglePip()" title="Modo flotante" id="btn-pip">⊡</button>
+    <button class="zoom-ctrl-btn" onclick="salirZoom()" title="Salir de reunión" style="background:rgba(239,68,68,.6);">✕ Salir</button>
+  </div>
+  <div id="zoom-resize-handle" style="width:100%;height:8px;background:rgba(124,58,237,.25);cursor:ns-resize;display:none;align-items:center;justify-content:center;position:absolute;bottom:0;left:0;">
+    <div style="width:40px;height:3px;background:rgba(255,255,255,.3);border-radius:3px;"></div>
+  </div>
+</div>
+<!-- Stats debajo del zoom en split -->
+<div id="zoom-sidebar-stats"></div>
+
+<!-- Handle resize columna zoom (barra vertical arrastrable) -->
+<div id="zoom-col-handle" onmousedown="iniciarResizeCol(event)" title="Arrastra para ajustar ancho"></div>
 
 <!-- LAYOUT WRAPPER -->
 <div class="layout">
@@ -602,10 +590,20 @@ body{
 
   <!-- MAIN CONTENT -->
   <div class="main" id="main">
-    <div id="zoom-mobile-wrap" style="display:none;">
-      <button class="zoom-mobile-btn" onclick="abrirZoomMobile()">
-        🎥 Unirse a la reunión de Zoom
-      </button>
+    <div id="zoom-mobile-wrap" style="display:none;margin-bottom:16px;">
+      <div style="background:linear-gradient(135deg,rgba(26,106,255,.15),rgba(0,82,204,.1));border:1px solid rgba(26,106,255,.3);border-radius:16px;padding:16px 20px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+          <div style="font-size:28px;">📹</div>
+          <div>
+            <div style="font-size:14px;font-weight:800;color:#fff;">Reunión virtual activa</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.5);" id="zoom-meeting-id-label-mobile"></div>
+          </div>
+        </div>
+        <button onclick="abrirZoomMobile()" style="width:100%;padding:12px;border-radius:12px;background:linear-gradient(135deg,#1a6aff,#0052cc);color:#fff;border:none;font-size:14px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif;">
+          🎥 Unirse a la reunión de Zoom
+        </button>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);text-align:center;margin-top:8px;">Se abrirá en la app de Zoom</div>
+      </div>
     </div>
     <div style="display:flex;justify-content:center;padding:60px 0;">
       <div class="spin-dark"></div>
@@ -1927,33 +1925,51 @@ init();
 
 
 // ── ZOOM (iframe Web Client) ──────────────────────────────────────────
-let _zoomMinimizado = false;
-let _zoomPip        = false;
-let _zoomH          = 340; // altura inicial desktop
+// FIX 1: Zoom ocupa 65% del ancho por defecto — más grande que las preguntas
+// FIX 2: Resize suave con requestAnimationFrame
+// FIX 3: Mobile abre app Zoom y mantiene portal abierto
+// FIX 4: Un solo botón de unirse
+// FIX 5: Botón "Reingresar" cuando la reunión termina
+
+let _zoomPip  = false;
+let _zoomH    = Math.round(window.innerHeight * 0.85); // 85% altura pantalla por defecto
+let _zoomColW = Math.round(window.innerWidth  * 0.65); // 65% ancho por defecto
 
 function esMobile() { return window.innerWidth < 900; }
 
 function abrirZoomMobile() {
-  if (!evData?.zoom_meeting_id) { toast("No hay reunión configurada","warn"); return; }
-  const meetingNumber = String(evData.zoom_meeting_id).replace(/\s/g,"");
-  const password      = evData.zoom_password || "";
-  window.open(`https://zoom.us/j/${meetingNumber}?pwd=${password}`, "_blank");
+  if (!evData?.zoom_meeting_id) return;
+  const n = String(evData.zoom_meeting_id).replace(/\s/g,"");
+  const p = evData.zoom_password || "";
+  // Intentar abrir app nativa primero, sino web
+  window.location.href = `zoommtg://zoom.us/join?confno=${n}&pwd=${p}&zc=0`;
+  setTimeout(() => {
+    window.open(`https://us05web.zoom.us/wc/${n}/join?pwd=${p}`, "_blank");
+  }, 1500);
 }
-
-let _zoomColW = 460;
 
 function unirseZoom() {
   if (!evData?.zoom_meeting_id) { toast("No hay reunión configurada","warn"); return; }
-  if (esMobile()) { abrirZoomMobile(); return; }
 
-  const meetingNumber = String(evData.zoom_meeting_id).replace(/\s/g,"");
-  const password      = evData.zoom_password || "";
-  const userName      = encodeURIComponent((SS.nombre || ("Unidad " + SS.codigo)).substring(0,50));
-  const url           = `https://app.zoom.us/wc/${meetingNumber}/join?prefer=1&pwd=${password}&uname=${userName}`;
+  if (esMobile()) {
+    abrirZoomMobile();
+    return;
+  }
+
+  const n  = String(evData.zoom_meeting_id).replace(/\s/g,"");
+  const p  = evData.zoom_password || "";
+  const u  = encodeURIComponent((SS.nombre || ("Unidad " + SS.codigo)).substring(0,50));
+  const url = `https://app.zoom.us/wc/${n}/join?prefer=1&pwd=${p}&uname=${u}`;
 
   document.getElementById("zoom-iframe").src = url;
   document.getElementById("zoom-container-wrapper").style.display = "block";
   document.getElementById("zoom-join-bar").style.display = "none";
+
+  // Recalcular tamaños por si cambió la ventana
+  if (!_zoomResizadoManual) {
+    _zoomColW = Math.round(window.innerWidth  * 0.65);
+    _zoomH    = Math.round(window.innerHeight * 0.85);
+  }
 
   document.documentElement.style.setProperty("--zoom-col-w", _zoomColW + "px");
   document.documentElement.style.setProperty("--zoom-h", _zoomH + "px");
@@ -1962,47 +1978,164 @@ function unirseZoom() {
   actualizarZoomSidebarStats();
 }
 
+let _zoomResizadoManual = false;
+
+function salirZoom() {
+  document.getElementById("zoom-iframe").src = "";
+  document.getElementById("zoom-container-wrapper").style.display = "none";
+  document.getElementById("zoom-container-wrapper").classList.remove("pip");
+  _zoomPip = false;
+  document.body.classList.remove("with-zoom-split");
+  if (evData?.zoom_meeting_id) {
+    document.getElementById("zoom-join-bar").style.display = "flex";
+  }
+}
+
+function togglePip() {
+  const wrapper = document.getElementById("zoom-container-wrapper");
+  const btn     = document.getElementById("btn-pip");
+  _zoomPip = !_zoomPip;
+  wrapper.classList.toggle("pip", _zoomPip);
+  btn.textContent = _zoomPip ? "⊞" : "⊡";
+  btn.title = _zoomPip ? "Salir de flotante" : "Modo flotante";
+  document.body.classList.toggle("with-zoom-split", !_zoomPip);
+}
+
 function actualizarZoomSidebarStats() {
   const el = document.getElementById("zoom-sidebar-stats");
   if (!el || !document.body.classList.contains("with-zoom-split")) return;
   const total   = statsGlobal.totalPart || 0;
   const votaron = statsGlobal.totalVotaron || 0;
   const coef    = (statsGlobal.coefVotado * 100).toFixed(1);
-  el.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div style="text-align:center;"><div style="font-size:22px;font-weight:900;color:#fff;">' + votaron + '<span style="font-size:12px;color:var(--muted);">/' + total + '</span></div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Votando</div></div><div style="text-align:center;"><div style="font-size:22px;font-weight:900;color:#a855f7;">' + coef + '%</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Coef. votado</div></div></div>';
+  el.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <div style="text-align:center;">
+      <div style="font-size:22px;font-weight:900;color:#fff;">${votaron}<span style="font-size:12px;color:var(--muted);">/${total}</span></div>
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Votando</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:22px;font-weight:900;color:#a855f7;">${coef}%</div>
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Coef. votado</div>
+    </div>
+  </div>`;
 }
 
+// ── Resize VERTICAL suave (altura zoom) ──────────────────────────────
 function iniciarResize(e) {
   e.preventDefault();
   const startY = e.clientY, startH = _zoomH;
   const wrapper = document.getElementById("zoom-container-wrapper");
+  let raf = null;
+
   function onMove(ev) {
-    const newH = Math.max(180, Math.min(window.innerHeight * 0.8, startH + (ev.clientY - startY)));
-    _zoomH = newH;
-    wrapper.style.height = newH + "px";
-    document.documentElement.style.setProperty("--zoom-h", newH + "px");
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      const newH = Math.max(180, Math.min(window.innerHeight * 0.9, startH + (ev.clientY - startY)));
+      _zoomH = newH;
+      _zoomResizadoManual = true;
+      wrapper.style.height = newH + "px";
+      document.documentElement.style.setProperty("--zoom-h", newH + "px");
+    });
   }
-  function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
+  function onUp() {
+    if (raf) cancelAnimationFrame(raf);
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("mouseup", onUp);
+    document.body.style.userSelect = "";
+  }
+  document.body.style.userSelect = "none";
   document.addEventListener("mousemove", onMove);
   document.addEventListener("mouseup", onUp);
 }
 
+// ── Resize HORIZONTAL suave (ancho columna) ───────────────────────────
 function iniciarResizeCol(e) {
   e.preventDefault();
   const startX = e.clientX, startW = _zoomColW;
   const handle = document.getElementById("zoom-col-handle");
-  if(handle) handle.classList.add("dragging");
+  if (handle) handle.classList.add("dragging");
+  let raf = null;
+
   function onMove(ev) {
-    const newW = Math.max(280, Math.min(window.innerWidth * 0.7, startW + (ev.clientX - startX)));
-    _zoomColW = newW;
-    document.documentElement.style.setProperty("--zoom-col-w", newW + "px");
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      const newW = Math.max(280, Math.min(window.innerWidth * 0.75, startW + (ev.clientX - startX)));
+      _zoomColW = newW;
+      _zoomResizadoManual = true;
+      document.documentElement.style.setProperty("--zoom-col-w", newW + "px");
+    });
   }
   function onUp() {
-    if(handle) handle.classList.remove("dragging");
+    if (raf) cancelAnimationFrame(raf);
+    if (handle) handle.classList.remove("dragging");
     document.removeEventListener("mousemove", onMove);
     document.removeEventListener("mouseup", onUp);
+    document.body.style.userSelect = "";
   }
+  document.body.style.userSelect = "none";
   document.addEventListener("mousemove", onMove);
   document.addEventListener("mouseup", onUp);
+}
+
+// ── FIX 5: Detectar fin de reunión por mensaje del iframe ─────────────
+window.addEventListener("message", (ev) => {
+  try {
+    const data = typeof ev.data === "string" ? JSON.parse(ev.data) : ev.data;
+    // Zoom envía este evento cuando la reunión termina
+    if (data?.type === "leave" || data?.method === "leaveMeeting" ||
+        String(ev.data).includes("meeting_end") || String(ev.data).includes("leave")) {
+      mostrarBannerReunionTerminada();
+    }
+  } catch(e) {}
+});
+
+function mostrarBannerReunionTerminada() {
+  const wrapper = document.getElementById("zoom-container-wrapper");
+  if (!wrapper || wrapper.style.display === "none") return;
+  wrapper.innerHTML = `
+    <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(15,10,30,.95);gap:16px;min-height:250px;">
+      <div style="font-size:40px;">📴</div>
+      <div style="font-size:16px;font-weight:800;color:#fff;">Reunión finalizada</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.5);text-align:center;max-width:200px;">La reunión de Zoom ha terminado</div>
+      <button onclick="reingresarZoom()" style="background:linear-gradient(135deg,#1a6aff,#0052cc);color:#fff;border:none;padding:10px 24px;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif;">
+        🔄 Reingresar
+      </button>
+      <button onclick="salirZoomDef()" style="background:none;color:rgba(255,255,255,.4);border:none;font-size:12px;cursor:pointer;font-family:'Outfit',sans-serif;">
+        Cerrar Zoom
+      </button>
+    </div>`;
+}
+
+function reingresarZoom() {
+  if (!evData?.zoom_meeting_id) return;
+  const n  = String(evData.zoom_meeting_id).replace(/\s/g,"");
+  const p  = evData.zoom_password || "";
+  const u  = encodeURIComponent((SS.nombre || ("Unidad " + SS.codigo)).substring(0,50));
+  // Reconstruir iframe
+  const wrapper = document.getElementById("zoom-container-wrapper");
+  wrapper.innerHTML = `
+    <iframe id="zoom-iframe" src="https://app.zoom.us/wc/${n}/join?prefer=1&pwd=${p}&uname=${u}"
+      allow="camera;microphone;fullscreen;display-capture"
+      style="width:100%;height:100%;min-height:300px;border:none;display:block;"></iframe>
+    <div id="zoom-controls" style="position:absolute;top:8px;right:8px;z-index:100;display:flex;gap:6px;">
+      <button class="zoom-ctrl-btn" onclick="togglePip()" title="Modo flotante" id="btn-pip">⊡</button>
+      <button class="zoom-ctrl-btn" onclick="salirZoomDef()" style="background:rgba(239,68,68,.6);">✕ Salir</button>
+    </div>
+    <div id="zoom-resize-handle" onmousedown="iniciarResize(event)"
+      style="width:100%;height:8px;background:rgba(124,58,237,.25);cursor:ns-resize;display:flex;align-items:center;justify-content:center;position:absolute;bottom:0;left:0;">
+      <div style="width:40px;height:3px;background:rgba(255,255,255,.3);border-radius:3px;"></div>
+    </div>`;
+}
+
+function salirZoomDef() {
+  const wrapper = document.getElementById("zoom-container-wrapper");
+  wrapper.style.display = "none";
+  wrapper.classList.remove("pip");
+  _zoomPip = false;
+  document.body.classList.remove("with-zoom-split");
+  if (evData?.zoom_meeting_id) document.getElementById("zoom-join-bar").style.display = "flex";
+  // Reconstruir iframe limpio para próxima vez
+  reingresarZoom();
+  wrapper.style.display = "none";
 }
 
 // ── Notificación nueva pregunta ───────────────────────────────────────
@@ -2013,7 +2146,6 @@ function mostrarNotifPregunta() {
   notif.style.display = "flex";
   if (_notifTimer) clearTimeout(_notifTimer);
   _notifTimer = setTimeout(() => { notif.style.display = "none"; }, 6000);
-  // Vibrar en móvil
   if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
 }
 
