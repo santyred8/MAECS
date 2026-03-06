@@ -642,17 +642,17 @@ body{
   #mobile-vote-fab {
     display: none;
     position: fixed;
-    bottom: 80px;
-    left: 12px;
+    top: 60px;
+    left: 10px;
     z-index: 9998;
     background: linear-gradient(135deg, var(--p), var(--pink));
-    color: #fff; border: none; border-radius: 24px;
-    padding: 10px 14px; font-size: 12px; font-weight: 800;
+    color: #fff; border: none; border-radius: 20px;
+    padding: 8px 12px; font-size: 11px; font-weight: 800;
     cursor: pointer; font-family: 'Outfit', sans-serif;
-    box-shadow: 0 3px 16px rgba(124,58,237,.5);
+    box-shadow: 0 3px 14px rgba(124,58,237,.5);
     white-space: nowrap;
-    align-items: center; gap: 6px;
-    opacity: 0.92;
+    align-items: center; gap: 5px;
+    opacity: 0.9;
   }
   @keyframes fab-pulse {
     0%,100% { box-shadow: 0 3px 16px rgba(124,58,237,.5); }
@@ -2225,10 +2225,13 @@ function cerrarMobilePanel() {
 function renderMobilePanel(preg) {
   _mobilePregActual = preg;
   _mobileOpcionSel  = misVotos[preg.id] || null;
-  const opciones = Array.isArray(preg.opciones) ? preg.opciones : [];
-  const letras   = "ABCDEFGHIJKLMN";
-  const yaVoto   = !!misVotos[preg.id];
+  const opciones     = Array.isArray(preg.opciones) ? preg.opciones : [];
+  const letras       = "ABCDEFGHIJKLMN";
+  const yaVoto       = !!misVotos[preg.id];
+  const puedeCambiar = yaVoto && !!evData?.permitir_cambiar_respuestas;
 
+  // Opciones — siempre visibles si puede cambiar o no ha votado
+  const mostrarOpciones = !yaVoto || puedeCambiar;
   let opcionesHtml = opciones.map((op, i) => {
     const sel = _mobileOpcionSel === op ? "selected" : "";
     return `<div class="mvp-opcion ${sel}" onclick="selMobileOpcion(this,'${op.replace(/'/g,"\\'")}')">
@@ -2238,7 +2241,14 @@ function renderMobilePanel(preg) {
     </div>`;
   }).join("");
 
-  let votadoHtml = yaVoto ? `<div class="mvp-votado">✓ Votaste: <strong>${misVotos[preg.id]}</strong></div>` : "";
+  let votadoHtml = "";
+  if (yaVoto) {
+    votadoHtml = `<div class="mvp-votado">
+      ✓ Votaste: <strong>${misVotos[preg.id]}</strong>
+      ${puedeCambiar ? '<span style="font-size:10px;opacity:.7;margin-left:6px;">puedes cambiar</span>' : ""}
+    </div>`;
+  }
+
   let resHtml = yaVoto ? renderMobileResultados(preg.id, opciones) : "";
 
   let navHtml = "";
@@ -2251,13 +2261,17 @@ function renderMobilePanel(preg) {
     </div>`;
   }
 
+  // Botón votar: mostrar si no ha votado O si puede cambiar
+  const mostrarBtn = !yaVoto || puedeCambiar;
+  const btnLabel   = yaVoto ? "Cambiar respuesta" : "Confirmar voto";
+
   document.getElementById("mvp-body").innerHTML = `
     <div class="mvp-titulo">${preg.titulo || "Pregunta"}</div>
     ${votadoHtml}
-    <div class="mvp-opciones" id="mvp-opciones">${opcionesHtml}</div>
-    ${!yaVoto ? `<button class="mvp-btn-votar" id="mvp-btn-votar" onclick="votarMobile()" ${!_mobileOpcionSel?"disabled":""}>
+    ${mostrarOpciones ? `<div class="mvp-opciones" id="mvp-opciones">${opcionesHtml}</div>` : ""}
+    ${mostrarBtn ? `<button class="mvp-btn-votar" id="mvp-btn-votar" onclick="votarMobile()" ${!_mobileOpcionSel?"disabled":""}>
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-      Confirmar voto
+      ${btnLabel}
     </button>` : ""}
     ${resHtml}
     ${navHtml}`;
