@@ -1708,6 +1708,7 @@ async function unirseZoom() {
   btn.textContent = "Conectando…";
 
   try {
+    if (!evData || !evData.zoom_meeting_id) throw new Error("No hay Meeting ID configurado para este evento");
     const meetingNumber = String(evData.zoom_meeting_id).replace(/\s/g,"");
     const password      = evData.zoom_password || "";
     const userName      = (SS.nombre || ("Unidad " + SS.codigo)).substring(0, 50);
@@ -1734,6 +1735,7 @@ async function unirseZoom() {
       zoomAppRoot: rootElement,
       language: "es-ES",
       assetPath: "https://source.zoom.us/5.1.2/lib",
+      sdkKey: sdkKey,
       customize: {
         video: {
           isResizable: true,
@@ -1750,7 +1752,6 @@ async function unirseZoom() {
 
     await zmClient.join({
       signature,
-      sdkKey,
       meetingNumber,
       password,
       userName,
