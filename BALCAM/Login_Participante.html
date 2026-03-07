@@ -257,11 +257,9 @@ function getDeviceId() {
 async function init() {
   if (!EV_ID || !ORG_ID) return;
   // Auto-redirect: si ya hay sesión guardada para este evento ir directo al portal
-  // Solo si NO venimos del portal (evitar loop si portal falla)
   const savedEvId  = localStorage.getItem("part_ev_id");
   const savedUniId = localStorage.getItem("part_unidad_id");
-  const vieneDePortal = document.referrer.includes("Portal_Participante");
-  if (savedEvId === EV_ID && savedUniId && !vieneDePortal) {
+  if (savedEvId === EV_ID && savedUniId) {
     location.replace(`Portal_Participante.html?ev=${EV_ID}&org=${ORG_ID}`);
     return;
   }
@@ -322,19 +320,6 @@ async function doLogin() {
     return;
   }
 
-  // ── Verificar si esta unidad cedió su poder ──
-  const { data: delCedida } = await sb.from("delegaciones")
-    .select("id_unidad_recibe")
-    .eq("id_evento", EV_ID)
-    .eq("id_unidad_entrega", unidad.id);
-  if (delCedida && delCedida.length > 0) {
-    const { data: uRec } = await sb.from("unidades").select("codigo").eq("id", delCedida[0].id_unidad_recibe);
-    const cod = (uRec && uRec.length > 0) ? uRec[0].codigo : "otra unidad";
-    setBtnLoad(false);
-    showErr("Esta unidad cedió su poder a la unidad " + cod + ". Solo ella puede ingresar en su nombre.");
-    return;
-  }
-
   // ── Verificar si ya está registrado (para las validaciones) ──
   const { data: partExist } = await sb.from("participantes")
     .select("hora_registro,device_id,session_ping")
@@ -391,26 +376,6 @@ async function doLogin() {
   // Limpiar session_ping del dispositivo anterior al tomar la sesión
   upsertData.session_ping = null;
   await sb.from("participantes").upsert(upsertData, {onConflict:"id_evento,id_unidad"});
-
-  // Registrar automáticamente las unidades que delegaron su poder a esta
-  const horaRegistro = upsertData.hora_registro || new Date().toISOString();
-  const { data: delegsRecibidas } = await sb.from("delegaciones")
-    .select("id_unidad_entrega")
-    .eq("id_evento", EV_ID)
-    .eq("id_unidad_recibe", unidad.id);
-
-  if (delegsRecibidas && delegsRecibidas.length > 0) {
-    for (const d of delegsRecibidas) {
-      if (!d.id_unidad_entrega) continue;
-      await sb.from("participantes").upsert({
-        id_evento:     EV_ID,
-        id_unidad:     d.id_unidad_entrega,
-        activo:        false,
-        estado:        "Registrado",
-        hora_registro: horaRegistro,
-      }, {onConflict:"id_evento,id_unidad"});
-    }
-  }
 
   setBtnLoad(false);
 
