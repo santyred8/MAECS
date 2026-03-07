@@ -186,6 +186,22 @@ async function doLogin() {
     return;
   }
 
+  // Verificar que el usuario esté activo
+  const { data: perfil } = await sb
+    .from("usuarios")
+    .select("activo, rol")
+    .eq("email", email)
+    .single();
+
+  if (!perfil?.activo) {
+    await sb.auth.signOut();
+    setBtnLoad(false);
+    mostrarError("Tu cuenta está inactiva. Contacta al administrador.");
+    document.getElementById("login-card").style.animation = "shake .4s ease";
+    setTimeout(() => document.getElementById("login-card").style.animation = "", 500);
+    return;
+  }
+
   // Éxito
   location.href = "Panel.html";
 }
@@ -216,6 +232,11 @@ function abrirSoporte() {
 }
 
 init();
+
+// Mostrar mensaje si fue redirigido por cuenta inactiva
+if (new URLSearchParams(location.search).get("inactivo")) {
+  mostrarError("Tu cuenta está inactiva. Contacta al administrador.");
+}
 </script>
 </body>
 </html>
