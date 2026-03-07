@@ -311,6 +311,21 @@ body{
 
 /* Opciones */
 .opciones{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
+/* Opciones múltiples (checkbox) */
+.opcion.multi .op-radio{
+  border-radius:5px;
+}
+.opcion.multi .op-check{
+  border-radius:2px;
+  width:8px;height:8px;
+}
+.opcion.multi.selected .op-radio{
+  border-color:var(--p2);background:var(--p2);
+}
+.multi-hint{
+  font-size:11px;color:rgba(196,181,253,.6);
+  margin-bottom:12px;display:flex;align-items:center;gap:5px;
+}
 .opcion{
   display:flex;align-items:center;gap:14px;
   padding:14px 16px;border-radius:14px;cursor:pointer;
@@ -2208,31 +2223,45 @@ function renderPreguntaMora(preg, idx) {
 
 // ── RENDER PREGUNTA ───────────────────────────────────
 function renderPregunta(preg, idx, yaVote, opciones) {
-  const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const letras   = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const maxResp  = parseInt(preg.max_respuestas) || 1;
+  const esMulti  = maxResp > 1;
   const puedeEditar = yaVote && evData?.permitir_cambiar_respuestas;
+
+  // Para multi: yaVote es string con respuestas separadas por " | "
+  const votosActuales = yaVote
+    ? (esMulti ? yaVote.split(" | ").map(v => v.trim()).filter(Boolean) : [yaVote])
+    : [];
+
   let html = `<div class="pregunta-card" id="preg-${preg.id}">
     <div class="preg-head">
       <div class="preg-num">Pregunta ${idx+1} de ${preguntas.length}</div>
       <div class="preg-titulo">${preg.titulo||"Sin título"}</div>
       ${preg.descripcion ? `<div class="preg-desc">${preg.descripcion}</div>` : ""}
+      ${esMulti ? `<div style="margin-top:6px;font-size:11px;font-weight:700;color:rgba(255,255,255,.6);background:rgba(255,255,255,.1);display:inline-block;padding:3px 10px;border-radius:20px;">Selección múltiple · máx. ${maxResp}</div>` : ""}
     </div>
     <div class="preg-body" id="preg-body-${preg.id}">`;
 
   if (yaVote && !puedeEditar) {
+    const displayVoto = esMulti ? votosActuales.join(", ") : yaVote;
     html += `<div class="votado-badge" id="vbadge-${preg.id}">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-      Tu voto: <strong id="vtexto-${preg.id}">${yaVote}</strong>
+      Tu voto: <strong id="vtexto-${preg.id}">${displayVoto}</strong>
     </div>`;
     if (!evData?.ocultar_graficos) html += `<div id="res-${preg.id}"></div>`;
+
   } else if (yaVote && puedeEditar) {
-    html += `<div class="votado-badge" id="vbadge-${preg.id}" style="background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#fcd34d;">
+    const displayVoto = esMulti ? votosActuales.join(", ") : yaVote;
+    html += `<div class="votado-badge cambio" id="vbadge-${preg.id}">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-      Votaste: <strong id="vtexto-${preg.id}">${yaVote}</strong> — <span style="opacity:.7;font-size:12px;">puedes cambiar</span>
+      Votaste: <strong id="vtexto-${preg.id}">${displayVoto}</strong> — <span style="opacity:.7;font-size:12px;">puedes cambiar</span>
     </div>
     <div class="opciones" id="ops-${preg.id}">`;
     opciones.forEach((op, i) => {
-      const texto = typeof op === "object" ? op.texto : op;
-      html += `<div class="opcion${texto===yaVote?" selected":""}" id="op-${preg.id}-${i}" onclick="seleccionar('${preg.id}',${i},'${texto.replace(/'/g,"\\'")}')">
+      const texto    = typeof op === "object" ? op.texto : op;
+      const selected = votosActuales.includes(texto);
+      html += `<div class="opcion${esMulti?" multi":""}${selected?" selected":""}" id="op-${preg.id}-${i}"
+        onclick="seleccionar('${preg.id}',${i},'${texto.replace(/'/g,"\\'")}',${maxResp})">
         <div class="op-radio"><div class="op-check"></div></div>
         <div class="op-letra">${letras[i]}</div>
         <div class="op-text">${texto}</div>
@@ -2244,19 +2273,28 @@ function renderPregunta(preg, idx, yaVote, opciones) {
       Cambiar respuesta
     </button>`;
     if (!evData?.ocultar_graficos) html += `<div id="res-${preg.id}" style="margin-top:12px;"></div>`;
+
   } else {
-    const selActual = selecciones[preg.id];
+    const selActual = selecciones[preg.id]; // array para multi, {idx,texto} para simple
     html += `<div class="opciones" id="ops-${preg.id}">`;
+    if (esMulti) {
+      html += `<div class="multi-hint"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Seleccioná hasta ${maxResp} opción${maxResp>1?"es":""}</div>`;
+    }
     opciones.forEach((op, i) => {
-      const texto = typeof op === "object" ? op.texto : op;
-      html += `<div class="opcion${selActual?.idx===i?" selected":""}" id="op-${preg.id}-${i}" onclick="seleccionar('${preg.id}',${i},'${texto.replace(/'/g,"\\'")}')">
+      const texto    = typeof op === "object" ? op.texto : op;
+      const selected = esMulti
+        ? (Array.isArray(selActual) && selActual.includes(texto))
+        : (selActual?.idx === i);
+      html += `<div class="opcion${esMulti?" multi":""}${selected?" selected":""}" id="op-${preg.id}-${i}"
+        onclick="seleccionar('${preg.id}',${i},'${texto.replace(/'/g,"\\'")}',${maxResp})">
         <div class="op-radio"><div class="op-check"></div></div>
         <div class="op-letra">${letras[i]}</div>
         <div class="op-text">${texto}</div>
       </div>`;
     });
+    const tieneSeleccion = esMulti ? (Array.isArray(selActual) && selActual.length > 0) : !!selActual;
     html += `</div>
-    <button class="btn-votar" id="btnv-${preg.id}" onclick="votar('${preg.id}')" ${selActual?"":"disabled"}>
+    <button class="btn-votar" id="btnv-${preg.id}" onclick="votar('${preg.id}')" ${tieneSeleccion?"":"disabled"}>
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
       Confirmar voto
     </button>`;
@@ -2298,18 +2336,65 @@ function renderProgresoPreguntas() {
 
 // ── SELECCIONAR OPCIÓN ────────────────────────────────
 const selecciones = {};
-function seleccionar(pregId, idx, texto) {
-  selecciones[pregId] = { idx, texto };
-  document.querySelectorAll(`#ops-${pregId} .opcion`).forEach(el => el.classList.remove("selected"));
-  document.getElementById(`op-${pregId}-${idx}`)?.classList.add("selected");
+function seleccionar(pregId, idx, texto, maxResp = 1) {
+  const esMulti = maxResp > 1;
+
+  if (!esMulti) {
+    // Selección simple — comportamiento original
+    selecciones[pregId] = { idx, texto };
+    document.querySelectorAll(`#ops-${pregId} .opcion`).forEach(el => el.classList.remove("selected"));
+    document.getElementById(`op-${pregId}-${idx}`)?.classList.add("selected");
+    const btn = document.getElementById(`btnv-${pregId}`);
+    if (btn) btn.removeAttribute("disabled");
+    return;
+  }
+
+  // Selección múltiple — toggle en array
+  if (!Array.isArray(selecciones[pregId])) selecciones[pregId] = [];
+  const arr    = selecciones[pregId];
+  const existe = arr.indexOf(texto);
+
+  if (existe >= 0) {
+    // Deseleccionar
+    arr.splice(existe, 1);
+    document.getElementById(`op-${pregId}-${idx}`)?.classList.remove("selected");
+  } else {
+    if (arr.length >= maxResp) {
+      // Límite alcanzado — deseleccionar el primero seleccionado visualmente
+      const primero = arr.shift();
+      // Quitar selected del elemento que tenía ese texto
+      document.querySelectorAll(`#ops-${pregId} .opcion`).forEach(el => {
+        if (el.querySelector(".op-text")?.textContent === primero) el.classList.remove("selected");
+      });
+    }
+    arr.push(texto);
+    document.getElementById(`op-${pregId}-${idx}`)?.classList.add("selected");
+  }
+
   const btn = document.getElementById(`btnv-${pregId}`);
-  if (btn) btn.removeAttribute("disabled");
+  if (btn) {
+    if (arr.length > 0) btn.removeAttribute("disabled");
+    else btn.setAttribute("disabled", "");
+    // Actualizar label del botón con contador
+    const svg = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`;
+    btn.innerHTML = arr.length > 0
+      ? `${svg} Confirmar voto (${arr.length}/${maxResp})`
+      : `${svg} Confirmar voto`;
+  }
 }
 
 // ── VOTAR ─────────────────────────────────────────────
 async function votar(pregId) {
-  const sel = selecciones[pregId];
+  const sel    = selecciones[pregId];
+  const preg   = preguntas.find(p => p.id === pregId);
+  const esMulti = parseInt(preg?.max_respuestas) > 1;
+
+  // Validar que haya selección
   if (!sel) return;
+  if (esMulti && (!Array.isArray(sel) || sel.length === 0)) return;
+
+  // Texto final a guardar
+  const textoVoto = esMulti ? sel.join(" | ") : sel.texto;
 
   const btn = document.getElementById(`btnv-${pregId}`);
   if (btn) { btn.disabled = true; btn.innerHTML = `<div class="spin"></div>Enviando…`; }
@@ -2317,7 +2402,7 @@ async function votar(pregId) {
   const coef = parseFloat(String(unidadInfo?.coeficiente||0).replace(",",".")) || 0;
   const { error } = await sb.from("votos").upsert({
     id_pregunta: pregId, id_evento: EV_ID,
-    id_unidad: SS.unidadId, respuesta: sel.texto, coeficiente: coef,
+    id_unidad: SS.unidadId, respuesta: textoVoto, coeficiente: coef,
   }, { onConflict: "id_pregunta,id_unidad" });
 
   if (error) {
@@ -2344,13 +2429,14 @@ async function votar(pregId) {
     await Promise.all(idsDel.map(idDel =>
       sb.from("votos").upsert({
         id_pregunta: pregId, id_evento: EV_ID,
-        id_unidad: idDel, respuesta: sel.texto, coeficiente: coefMap[idDel] || 0,
+        id_unidad: idDel, respuesta: textoVoto, coeficiente: coefMap[idDel] || 0,
       }, { onConflict: "id_pregunta,id_unidad" })
     ));
   }
 
   const esCambio = !!misVotos[pregId];
-  misVotos[pregId] = sel.texto;
+  misVotos[pregId] = textoVoto;
+  const displayVoto = esMulti ? sel.join(", ") : textoVoto;
   toast(esCambio ? "✓ Respuesta actualizada" : "✓ Voto registrado", "ok");
 
   // Flash en el card (solo desktop — mobile usa panel flotante)
@@ -2360,13 +2446,12 @@ async function votar(pregId) {
       card.style.animation = esCambio
         ? "voto-flash-amber .9s ease forwards"
         : "voto-flash-verde .9s ease forwards";
-      // Limpiar animación para que pueda repetirse si cambia de nuevo
       card.addEventListener("animationend", () => { card.style.animation = ""; }, { once: true });
     }
   }
 
   // Actualizar DOM quirúrgicamente — SIN outerHTML del card
-  _actualizarCardTrasVoto(pregId, sel.texto, esCambio);
+  _actualizarCardTrasVoto(pregId, displayVoto, esCambio);
 
   // Stats en segundo plano
   cargarStatsParticipacion().then(() => actualizarStatsInPlace());
