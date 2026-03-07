@@ -3,152 +3,418 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BALCAM — Iniciar Sesión</title>
+<title>MAECS — Iniciar Sesión</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-:root{--p:#5b21b6;--p2:#7c3aed;--pink:#c026d3;}
-html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;}
-body{
-  min-height:100vh;
-  background:linear-gradient(135deg,#c4b5fd 0%,#e9d5ff 35%,#f9a8d4 70%,#fbcfe8 100%);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --p:    #6d28d9;
+  --p2:   #7c3aed;
+  --dark: #07050f;
+  --border: rgba(139,92,246,.18);
+  --muted: rgba(255,255,255,.32);
+}
+
+html, body { height: 100%; }
+
+body {
+  min-height: 100vh;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow: hidden;
+}
+
+/* ── FONDO ANIMADO ── */
+.bg-orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(90px);
+  pointer-events: none;
+  will-change: transform;
+}
+.orb1 {
+  width: 560px; height: 560px;
+  background: radial-gradient(circle, rgba(109,40,217,.3) 0%, transparent 70%);
+  top: -160px; left: -120px;
+  animation: orb-a 20s ease-in-out infinite;
+}
+.orb2 {
+  width: 420px; height: 420px;
+  background: radial-gradient(circle, rgba(192,38,211,.18) 0%, transparent 70%);
+  bottom: -100px; right: -80px;
+  animation: orb-b 24s ease-in-out infinite;
+}
+.orb3 {
+  width: 280px; height: 280px;
+  background: radial-gradient(circle, rgba(124,58,237,.15) 0%, transparent 70%);
+  top: 45%; left: 55%;
+  animation: orb-c 16s ease-in-out infinite;
+}
+@keyframes orb-a { 0%,100%{transform:translate(0,0)}  50%{transform:translate(50px,35px)} }
+@keyframes orb-b { 0%,100%{transform:translate(0,0)}  50%{transform:translate(-35px,-25px)} }
+@keyframes orb-c { 0%,100%{transform:translate(0,0)}  50%{transform:translate(-25px,30px)} }
+
+.bg-grid {
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(139,92,246,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139,92,246,.035) 1px, transparent 1px);
+  background-size: 52px 52px;
+  pointer-events: none;
+}
+
+/* ── WRAPPER ── */
+.wrapper {
+  position: relative; z-index: 10;
+  width: 100%; max-width: 420px;
+  animation: rise .75s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes rise {
+  from { opacity:0; transform:translateY(32px); }
+  to   { opacity:1; transform:translateY(0); }
 }
 
 /* ── LOGO ── */
-.logo-wrap{text-align:center;margin-bottom:32px;}
-.logo-icon{width:80px;height:80px;margin:0 auto 14px;filter:drop-shadow(0 8px 24px rgba(91,33,182,.25));}
-.logo-empresa{font-size:28px;font-weight:900;color:var(--p);letter-spacing:-.5px;}
-.logo-slogan{font-size:12px;font-weight:700;color:var(--pink);letter-spacing:.2em;text-transform:uppercase;margin-top:3px;}
+.logo-wrap {
+  text-align: center;
+  margin-bottom: 40px;
+  animation: rise .75s .08s cubic-bezier(.22,1,.36,1) both;
+}
+.logo-icon-ring {
+  position: relative;
+  width: 76px; height: 76px;
+  margin: 0 auto 20px;
+}
+.logo-icon-ring svg { width: 76px; height: 76px; display: block; }
+.ring-glow {
+  position: absolute; inset: -10px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124,58,237,.45) 0%, transparent 65%);
+  animation: ring-pulse 3.5s ease-in-out infinite;
+}
+@keyframes ring-pulse {
+  0%,100% { opacity:.5; transform:scale(1); }
+  50%     { opacity:.9; transform:scale(1.18); }
+}
+.logo-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  line-height: 1;
+  color: #fff;
+}
+.logo-name em {
+  font-style: normal;
+  background: linear-gradient(125deg, #a78bfa 0%, #e879f9 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.logo-by {
+  margin-top: 8px;
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--muted);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
 
 /* ── CARD ── */
-.card{
-  background:rgba(255,255,255,.82);backdrop-filter:blur(20px);
-  border:1px solid rgba(91,33,182,.12);border-radius:24px;
-  padding:36px 40px;width:100%;max-width:420px;
-  box-shadow:0 20px 60px rgba(91,33,182,.15);
+.card {
+  background: rgba(12,8,24,.75);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 38px 36px 34px;
+  position: relative;
+  overflow: hidden;
+  animation: rise .75s .16s cubic-bezier(.22,1,.36,1) both;
 }
-.card-title{font-size:18px;font-weight:800;color:var(--p);margin-bottom:4px;}
-.card-sub{font-size:13px;color:#94a3b8;margin-bottom:28px;}
-
-.field{margin-bottom:16px;}
-.field label{display:block;font-size:12px;font-weight:800;color:var(--p);margin-bottom:6px;letter-spacing:.02em;}
-.input-wrap{position:relative;}
-.inp{
-  width:100%;padding:13px 16px;
-  border:1.5px solid rgba(91,33,182,.18);border-radius:13px;
-  font-size:14px;color:#2e1065;background:rgba(255,255,255,.85);
-  outline:none;transition:.2s;
+/* Línea de luz superior */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 15%; right: 15%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(167,139,250,.55), transparent);
 }
-.inp:focus{border-color:var(--p2);background:#fff;box-shadow:0 0 0 4px rgba(124,58,237,.1);}
-.inp::placeholder{color:#c4b5fd;}
-.eye{position:absolute;right:13px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#a78bfa;padding:2px;}
-.eye:hover{color:var(--p);}
-
-.btn-login{
-  width:100%;padding:14px;margin-top:8px;
-  background:linear-gradient(135deg,var(--p),var(--p2));
-  color:#fff;border:none;border-radius:13px;
-  font-size:15px;font-weight:800;cursor:pointer;letter-spacing:.02em;
-  display:flex;align-items:center;justify-content:center;gap:9px;
-  box-shadow:0 6px 20px rgba(91,33,182,.3);transition:.25s;
+/* Brillo de esquina */
+.card::after {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 180px; height: 180px;
+  background: radial-gradient(circle, rgba(124,58,237,.12) 0%, transparent 70%);
+  pointer-events: none;
 }
-.btn-login:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(91,33,182,.35);}
-.btn-login:disabled{opacity:.6;cursor:not-allowed;transform:none;}
 
-.error{background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;font-size:13px;color:#991b1b;font-weight:600;margin-top:12px;display:none;}
-.error.show{display:flex;align-items:center;gap:8px;}
-
-.divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:#cbd5e1;font-size:12px;}
-.divider::before,.divider::after{content:"";flex:1;height:1px;background:#e2e8f0;}
-
-.btn-soporte{
-  width:100%;padding:12px;background:#25d366;color:#fff;
-  border:none;border-radius:13px;font-size:14px;font-weight:700;
-  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;transition:.2s;
+.card-head { margin-bottom: 28px; }
+.card-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 19px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 5px;
 }
-.btn-soporte:hover{background:#128c7e;}
+.card-sub {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 300;
+}
+
+/* ── CAMPOS ── */
+.field { margin-bottom: 18px; }
+.field label {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgba(167,139,250,.75);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.input-wrap { position: relative; }
+.inp {
+  width: 100%;
+  padding: 13px 16px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(139,92,246,.18);
+  border-radius: 11px;
+  font-size: 14px;
+  font-family: 'DM Sans', sans-serif;
+  color: rgba(255,255,255,.9);
+  outline: none;
+  transition: border-color .2s, background .2s, box-shadow .2s;
+  -webkit-appearance: none;
+}
+.inp::placeholder { color: rgba(255,255,255,.16); }
+.inp:focus {
+  border-color: rgba(124,58,237,.55);
+  background: rgba(124,58,237,.07);
+  box-shadow: 0 0 0 3px rgba(109,40,217,.12);
+}
+.eye {
+  position: absolute; right: 12px; top: 50%;
+  transform: translateY(-50%);
+  background: none; border: none; cursor: pointer;
+  color: rgba(255,255,255,.2);
+  padding: 4px; line-height: 0;
+  transition: color .2s;
+}
+.eye:hover { color: rgba(167,139,250,.8); }
+
+/* ── ERROR ── */
+.error {
+  background: rgba(239,68,68,.08);
+  border: 1px solid rgba(239,68,68,.22);
+  border-radius: 10px;
+  padding: 10px 13px;
+  font-size: 12.5px;
+  color: #fca5a5;
+  font-weight: 500;
+  margin-bottom: 16px;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  animation: rise .3s cubic-bezier(.22,1,.36,1);
+}
+.error.show { display: flex; }
+
+/* ── BTN LOGIN ── */
+.btn-login {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%);
+  color: #fff;
+  border: none;
+  border-radius: 11px;
+  font-size: 14px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: .02em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  position: relative;
+  overflow: hidden;
+  transition: transform .2s, box-shadow .2s;
+  box-shadow: 0 4px 22px rgba(109,40,217,.45);
+}
+.btn-login::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.14), transparent 60%);
+}
+.btn-login:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(109,40,217,.55);
+}
+.btn-login:active { transform: translateY(0); }
+.btn-login:disabled { opacity: .45; cursor: not-allowed; transform: none !important; }
+
+/* ── DIVIDER ── */
+.divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 22px 0 16px;
+  color: rgba(255,255,255,.14);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.divider::before, .divider::after {
+  content: ''; flex: 1; height: 1px;
+  background: rgba(139,92,246,.13);
+}
+
+/* ── BTN SOPORTE ── */
+.btn-soporte {
+  width: 100%;
+  padding: 12px;
+  background: rgba(37,211,102,.06);
+  border: 1px solid rgba(37,211,102,.18);
+  color: rgba(74,222,128,.9);
+  border-radius: 11px;
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  transition: background .2s, border-color .2s;
+}
+.btn-soporte:hover {
+  background: rgba(37,211,102,.12);
+  border-color: rgba(37,211,102,.3);
+}
 
 /* ── FOOTER ── */
-footer{margin-top:28px;text-align:center;color:rgba(91,33,182,.45);font-size:11px;line-height:1.8;}
-.foot-logos{display:flex;align-items:center;justify-content:center;gap:28px;margin-top:12px;opacity:.5;}
-.foot-logos span{font-size:15px;font-weight:900;color:var(--p);}
+footer {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 11px;
+  color: rgba(255,255,255,.15);
+  letter-spacing: .04em;
+  animation: rise .75s .32s cubic-bezier(.22,1,.36,1) both;
+}
 
-/* Spin */
-.spin{width:17px;height:17px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0;}
-@keyframes sp{to{transform:rotate(360deg);}}
+/* ── SPIN ── */
+.spin {
+  width: 15px; height: 15px;
+  border: 2px solid rgba(255,255,255,.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: sp .65s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes sp { to { transform: rotate(360deg); } }
 
-/* Shake */
-@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+/* ── SHAKE ── */
+@keyframes shake {
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-7px)}
+  40%{transform:translateX(7px)}
+  60%{transform:translateX(-4px)}
+  80%{transform:translateX(4px)}
+}
 </style>
 </head>
 <body>
 
-<!-- LOGO -->
-<div class="logo-wrap">
-  <div class="logo-icon">
-    <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="4" y="4" width="30" height="30" rx="8" fill="#5b21b6" opacity=".9"/>
-      <rect x="46" y="4" width="30" height="30" rx="8" fill="#c026d3" opacity=".9"/>
-      <rect x="4" y="46" width="30" height="30" rx="8" fill="#7c3aed" opacity=".9"/>
-      <rect x="46" y="46" width="30" height="30" rx="8" fill="#a21caf" opacity=".9"/>
-      <rect x="22" y="22" width="36" height="36" rx="10" fill="white" opacity=".97"/>
-      <path d="M32 36 L40 46 L48 36" stroke="#5b21b6" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-    </svg>
-  </div>
-  <div class="logo-empresa">BALCAM SAS</div>
-  <div class="logo-slogan">El primer toque</div>
-</div>
+<div class="bg-orb orb1"></div>
+<div class="bg-orb orb2"></div>
+<div class="bg-orb orb3"></div>
+<div class="bg-grid"></div>
 
-<!-- CARD -->
-<div class="card" id="login-card">
-  <div class="card-title">Bienvenido de vuelta</div>
-  <div class="card-sub">Ingresa tus credenciales de administrador</div>
+<div class="wrapper">
 
-  <div class="field">
-    <label>Correo electrónico</label>
-    <div class="input-wrap">
-      <input id="f-email" class="inp" type="email" placeholder="admin@ejemplo.com"
-        autocomplete="email" onkeydown="if(event.key==='Enter')doLogin()">
+  <div class="logo-wrap">
+    <div class="logo-icon-ring">
+      <div class="ring-glow"></div>
+      <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4"  y="4"  width="30" height="30" rx="8" fill="#5b21b6" opacity=".9"/>
+        <rect x="46" y="4"  width="30" height="30" rx="8" fill="#c026d3" opacity=".9"/>
+        <rect x="4"  y="46" width="30" height="30" rx="8" fill="#7c3aed" opacity=".9"/>
+        <rect x="46" y="46" width="30" height="30" rx="8" fill="#a21caf" opacity=".9"/>
+        <rect x="22" y="22" width="36" height="36" rx="10" fill="white" opacity=".97"/>
+        <path d="M32 36 L40 46 L48 36" stroke="#5b21b6" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
     </div>
+    <div class="logo-name">M<em>AECS</em></div>
+    <div class="logo-by">por BALCAM SAS</div>
   </div>
 
-  <div class="field">
-    <label>Contraseña</label>
-    <div class="input-wrap">
-      <input id="f-pass" class="inp" type="password" placeholder="••••••••"
-        autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-      <button class="eye" onclick="toggleEye()" type="button" id="eye-btn">
-        <svg id="eye-icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-      </button>
+  <div class="card" id="login-card">
+    <div class="card-head">
+      <div class="card-title">Bienvenido de vuelta</div>
+      <div class="card-sub">Ingresa tus credenciales para continuar</div>
     </div>
+
+    <div class="field">
+      <label>Correo electrónico</label>
+      <div class="input-wrap">
+        <input id="f-email" class="inp" type="email" placeholder="correo@ejemplo.com"
+          autocomplete="email" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Contraseña</label>
+      <div class="input-wrap">
+        <input id="f-pass" class="inp" type="password" placeholder="••••••••"
+          autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+        <button class="eye" onclick="toggleEye()" type="button">
+          <svg id="eye-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="f-error" class="error">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span id="f-error-txt"></span>
+    </div>
+
+    <button id="btn-login" class="btn-login" onclick="doLogin()">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+        <polyline points="10 17 15 12 10 7"/>
+        <line x1="15" y1="12" x2="3" y2="12"/>
+      </svg>
+      Iniciar Sesión
+    </button>
+
+    <div class="divider">¿Necesitas ayuda?</div>
+
+    <button class="btn-soporte" onclick="abrirSoporte()">
+      <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+      </svg>
+      Soporte por WhatsApp
+    </button>
   </div>
 
-  <div id="f-error" class="error">
-    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-    <span id="f-error-txt"></span>
-  </div>
+  <footer>Versión 1.0.0 &nbsp;·&nbsp; © 2026 BALCAM SAS</footer>
 
-  <button id="btn-login" class="btn-login" onclick="doLogin()">
-    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-    Iniciar Sesión
-  </button>
-
-  <div class="divider">¿Necesitas ayuda?</div>
-
-  <button class="btn-soporte" onclick="abrirSoporte()">
-    <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-    Soporte por WhatsApp
-  </button>
 </div>
-
-<footer>
-  Versión 1.0.0 &nbsp;·&nbsp; © 2026
-  <div class="foot-logos">
-    <span>⟡ maecs</span>
-    <span>BALCAM</span>
-  </div>
-</footer>
 
 <script>
 const sb = supabase.createClient(
@@ -156,7 +422,6 @@ const sb = supabase.createClient(
   "sb_publishable_e1x6gdl3QHjwdKa5UIjYxQ_eMkUaTad"
 );
 
-// Si ya tiene sesión, ir directo al Panel
 async function init() {
   const { data:{ session } } = await sb.auth.getSession();
   if (session) { location.href = "Panel.html"; }
@@ -166,9 +431,7 @@ async function doLogin() {
   const email = document.getElementById("f-email").value.trim();
   const pass  = document.getElementById("f-pass").value;
   ocultarError();
-
   if (!email || !pass) { mostrarError("Completa todos los campos."); return; }
-
   setBtnLoad(true);
 
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
@@ -177,32 +440,30 @@ async function doLogin() {
     setBtnLoad(false);
     const msgs = {
       "Invalid login credentials": "Correo o contraseña incorrectos.",
-      "Email not confirmed": "Confirma tu correo antes de ingresar.",
-      "Too many requests": "Demasiados intentos. Espera un momento.",
+      "Email not confirmed":       "Confirma tu correo antes de ingresar.",
+      "Too many requests":         "Demasiados intentos. Espera un momento.",
     };
     mostrarError(msgs[error.message] || "Error: " + error.message);
-    document.getElementById("login-card").style.animation = "shake .4s ease";
-    setTimeout(() => document.getElementById("login-card").style.animation = "", 500);
+    const card = document.getElementById("login-card");
+    card.style.animation = "shake .4s ease";
+    setTimeout(() => card.style.animation = "", 500);
     return;
   }
 
-  // Verificar que el usuario esté activo
   const { data: perfil } = await sb
-    .from("usuarios")
-    .select("activo, rol")
-    .eq("email", email)
-    .single();
+    .from("usuarios").select("activo, rol")
+    .eq("email", email).single();
 
   if (!perfil?.activo) {
     await sb.auth.signOut();
     setBtnLoad(false);
     mostrarError("Tu cuenta está inactiva. Contacta al administrador.");
-    document.getElementById("login-card").style.animation = "shake .4s ease";
-    setTimeout(() => document.getElementById("login-card").style.animation = "", 500);
+    const card = document.getElementById("login-card");
+    card.style.animation = "shake .4s ease";
+    setTimeout(() => card.style.animation = "", 500);
     return;
   }
 
-  // Éxito
   location.href = "Panel.html";
 }
 
@@ -218,14 +479,14 @@ function setBtnLoad(on) {
   btn.disabled = on;
   btn.innerHTML = on
     ? `<div class="spin"></div>Verificando…`
-    : `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>Iniciar Sesión`;
+    : `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>Iniciar Sesión`;
 }
 function toggleEye() {
   const inp = document.getElementById("f-pass");
   inp.type = inp.type === "password" ? "text" : "password";
   document.getElementById("eye-icon").innerHTML = inp.type === "text"
     ? `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`
-    : `<path d="M1 12s4-8 11-8 11-8-11-8-11-8-11 8z"/><circle cx="12" cy="12" r="3"/>`;
+    : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
 }
 function abrirSoporte() {
   window.open("https://wa.me/573143949813?text=Necesito%20soporte%20con%20BALCAM", "_blank");
@@ -233,7 +494,6 @@ function abrirSoporte() {
 
 init();
 
-// Mostrar mensaje si fue redirigido por cuenta inactiva
 if (new URLSearchParams(location.search).get("inactivo")) {
   mostrarError("Tu cuenta está inactiva. Contacta al administrador.");
 }
