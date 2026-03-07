@@ -799,12 +799,11 @@ select.inp option { background:#1e1b4b; color:#fff; }
         <select id="m-rol" required class="inp">
           <option value="">— Seleccionar rol —</option>
           <option value="Administrador General">Administrador General</option>
-          <option value="Administrador Evento">Administrador Evento</option>
           <option value="Administrador Organización">Administrador Organización</option>
-          <option value="Registrador Participantes">Registrador Participantes</option>
-          <option value="Consulta Evento">Consulta Evento</option>
-          <option value="Registrador de Módulos">Registrador de Módulos</option>
-          <option value="Participante">Participante</option>
+          <option value="Administrador Evento">Administrador Evento</option>
+          <option value="Propietario">Propietario</option>
+          <option value="Delegado">Delegado</option>
+          <option value="Invitado">Invitado</option>
         </select>
       </div>
       <div><label class="flabel">Organización</label>
@@ -1068,7 +1067,7 @@ select.inp option { background:#1e1b4b; color:#fff; }
       </div>
     </div>
 
-    <!-- Fila 2: Estado + Lugar + Fecha -->
+    <!-- Fila 2: Estado + Modalidad + Fecha -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;">
       <div>
         <label class="flabel">Estado</label>
@@ -1080,13 +1079,24 @@ select.inp option { background:#1e1b4b; color:#fff; }
         </select>
       </div>
       <div>
-        <label class="flabel">Lugar</label>
-        <input id="em-lugar" type="text" class="inp" placeholder="Salón Social, Zoom…">
+        <label class="flabel">Modalidad</label>
+        <select id="em-modalidad" class="inp" onchange="toggleZoomField()">
+          <option value="">— Seleccionar —</option>
+          <option value="Presencial">🏢 Presencial</option>
+          <option value="Virtual">💻 Virtual</option>
+          <option value="Mixto">🔀 Mixto</option>
+        </select>
       </div>
       <div>
         <label class="flabel">Fecha y hora</label>
         <input id="em-fecha" type="datetime-local" class="inp">
       </div>
+    </div>
+
+    <!-- Fila 2b: Lugar -->
+    <div style="margin-bottom:14px;">
+      <label class="flabel">Lugar</label>
+      <input id="em-lugar" type="text" class="inp" placeholder="Salón Social, Auditorio…">
     </div>
 
     <!-- Fila 3: Descripción -->
@@ -1105,10 +1115,17 @@ select.inp option { background:#1e1b4b; color:#fff; }
         <label class="flabel">Quórum mínimo</label>
         <input id="em-quorum" type="text" class="inp" placeholder="0.51">
       </div>
-      <div>
-        <label class="flabel">URL reunión virtual <span style="color:rgba(56,189,248,.6);font-size:10px;text-transform:none;">● activa botón Zoom</span></label>
-        <input id="em-link-zoom" type="url" class="inp" placeholder="https://zoom.us/j/...">
-      </div>
+    </div>
+
+    <!-- Zoom wrap — visible solo si Virtual o Mixto -->
+    <div id="em-zoom-wrap" style="display:none;margin-bottom:14px;">
+      <label class="flabel">
+        Link de Zoom
+        <span style="color:rgba(56,189,248,.6);font-size:10px;text-transform:none;font-weight:400;margin-left:6px;">Pega el enlace completo — se extrae el ID automáticamente</span>
+      </label>
+      <input id="em-link-zoom" type="text" class="inp" placeholder="https://zoom.us/j/12345678?pwd=abc..."
+        oninput="parsearZoomLink(this.value)" autocomplete="off">
+      <div id="em-zoom-preview" style="display:none;margin-top:8px;padding:10px 13px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2);border-radius:10px;font-size:12px;color:#7dd3fc;"></div>
     </div>
 
     <!-- Toggles de configuración -->
@@ -1415,7 +1432,7 @@ const sb = window.supabase.createClient(
 
 // ─── ROLES QUE PUEDEN GESTIONAR USUARIOS ─────────────────────────────────────
 // Agrega aquí los roles que consideres "admin"
-const ROLES_ADMIN = ["Administrador General", "Administrador Organización", "Administrador Evento", "Registrador Participantes", "Consulta Evento", "Registrador de Módulos"];
+const ROLES_ADMIN = ["Administrador General", "Administrador Organización"];
 
 let sesionActual = null;  // datos del usuario logueado
 let esAdmin = false;
@@ -1433,19 +1450,13 @@ let adminSecretarioDefault = null; // {nombre, guardado} — default secretario
   // Buscar perfil completo del usuario logueado
   const { data: miPerfil } = await sb
     .from("usuarios")
-    .select("rol, activo, primer_nombre, segundo_nombre, primer_apellido, segundo_apellido")
+    .select("rol, primer_nombre, segundo_nombre, primer_apellido, segundo_apellido")
     .eq("email", session.user.email)
     .single();
 
-  // Si está inactivo — cerrar sesión y redirigir con mensaje
-  if (!miPerfil?.activo) {
-    await sb.auth.signOut();
-    window.location.href = "index.html?inactivo=1";
-    return;
-  }
-
   if (miPerfil) {
     perfilActual = miPerfil;
+    // Recuperar secretario predeterminado guardado (nombre del administrador del edificio)
     const guardado = localStorage.getItem("maecs_secretario_default");
     adminSecretarioDefault = guardado ? JSON.parse(guardado) : null;
 
@@ -1817,9 +1828,34 @@ const EV_ESTADOS = {
 };
 
 function toggleZoomField(){
-  const lugar = document.getElementById("em-lugar").value.toLowerCase();
-  const esVirtual = ["virtual","zoom","meet","teams","online"].some(k => lugar.includes(k));
-  document.getElementById("em-zoom-wrap").style.display = esVirtual ? "block" : "none";
+  const modalidad = document.getElementById("em-modalidad").value;
+  const mostrar = modalidad === "Virtual" || modalidad === "Mixto";
+  document.getElementById("em-zoom-wrap").style.display = mostrar ? "block" : "none";
+  if (!mostrar) {
+    document.getElementById("em-link-zoom").value = "";
+    document.getElementById("em-zoom-preview").style.display = "none";
+  }
+}
+
+function parsearZoomLink(val) {
+  const preview = document.getElementById("em-zoom-preview");
+  if (!val.trim()) { preview.style.display = "none"; return; }
+  // Extraer meeting ID
+  const idMatch = val.match(/zoom\.us\/(?:j|my)\/([0-9]{8,11})/i) ||
+                  val.match(/\/([0-9]{8,11})(?:\?|$)/);
+  // Extraer password
+  const pwdMatch = val.match(/[?&]pwd=([^&\s]+)/i);
+  if (idMatch) {
+    const mid = idMatch[1];
+    const pwd = pwdMatch ? pwdMatch[1] : null;
+    preview.style.display = "block";
+    preview.innerHTML = `<strong>✓ Zoom detectado</strong> &nbsp;&middot;&nbsp; ID: <code style="background:rgba(255,255,255,.1);padding:1px 6px;border-radius:4px;">${mid}</code>${pwd ? ` &nbsp;&middot;&nbsp; Contraseña: <code style="background:rgba(255,255,255,.1);padding:1px 6px;border-radius:4px;">${pwd}</code>` : " &nbsp;&middot;&nbsp; Sin contraseña"}`;
+  } else if (val.length > 10) {
+    preview.style.display = "block";
+    preview.innerHTML = `<span style="color:#fca5a5;">⚠ No se detectó un enlace Zoom válido. Verifica el formato.</span>`;
+  } else {
+    preview.style.display = "none";
+  }
 }
 
 async function llenarOrgSelectEventos() {
@@ -1898,13 +1934,19 @@ function renderEventos() {
     const est = EV_ESTADOS[r.estado] || EV_ESTADOS["Cerrado"];
     const badgeEst = `<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${est.bg};color:${est.color};border:1px solid ${est.border};">${r.estado??"—"}</span>`;
     const tieneZoom = r.zoom_link && r.zoom_link.trim();
+    const modalidadBadge = r.tipo_evento
+      ? { "Virtual": { icon: "💻", color: "#38bdf8", bg: "rgba(56,189,248,.12)", border: "rgba(56,189,248,.25)" },
+          "Mixto":   { icon: "🔀", color: "#a78bfa", bg: "rgba(167,139,250,.12)", border: "rgba(167,139,250,.25)" },
+          "Presencial": { icon: "🏢", color: "#4ade80", bg: "rgba(74,222,128,.1)", border: "rgba(74,222,128,.22)" }
+        }[r.tipo_evento] || null
+      : null;
     const fecha = r.fecha ? new Date(r.fecha).toLocaleDateString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}) : "—";
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td style="color:rgba(255,255,255,.3);font-size:11px;">${ini+i+1}</td>
       <td style="font-weight:600;max-width:200px;">${r.nombre??"—"}</td>
-      <td style="font-size:12px;"><span class="badge b-rol">${r.tipo??"—"}</span></td>
+      <td style="font-size:12px;"><span class="badge b-rol">${r.tipo??"—"}</span>${modalidadBadge ? `<span style="margin-left:5px;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:600;background:${modalidadBadge.bg};color:${modalidadBadge.color};border:1px solid ${modalidadBadge.border};">${modalidadBadge.icon} ${r.tipo_evento}</span>` : ""}</td>
       <td>${badgeEst}</td>
       <td style="font-size:12px;">${r.lugar??"—"}</td>
       <td style="font-size:11px;white-space:nowrap;">${fecha}</td>
@@ -2008,6 +2050,7 @@ function abrirEvEditar(id){
   document.getElementById("em-btn-txt").textContent="Guardar cambios";
   document.getElementById("em-nombre").value        = r.nombre??"";
   document.getElementById("em-tipo").value          = r.tipo??"";
+  document.getElementById("em-modalidad").value     = r.tipo_evento??"";
   document.getElementById("em-estado").value        = r.estado??"Creado";
   document.getElementById("em-lugar").value         = r.lugar??"";
   document.getElementById("em-fecha").value         = r.fecha ? r.fecha.slice(0,16) : "";
@@ -2015,6 +2058,8 @@ function abrirEvEditar(id){
   document.getElementById("em-soporte").value       = r.numero_soporte??"";
   document.getElementById("em-link-zoom").value     = r.zoom_link??"";
   document.getElementById("em-notas").value         = r.notas??"";
+  // Mostrar/ocultar campo Zoom y preview segun modalidad
+  setTimeout(() => { toggleZoomField(); parsearZoomLink(r.zoom_link||""); }, 0);
   document.getElementById("em-ocultar").checked     = !!r.ocultar_graficos;
   document.getElementById("em-mora").checked        = !!r.permitir_voto_mora;
   document.getElementById("em-reg-iniciado").checked= !!r.permitir_registro_iniciado;
@@ -2077,6 +2122,9 @@ function evBorrarBorrador(){
 function limpiarEvForm(){
   ["em-nombre","em-lugar","em-quorum","em-soporte","em-link-zoom","em-notas"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("em-tipo").value="";
+  document.getElementById("em-modalidad").value="";
+  document.getElementById("em-zoom-wrap").style.display="none";
+  document.getElementById("em-zoom-preview").style.display="none";
   document.getElementById("em-estado").value="Creado";
   document.getElementById("em-fecha").value="";
   ["em-ocultar","em-mora","em-reg-iniciado","em-cambiar","em-restringir"].forEach(id=>document.getElementById(id).checked=false);
@@ -2090,6 +2138,7 @@ async function guardarEvento(e){
     id_organizacion:             String(ev.orgId),
     nombre:                      document.getElementById("em-nombre").value.trim()||null,
     tipo:                        document.getElementById("em-tipo").value||null,
+    tipo_evento:                 document.getElementById("em-modalidad").value||null,
     estado:                      document.getElementById("em-estado").value||"Creado",
     lugar:                       document.getElementById("em-lugar").value.trim()||null,
     fecha:                       document.getElementById("em-fecha").value||null,
@@ -2102,8 +2151,12 @@ async function guardarEvento(e){
     permitir_cambiar_respuestas: document.getElementById("em-cambiar").checked,
     restringir_acceso:           document.getElementById("em-restringir").checked,
   };
-  // Solo incluir zoom_link si la columna existe (se agrega cuando el admin ponga el ALTER TABLE)
-  if (zoomVal) payload.zoom_link = zoomVal;
+  // Guardar zoom_link si hay valor
+  if (zoomVal) {
+    payload.zoom_link = zoomVal;
+  } else {
+    payload.zoom_link = null;
+  }
   evBorrarBorrador();
   const{error}=ev.editId
     ?await sb.from("eventos").update(payload).eq("id",ev.editId)
