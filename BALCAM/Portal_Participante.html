@@ -199,6 +199,19 @@ body{
 }
 @keyframes slide-in{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
 @keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.5;transform:scale(.7);}}
+@keyframes preg-cerrar-flash{
+  0%  { box-shadow: 0 8px 32px rgba(0,0,0,.4); border-color: var(--border); }
+  40% { box-shadow: 0 0 0 3px rgba(220,38,38,.35), 0 8px 32px rgba(220,38,38,.2); border-color: rgba(220,38,38,.5); }
+  100%{ box-shadow: 0 8px 32px rgba(0,0,0,.4); border-color: var(--border); }
+}
+@keyframes preg-colapsar{
+  from { opacity:1; max-height:var(--preg-h,600px); }
+  to   { opacity:0; max-height:0; }
+}
+@keyframes preg-cerrada-in{
+  from { opacity:0; transform:translateY(-8px) scale(.98); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
+}
 .preg-head{
   background:linear-gradient(135deg,var(--p),var(--pink));
   padding:20px 22px;
@@ -1328,36 +1341,50 @@ async function pollPreguntas() {
     delete portalChartCache[p.id];
     delete _votosCountCache[p.id];
     const miVoto = misVotos[p.id];
-    // Reemplazar card con versión compacta
-    card.style.cssText = "margin-bottom:6px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);";
-    const body = document.getElementById(`preg-body-${p.id}`);
-    if (body) {
-      body.style.cssText = "display:flex;align-items:center;gap:12px;padding:11px 14px;";
-      body.innerHTML = `
-        <div style="flex-shrink:0;width:28px;height:28px;border-radius:8px;
-          background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.2);
-          display:flex;align-items:center;justify-content:center;">
-          <svg width="12" height="12" fill="none" stroke="#f87171" stroke-width="2.5" viewBox="0 0 24 24">
-            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-          </svg>
-        </div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:10px;font-weight:700;color:rgba(248,113,113,.65);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Cerrada</div>
-          <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.titulo||"Sin título"}</div>
-        </div>
-        ${miVoto
-          ? `<div style="flex-shrink:0;display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;
-              background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);
-              font-size:12px;font-weight:700;color:#4ade80;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-              <svg width="10" height="10" fill="none" stroke="#4ade80" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-              ${miVoto}
-             </div>`
-          : `<div style="flex-shrink:0;padding:5px 10px;border-radius:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);font-size:11px;color:var(--muted);">Sin voto</div>`
-        }`;
-      // Quitar preg-head si existe
-      const head = card.querySelector(".preg-head");
-      if (head) head.remove();
-    }
+
+    // ── Fase 1: flash rojo (indica que se está cerrando) ──
+    card.style.transition = "none";
+    card.style.animation  = "preg-cerrar-flash .7s ease forwards";
+
+    setTimeout(() => {
+      // ── Fase 2: colapso animado ──
+      const h = card.offsetHeight;
+      card.style.setProperty("--preg-h", h + "px");
+      card.style.overflow   = "hidden";
+      card.style.animation  = "preg-colapsar .45s cubic-bezier(.4,0,.2,1) forwards";
+
+      setTimeout(() => {
+        // ── Fase 3: mostrar versión compacta de historial ──
+        // Construir nuevo elemento con clase propia (no pregunta-card)
+        const compacta = document.createElement("div");
+        compacta.className  = "preg-cerrada-wrap";
+        compacta.id         = `preg-${p.id}`;
+        compacta.dataset.estado = "cerrada";
+        compacta.style.animation = "preg-cerrada-in .35s cubic-bezier(.4,0,.2,1) forwards";
+        compacta.innerHTML  = `
+          <div id="preg-body-${p.id}" class="preg-cerrada-inner">
+            <div class="preg-cerrada-icon">
+              <svg width="12" height="12" fill="none" stroke="#f87171" stroke-width="2.5" viewBox="0 0 24 24">
+                <rect x="3" y="11" width="18" height="11" rx="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
+            <div class="preg-cerrada-info">
+              <div class="preg-cerrada-label">Cerrada</div>
+              <div class="preg-cerrada-titulo">${p.titulo||"Sin título"}</div>
+            </div>
+            ${miVoto
+              ? `<div class="preg-cerrada-voto">
+                  <svg width="10" height="10" fill="none" stroke="#4ade80" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>${miVoto}</span>
+                 </div>`
+              : `<div class="preg-cerrada-novoto">Sin voto</div>`
+            }
+          </div>`;
+        card.parentNode.replaceChild(compacta, card);
+      }, 450); // duración del colapso
+
+    }, 700); // duración del flash
   });
 
   // ── Preguntas Re-abiertas (Cerrada/Inactiva → Activa): restaurar UI completa
