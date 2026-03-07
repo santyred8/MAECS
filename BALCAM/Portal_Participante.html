@@ -2568,7 +2568,8 @@ function _actualizarCardTrasVoto(pregId, texto, esCambio = false) {
       const t = typeof op === "object" ? op.texto : op;
       if (votosArr.includes(t)) document.getElementById(`op-${pregId}-${i}`)?.classList.add("selected");
     });
-    delete selecciones[pregId];
+    // Re-inicializar selecciones con los votos confirmados — NO borrar, o el contador queda desfasado
+    selecciones[pregId] = esMultiEdit ? [...votosArr] : { idx: opciones.findIndex(op => (typeof op==="object"?op.texto:op) === votoGuardado), texto: votoGuardado };
   }
 
   // Actualizar progreso sidebar
