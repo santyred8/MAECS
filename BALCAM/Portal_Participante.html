@@ -1335,7 +1335,7 @@ async function pollPreguntas() {
   // ── Preguntas que se volvieron Inactivas: quitar del DOM completamente
   // Buscar en el DOM todos los cards actuales (activas + cerradas que estaban antes)
   // Una pregunta se inactiva si ya no aparece ni en activas ni en cerradas
-  const todasEnDOM = Array.from(document.querySelectorAll(".pregunta-card"))
+  const todasEnDOM = Array.from(document.querySelectorAll(".pregunta-card, .preg-cerrada-wrap"))
     .map(el => el.id.replace("preg-",""));
   const inactivadas = todasEnDOM.filter(domId =>
     !activas.find(a => String(a.id) === domId) &&
@@ -1409,33 +1409,30 @@ async function pollPreguntas() {
   });
 
   // ── Preguntas Re-abiertas (Cerrada/Inactiva → Activa): restaurar UI completa
-  reabiertas.forEach(async p => {
+  for (const p of reabiertas) {
     const pregData = activas.find(a => a.id === p.id);
-    if (!pregData) return;
+    if (!pregData) continue;
     const card = document.getElementById(`preg-${p.id}`);
-    if (!card) return;
+    if (!card) continue;
 
-    // Re-sincronizar voto desde BD (por si cambió mientras estaba inactiva/cerrada)
+    // Re-sincronizar voto desde BD (por si cambió mientras estaba cerrada)
     const { data: votoFresh } = await sb.from("votos")
       .select("respuesta").eq("id_pregunta", p.id).eq("id_unidad", SS.unidadId).maybeSingle();
     if (votoFresh) misVotos[p.id] = votoFresh.respuesta;
     else delete misVotos[p.id];
 
-    card.dataset.estado = "activa";
-    card.style.marginBottom = "16px";
-    const head = card.querySelector(".preg-head");
-    if (head) head.style.paddingBottom = "";
-    const body = document.getElementById(`preg-body-${p.id}`);
-    if (body) {
-      const tempDiv = document.createElement("div");
-      tempDiv.innerHTML = renderPregunta(pregData, activas.indexOf(pregData), misVotos[p.id], Array.isArray(pregData.opciones)?pregData.opciones:[]);
-      const nuevoBody = tempDiv.firstElementChild?.querySelector(`#preg-body-${p.id}`);
-      if (nuevoBody) body.innerHTML = nuevoBody.innerHTML;
+    // Reemplazar la card COMPLETA (el preg-head fue eliminado al cerrar)
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = renderPregunta(pregData, activas.indexOf(pregData), misVotos[p.id], Array.isArray(pregData.opciones)?pregData.opciones:[]);
+    const nuevaCard = tempDiv.firstElementChild;
+    if (nuevaCard) {
+      card.parentNode.replaceChild(nuevaCard, card);
     }
+
     if (!evData?.ocultar_graficos && misVotos[p.id]) {
       setTimeout(() => cargarYActualizarGrafica(p.id), 80);
     }
-  });
+  }
 
   // ── Preguntas Nuevas (Activa por primera vez): insertar en DOM
   const nuevasCards = activas.filter(a => !document.getElementById(`preg-${a.id}`));
