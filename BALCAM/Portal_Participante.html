@@ -300,6 +300,13 @@ body{
   from { stroke-dashoffset:30; opacity:0; }
   to   { stroke-dashoffset:0;  opacity:1; }
 }
+@keyframes shake-no{
+  0%,100%{transform:translateX(0);}
+  20%{transform:translateX(-6px);}
+  40%{transform:translateX(5px);}
+  60%{transform:translateX(-4px);}
+  80%{transform:translateX(3px);}
+}
 .preg-head{
   background:linear-gradient(135deg,var(--p),var(--pink));
   padding:20px 22px;
@@ -2256,6 +2263,12 @@ function renderPregunta(preg, idx, yaVote, opciones) {
 
   } else if (yaVote && puedeEditar) {
     const displayVoto = esMulti ? votosActuales.join(", ") : yaVote;
+    // Pre-cargar selecciones actuales para que el límite funcione desde el primer click
+    if (esMulti) {
+      selecciones[preg.id] = [...votosActuales];
+    } else {
+      selecciones[preg.id] = { idx: opciones.findIndex(op => (typeof op==="object"?op.texto:op) === yaVote), texto: yaVote };
+    }
     html += `<div class="votado-badge cambio" id="vbadge-${preg.id}">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
       Votaste: <strong id="vtexto-${preg.id}">${displayVoto}</strong> — <span style="opacity:.7;font-size:12px;">puedes cambiar</span>
@@ -2363,13 +2376,10 @@ function seleccionar(pregId, idx, texto, maxResp = 1) {
     arr.splice(existe, 1);
     document.getElementById(`op-${pregId}-${idx}`)?.classList.remove("selected");
   } else {
+    // Bloquear si ya se alcanzó el máximo
     if (arr.length >= maxResp) {
-      // Límite alcanzado — deseleccionar el primero seleccionado visualmente
-      const primero = arr.shift();
-      // Quitar selected del elemento que tenía ese texto
-      document.querySelectorAll(`#ops-${pregId} .opcion`).forEach(el => {
-        if (el.querySelector(".op-text")?.textContent === primero) el.classList.remove("selected");
-      });
+      toast(`Máximo ${maxResp} opciones`, "warn");
+      return;
     }
     arr.push(texto);
     document.getElementById(`op-${pregId}-${idx}`)?.classList.add("selected");
@@ -2622,7 +2632,8 @@ async function cargarYActualizarGrafica(pregId) {
     };
   });
 
-  portalChartCache[pregId] = { resData, totalVotos: votos.length, miVoto, quorumMin };
+  const esMultiChart = parseInt(preg?.max_respuestas) > 1;
+  portalChartCache[pregId] = { resData, totalVotos: votos.length, totalElectores: totUniq.size, esMulti: esMultiChart, miVoto, quorumMin };
 
   const resEl = document.getElementById(`res-${pregId}`);
   if (!resEl) return;
@@ -2631,7 +2642,7 @@ async function cargarYActualizarGrafica(pregId) {
 
   if (!chartExists) {
     // Primera vez: construir HTML
-    resEl.innerHTML = buildChartCard(pregId, resData, miVoto, votos.length, quorumMin);
+    resEl.innerHTML = buildChartCard(pregId, resData, miVoto, votos.length, quorumMin, totUniq.size, esMultiChart);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         dibujarChart(pregId, resData, miVoto);
@@ -2656,8 +2667,12 @@ function actualizarGraficaDesdeCache(pregId) {
 
   // Actualizar contador
   const cntEl = document.getElementById(`res-cnt-${pregId}`);
-  if (cntEl) cntEl.textContent = `${totalVotos} voto${totalVotos!==1?"s":""}`;
-
+  if (cntEl) {
+    const label = cache.esMulti
+      ? `${cache.totalElectores||totalVotos} elector${(cache.totalElectores||totalVotos)!==1?"es":""}`
+      : `${totalVotos} voto${totalVotos!==1?"s":""}`;
+    cntEl.textContent = label;
+  }
   // Actualizar tabla CSS
   resData.forEach((r, i) => {
     const val = getMetricVal(r, metrica);
@@ -2685,9 +2700,13 @@ function formatMetricVal(r, metrica) {
 }
 
 // ── CONSTRUIR HTML DEL CARD ───────────────────────────
-function buildChartCard(pregId, resData, miVoto, totalVotos, quorumMin) {
+function buildChartCard(pregId, resData, miVoto, totalVotos, quorumMin, totalElectores = totalVotos, esMulti = false) {
   const isMobile = window.innerWidth < 600;
   const metrica  = chartMetrica[pregId] || "coef";
+
+  const contadorLabel = esMulti
+    ? `${totalElectores} elector${totalElectores!==1?"es":""}`
+    : `${totalVotos} voto${totalVotos!==1?"s":""}`;
 
   const btnStyle = (m) => metrica===m
     ? "padding:5px 10px;border-radius:20px;border:1.5px solid rgba(168,85,247,.6);background:rgba(168,85,247,.2);color:#c4b5fd;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;"
@@ -2696,7 +2715,7 @@ function buildChartCard(pregId, resData, miVoto, totalVotos, quorumMin) {
   return `
   <div class="resultado-card" id="rescard-${pregId}">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap;">
-      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);">📊 <span id="res-cnt-${pregId}">${totalVotos} voto${totalVotos!==1?"s":""}</span></div>
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);">📊 <span id="res-cnt-${pregId}">${contadorLabel}</span></div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;">
         <button style="${btnStyle('coef')}" id="mbtn-coef-${pregId}" onclick="cambiarMetrica('${pregId}','coef')">Coef.</button>
         ${quorumMin > 0 ? `<button style="${btnStyle('quorum')}" id="mbtn-quorum-${pregId}" onclick="cambiarMetrica('${pregId}','quorum')">Quórum</button>` : ""}
@@ -3038,7 +3057,6 @@ function renderMobilePanel(preg) {
   const btnLabel = esMulti && tieneSeleccion
     ? `Confirmar voto (${selMultiActual.length}/${maxResp})`
     : (yaVoto ? "Cambiar respuesta" : "Confirmar voto");
-  const resHtml = yaVoto ? renderMobileResultados(preg.id, opciones) : "";
 
   const multiHint = esMulti && mostrarOpciones
     ? `<div style="font-size:11px;color:rgba(196,181,253,.6);margin-bottom:8px;">Seleccioná hasta ${maxResp} opciones</div>`
@@ -3054,7 +3072,6 @@ function renderMobilePanel(preg) {
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
       ${btnLabel}
     </button>` : ""}
-    ${resHtml}
     ${navHtml}`;
 }
 
@@ -3091,20 +3108,22 @@ function selMobileOpcion(el, opcion, maxResp = 1) {
     return;
   }
 
-  // Multi: toggle en array
+  // Multi: toggle en array, rastrear por índice del DOM (no por texto)
   if (!Array.isArray(_mobileSelMulti[pregId])) _mobileSelMulti[pregId] = [];
   const arr    = _mobileSelMulti[pregId];
   const existe = arr.indexOf(opcion);
 
   if (existe >= 0) {
+    // Deseleccionar
     arr.splice(existe, 1);
     el.classList.remove("selected");
   } else {
+    // Bloquear si ya se alcanzó el máximo — no rotar, simplemente avisar
     if (arr.length >= maxResp) {
-      const primero = arr.shift();
-      document.querySelectorAll(".mvp-opcion").forEach(o => {
-        if (o.querySelector(".mvp-op-text")?.textContent === primero) o.classList.remove("selected");
-      });
+      el.style.animation = "shake-no .3s ease";
+      el.addEventListener("animationend", () => { el.style.animation = ""; }, { once: true });
+      toast(`Máximo ${maxResp} opciones`, "warn");
+      return;
     }
     arr.push(opcion);
     el.classList.add("selected");
@@ -3115,7 +3134,7 @@ function selMobileOpcion(el, opcion, maxResp = 1) {
     const svg = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`;
     btn.disabled = arr.length === 0;
     btn.innerHTML = arr.length > 0
-      ? `${svg} Confirmar voto (${arr.length}/${maxResp})`
+      ? `${svg} Confirmar (${arr.length}/${maxResp})`
       : `${svg} Confirmar voto`;
   }
 }
