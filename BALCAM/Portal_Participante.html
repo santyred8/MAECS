@@ -1070,6 +1070,7 @@ const EV_ID  = SS.evId;
 const ORG_ID = SS.orgId;
 
 let evData      = null;
+let orgNombre   = "";   // nombre de la organización (para resumen final)
 let preguntas   = [];
 let preguntasCerradas = [];  // historial de cerradas
 let misVotos    = {};
@@ -1582,7 +1583,10 @@ async function cargarEvento() {
     sb.from("organizaciones").select("nombre").eq("id", data.id_organizacion).single()
       .then(({ data: org }) => {
         const el = document.getElementById("nav-org");
-        if (el && org?.nombre) el.textContent = org.nombre;
+        if (org?.nombre) {
+          if (el) el.textContent = org.nombre;
+          orgNombre = org.nombre; // guardar globalmente para resumen final
+        }
       });
   }
 
@@ -1761,7 +1765,7 @@ function renderMain() {
   } else if (evData?.estado === "En registro") {
     html += renderEsperando("📝","Registro en proceso","El registro está abierto. En breve comenzará la votación.");
   } else if (evData?.estado === "Cerrado") {
-    html += renderEsperando("🔒","Evento finalizado","La asamblea ha concluido. Gracias por participar.");
+    html += renderResumenFinal();
   } else if (evData?.estado === "En curso") {
     if (unidadInfo?.en_mora && !evData?.permitir_voto_mora) {
       // Mora: mostrar aviso fijo + historial cerradas + preguntas en modo solo lectura
@@ -1820,6 +1824,126 @@ function renderMain() {
       });
     });
   }
+}
+
+function renderResumenFinal() {
+  const todasLasPreguntas = [...preguntasCerradas, ...preguntas];
+  const totalPregs   = todasLasPreguntas.length;
+  const totalVotadas = todasLasPreguntas.filter(p => misVotos[p.id]).length;
+  const pct          = totalPregs > 0 ? Math.round(totalVotadas / totalPregs * 100) : 0;
+  const org          = orgNombre || (document.getElementById("nav-org")?.textContent || "");
+  const evNombre     = evData?.nombre || "";
+  const hora         = new Date().toLocaleTimeString("es-CO", { hour:"2-digit", minute:"2-digit" });
+
+  const participacionColor = pct === 100 ? "#4ade80" : pct >= 50 ? "#fbbf24" : "#f87171";
+
+  const itemsVotos = todasLasPreguntas.map((p, i) => {
+    const voto = misVotos[p.id];
+    return `
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;
+      ${i < todasLasPreguntas.length - 1 ? "border-bottom:1px solid rgba(255,255,255,.06);" : ""}">
+      <div style="flex-shrink:0;width:26px;height:26px;border-radius:8px;
+        background:${voto ? "rgba(74,222,128,.12)" : "rgba(255,255,255,.06)"};
+        border:1px solid ${voto ? "rgba(74,222,128,.2)" : "rgba(255,255,255,.08)"};
+        display:flex;align-items:center;justify-content:center;
+        font-size:11px;font-weight:800;color:${voto ? "#4ade80" : "var(--muted)"};">
+        ${i + 1}
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,.7);
+          margin-bottom:${voto ? "4px" : "0"};">${p.titulo || "Sin título"}</div>
+        ${voto
+          ? `<div style="display:inline-flex;align-items:center;gap:5px;
+              padding:3px 10px;border-radius:20px;
+              background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2);">
+              <svg width="10" height="10" fill="none" stroke="#4ade80" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              <span style="font-size:12px;font-weight:700;color:#4ade80;">${voto}</span>
+             </div>`
+          : `<div style="font-size:11px;color:var(--muted);font-style:italic;">Sin voto registrado</div>`
+        }
+      </div>
+    </div>`;
+  }).join("");
+
+  return `
+  <div style="animation:slide-in .5s ease;">
+    <!-- Header de cierre -->
+    <div style="text-align:center;padding:40px 20px 32px;">
+      <!-- Sello de finalizado -->
+      <div style="width:72px;height:72px;margin:0 auto 20px;border-radius:22px;
+        background:linear-gradient(135deg,rgba(124,58,237,.2),rgba(217,70,239,.15));
+        border:1px solid rgba(124,58,237,.3);
+        display:flex;align-items:center;justify-content:center;">
+        <svg width="34" height="34" fill="none" stroke="url(#gpFinal)" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+          <defs>
+            <linearGradient id="gpFinal" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#7c3aed"/>
+              <stop offset="100%" stop-color="#d946ef"/>
+            </linearGradient>
+          </defs>
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+      </div>
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;
+        color:var(--pink);margin-bottom:8px;">Asamblea finalizada</div>
+      <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-.4px;
+        margin-bottom:6px;line-height:1.2;">${evNombre}</div>
+      ${org ? `<div style="font-size:13px;color:var(--muted);">${org}</div>` : ""}
+      <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:6px;">Cerrada a las ${hora}</div>
+    </div>
+
+    <!-- Tarjeta participación -->
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:20px;
+      padding:20px;margin-bottom:12px;">
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;
+        color:var(--muted);margin-bottom:14px;">Tu participación</div>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">
+        <div style="text-align:center;flex-shrink:0;">
+          <div style="font-size:38px;font-weight:900;color:${participacionColor};line-height:1;">
+            ${totalVotadas}
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">de ${totalPregs}</div>
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,.7);margin-bottom:8px;">
+            ${pct === 100
+              ? "✓ Participaste en todas las votaciones"
+              : pct === 0
+              ? "No emitiste votos en esta sesión"
+              : `Votaste en ${pct}% de las preguntas`}
+          </div>
+          <div style="height:6px;background:rgba(255,255,255,.08);border-radius:20px;overflow:hidden;">
+            <div style="height:100%;border-radius:20px;width:${pct}%;
+              background:linear-gradient(90deg,${participacionColor}99,${participacionColor});
+              transition:width 1s ease;"></div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,.3);
+        padding-top:12px;border-top:1px solid rgba(255,255,255,.06);">
+        Unidad ${SS.codigo || "—"} · ${SS.nombre || ""}
+      </div>
+    </div>
+
+    <!-- Detalle de votos -->
+    ${totalPregs > 0 ? `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:20px;
+      padding:20px;margin-bottom:16px;">
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;
+        color:var(--muted);margin-bottom:4px;">Detalle de tus votos</div>
+      ${itemsVotos}
+    </div>` : ""}
+
+    <!-- Mensaje de cierre -->
+    <div style="text-align:center;padding:8px 20px 48px;">
+      <div style="font-size:13px;color:rgba(255,255,255,.35);line-height:1.7;">
+        Gracias por tu participación.<br>
+        ${org ? `<span style="color:rgba(255,255,255,.2);">${org}</span>` : ""}
+      </div>
+    </div>
+  </div>`;
 }
 
 function renderEsperando(icon, titulo, sub, sinAnim=false) {
