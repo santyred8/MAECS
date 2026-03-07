@@ -1335,9 +1335,24 @@ function aplicarCambiarRespuestas(permitir) {
         }
         return;
       }
-      // ops existe → solo mostrar
+      // ops existe → solo mostrar + re-sincronizar selecciones desde misVotos
       ops.style.display = "";
       if (btn) { btn.style.display = ""; btn.disabled = true; }
+      // Limpiar selected visual y re-marcar solo los votos actuales
+      const pregData = preguntas.find(x => x.id === p.id);
+      const maxResp  = parseInt(pregData?.max_respuestas) || 1;
+      const esMulti  = maxResp > 1;
+      const votoArr  = esMulti
+        ? voto.split(" | ").map(s=>s.trim()).filter(Boolean)
+        : [voto];
+      // Re-init array de selecciones
+      selecciones[p.id] = esMulti ? [...votoArr] : { idx:-1, texto: voto };
+      // Limpiar y re-marcar visualmente
+      ops.querySelectorAll(".opcion").forEach(el => {
+        const txt = el.querySelector(".op-text")?.textContent || "";
+        if (votoArr.includes(txt)) el.classList.add("selected");
+        else el.classList.remove("selected");
+      });
       if (badge) {
         badge.style.cssText = "background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#fcd34d;display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:12px;border:1px solid;margin-bottom:12px;font-size:14px;font-weight:600;";
         badge.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Votaste: <strong id="vtexto-${p.id}">${voto}</strong> — <span style="opacity:.7;font-size:12px;">puedes cambiar</span>`;
