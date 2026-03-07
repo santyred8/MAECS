@@ -2366,7 +2366,7 @@ function seleccionar(pregId, idx, texto, maxResp = 1) {
     return;
   }
 
-  // Selección múltiple — toggle en array
+  // Selección múltiple — toggle con bump automático del más antiguo
   if (!Array.isArray(selecciones[pregId])) selecciones[pregId] = [];
   const arr    = selecciones[pregId];
   const existe = arr.indexOf(texto);
@@ -2376,10 +2376,13 @@ function seleccionar(pregId, idx, texto, maxResp = 1) {
     arr.splice(existe, 1);
     document.getElementById(`op-${pregId}-${idx}`)?.classList.remove("selected");
   } else {
-    // Bloquear si ya se alcanzó el máximo
+    // Si llegó al límite: quitar el más antiguo visualmente y del array
     if (arr.length >= maxResp) {
-      toast(`Máximo ${maxResp} opciones`, "warn");
-      return;
+      const quitado = arr.shift();
+      // Buscar el elemento DOM por texto y quitarle selected
+      document.querySelectorAll(`#ops-${pregId} .opcion`).forEach(el => {
+        if (el.querySelector(".op-text")?.textContent === quitado) el.classList.remove("selected");
+      });
     }
     arr.push(texto);
     document.getElementById(`op-${pregId}-${idx}`)?.classList.add("selected");
