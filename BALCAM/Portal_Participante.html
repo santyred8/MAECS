@@ -3211,7 +3211,12 @@ async function votarMobile() {
 
   const esCambioM = !!misVotos[pregId];
   misVotos[pregId] = textoVoto;
-  delete _mobileSelMulti[pregId];
+  // Reinicializar con votos confirmados para que el bump funcione al volver a cambiar
+  if (esMulti) {
+    _mobileSelMulti[pregId] = textoVoto.split(" | ").map(s=>s.trim()).filter(Boolean);
+  } else {
+    delete _mobileSelMulti[pregId];
+  }
 
   if (btn) {
     btn.style.background = esCambioM
