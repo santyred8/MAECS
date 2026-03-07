@@ -799,11 +799,12 @@ select.inp option { background:#1e1b4b; color:#fff; }
         <select id="m-rol" required class="inp">
           <option value="">— Seleccionar rol —</option>
           <option value="Administrador General">Administrador General</option>
-          <option value="Administrador Organización">Administrador Organización</option>
           <option value="Administrador Evento">Administrador Evento</option>
-          <option value="Propietario">Propietario</option>
-          <option value="Delegado">Delegado</option>
-          <option value="Invitado">Invitado</option>
+          <option value="Administrador Organización">Administrador Organización</option>
+          <option value="Registrador Participantes">Registrador Participantes</option>
+          <option value="Consulta Evento">Consulta Evento</option>
+          <option value="Registrador de Módulos">Registrador de Módulos</option>
+          <option value="Participante">Participante</option>
         </select>
       </div>
       <div><label class="flabel">Organización</label>
@@ -1414,7 +1415,7 @@ const sb = window.supabase.createClient(
 
 // ─── ROLES QUE PUEDEN GESTIONAR USUARIOS ─────────────────────────────────────
 // Agrega aquí los roles que consideres "admin"
-const ROLES_ADMIN = ["Administrador General", "Administrador Organización"];
+const ROLES_ADMIN = ["Administrador General", "Administrador Organización", "Administrador Evento", "Registrador Participantes", "Consulta Evento", "Registrador de Módulos"];
 
 let sesionActual = null;  // datos del usuario logueado
 let esAdmin = false;
@@ -1432,13 +1433,19 @@ let adminSecretarioDefault = null; // {nombre, guardado} — default secretario
   // Buscar perfil completo del usuario logueado
   const { data: miPerfil } = await sb
     .from("usuarios")
-    .select("rol, primer_nombre, segundo_nombre, primer_apellido, segundo_apellido")
+    .select("rol, activo, primer_nombre, segundo_nombre, primer_apellido, segundo_apellido")
     .eq("email", session.user.email)
     .single();
 
+  // Si está inactivo — cerrar sesión y redirigir con mensaje
+  if (!miPerfil?.activo) {
+    await sb.auth.signOut();
+    window.location.href = "index.html?inactivo=1";
+    return;
+  }
+
   if (miPerfil) {
     perfilActual = miPerfil;
-    // Recuperar secretario predeterminado guardado (nombre del administrador del edificio)
     const guardado = localStorage.getItem("maecs_secretario_default");
     adminSecretarioDefault = guardado ? JSON.parse(guardado) : null;
 
