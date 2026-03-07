@@ -212,6 +212,24 @@ body{
   from { opacity:0; transform:translateY(-8px) scale(.98); }
   to   { opacity:1; transform:translateY(0) scale(1); }
 }
+@keyframes voto-flash-verde{
+  0%  { box-shadow:0 8px 32px rgba(0,0,0,.4); border-color:var(--border); background:var(--card); }
+  35% { box-shadow:0 0 0 4px rgba(74,222,128,.3), 0 8px 40px rgba(74,222,128,.25); border-color:rgba(74,222,128,.6); background:rgba(74,222,128,.07); }
+  100%{ box-shadow:0 8px 32px rgba(0,0,0,.4); border-color:var(--border); background:var(--card); }
+}
+@keyframes voto-flash-amber{
+  0%  { box-shadow:0 8px 32px rgba(0,0,0,.4); border-color:var(--border); background:var(--card); }
+  35% { box-shadow:0 0 0 4px rgba(245,158,11,.3), 0 8px 40px rgba(245,158,11,.2); border-color:rgba(245,158,11,.6); background:rgba(245,158,11,.07); }
+  100%{ box-shadow:0 8px 32px rgba(0,0,0,.4); border-color:var(--border); background:var(--card); }
+}
+@keyframes badge-in{
+  from { opacity:0; transform:translateY(-6px) scale(.95); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes check-draw{
+  from { stroke-dashoffset:30; opacity:0; }
+  to   { stroke-dashoffset:0;  opacity:1; }
+}
 .preg-head{
   background:linear-gradient(135deg,var(--p),var(--pink));
   padding:20px 22px;
@@ -287,10 +305,18 @@ body{
 
 /* ── VOTADO ── */
 .votado-badge{
-  background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);
+  background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.25);
   border-radius:14px;padding:12px 16px;
   display:flex;align-items:center;gap:10px;
-  font-size:13px;font-weight:700;color:#6ee7b7;margin-bottom:16px;
+  font-size:13px;font-weight:700;color:#4ade80;margin-bottom:16px;
+  animation:badge-in .45s cubic-bezier(.34,1.56,.64,1) forwards;
+}
+.votado-badge.cambio{
+  background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.25);color:#fcd34d;
+}
+.votado-badge .check-svg polyline{
+  stroke-dasharray:30;stroke-dashoffset:30;
+  animation:check-draw .4s .1s ease forwards;
 }
 
 /* ── ESTADO DEL EVENTO ── */
@@ -2020,8 +2046,20 @@ async function votar(pregId) {
   misVotos[pregId] = sel.texto;
   toast(esCambio ? "✓ Respuesta actualizada" : "✓ Voto registrado", "ok");
 
+  // Flash en el card (solo desktop — mobile usa panel flotante)
+  if (esDesktop()) {
+    const card = document.getElementById(`preg-${pregId}`);
+    if (card) {
+      card.style.animation = esCambio
+        ? "voto-flash-amber .9s ease forwards"
+        : "voto-flash-verde .9s ease forwards";
+      // Limpiar animación para que pueda repetirse si cambia de nuevo
+      card.addEventListener("animationend", () => { card.style.animation = ""; }, { once: true });
+    }
+  }
+
   // Actualizar DOM quirúrgicamente — SIN outerHTML del card
-  _actualizarCardTrasVoto(pregId, sel.texto);
+  _actualizarCardTrasVoto(pregId, sel.texto, esCambio);
 
   // Stats en segundo plano
   cargarStatsParticipacion().then(() => actualizarStatsInPlace());
@@ -2036,31 +2074,47 @@ async function votar(pregId) {
 }
 
 // Actualización quirúrgica del card tras votar — NO usa outerHTML
-function _actualizarCardTrasVoto(pregId, texto) {
+function _actualizarCardTrasVoto(pregId, texto, esCambio = false) {
   const puedeEditar = evData?.permitir_cambiar_respuestas;
 
-  // Actualizar badge de voto
-  const badge = document.getElementById(`vbadge-${pregId}`);
+  const checkSVG = esCambio
+    ? `<svg class="check-svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <polyline points="16 12 12 16 9 13"/>
+       </svg>`
+    : `<svg class="check-svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+        <polyline points="20 6 9 17 4 12"/>
+       </svg>`;
+
+  const badgeClass = `votado-badge${esCambio ? " cambio" : ""}`;
+  const badgeLabel = esCambio ? "Actualizado:" : "Tu voto:";
+
+  // Actualizar badge existente o crear uno nuevo
+  const badge  = document.getElementById(`vbadge-${pregId}`);
   const vtexto = document.getElementById(`vtexto-${pregId}`);
   if (vtexto) {
     vtexto.textContent = texto;
+    // Reanimar badge al cambiar
+    if (badge) {
+      badge.className = badgeClass;
+      badge.style.animation = "none";
+      requestAnimationFrame(() => { badge.style.animation = ""; });
+    }
   } else if (!badge) {
-    // Crear badge por primera vez (primera votación)
+    // Crear badge por primera vez
     const body = document.getElementById(`preg-body-${pregId}`);
     if (body) {
       const badgeDiv = document.createElement("div");
-      badgeDiv.className = puedeEditar ? "votado-badge" : "votado-badge";
+      badgeDiv.className = puedeEditar ? `${badgeClass}` : badgeClass;
       badgeDiv.id = `vbadge-${pregId}`;
-      badgeDiv.style.cssText = puedeEditar ? "background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#fcd34d;" : "";
-      badgeDiv.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>${puedeEditar?"Votaste:":"Tu voto:"} <strong id="vtexto-${pregId}">${texto}</strong>${puedeEditar?' — <span style="opacity:.7;font-size:12px;">puedes cambiar</span>':""}`;
+      badgeDiv.innerHTML = `${checkSVG}${badgeLabel} <strong id="vtexto-${pregId}">${texto}</strong>${puedeEditar?' — <span style="opacity:.6;font-size:12px;">puedes cambiar</span>':""}`;
       body.insertBefore(badgeDiv, body.firstChild);
     }
   } else {
-    // Badge existe pero sin vtexto — actualizarlo entero
-    if (puedeEditar) {
-      badge.style.cssText = "background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#fcd34d;";
-      badge.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Votaste: <strong id="vtexto-${pregId}">${texto}</strong> — <span style="opacity:.7;font-size:12px;">puedes cambiar</span>`;
-    }
+    badge.className = badgeClass;
+    badge.style.animation = "none";
+    requestAnimationFrame(() => { badge.style.animation = ""; });
+    badge.innerHTML = `${checkSVG}${badgeLabel} <strong id="vtexto-${pregId}">${texto}</strong>${puedeEditar?' — <span style="opacity:.6;font-size:12px;">puedes cambiar</span>':""}`;
   }
 
   // Si no puede editar: ocultar opciones y botón después de votar
@@ -2629,8 +2683,21 @@ async function votarMobile() {
     ));
   }
 
+  const esCambioM = !!misVotos[pregId];
   misVotos[pregId] = _mobileOpcionSel;
-  toast("✓ Voto registrado", "ok");
+
+  // Flash liviano en el botón (móvil — sin animaciones de layout)
+  if (btn) {
+    const colorFlash = esCambioM
+      ? "linear-gradient(135deg,#d97706,#f59e0b)"
+      : "linear-gradient(135deg,#16a34a,#22c55e)";
+    const labelFlash = esCambioM ? "✓ Actualizado" : "✓ Votado";
+    btn.style.background = colorFlash;
+    btn.innerHTML = labelFlash;
+    btn.style.transition = "opacity .3s";
+  }
+
+  toast(esCambioM ? "✓ Respuesta actualizada" : "✓ Voto registrado", "ok");
 
   // Forzar refresh de gráfica en próximo poll (mismo fix que PC)
   delete _votosCountCache[pregId];
