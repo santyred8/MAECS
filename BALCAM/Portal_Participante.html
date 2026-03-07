@@ -1210,7 +1210,11 @@ async function actualizarGraficasSiCambiaron() {
   const distribuciones = {};
   data.forEach(v => {
     if (!distribuciones[v.id_pregunta]) distribuciones[v.id_pregunta] = {};
-    distribuciones[v.id_pregunta][v.respuesta] = (distribuciones[v.id_pregunta][v.respuesta] || 0) + 1;
+    // Soporte opción múltiple
+    const partes = v.respuesta ? v.respuesta.split(" | ").map(s=>s.trim()).filter(Boolean) : [v.respuesta];
+    partes.forEach(r => {
+      distribuciones[v.id_pregunta][r] = (distribuciones[v.id_pregunta][r] || 0) + 1;
+    });
   });
 
   for (const pregId of pregIdsConGrafica) {
@@ -2588,10 +2592,14 @@ async function cargarYActualizarGrafica(pregId) {
   const totCoef = {}, totNom = {}, totUniq = new Set();
   opciones.forEach(op => { const t = typeof op==="object"?op.texto:op; totCoef[t]=0; totNom[t]=0; });
   votos.forEach(v => {
-    const r = v.respuesta;
-    if (!totCoef[r]) { totCoef[r]=0; totNom[r]=0; }
-    totCoef[r] += parseFloat(String(v.coeficiente||0).replace(",",".")) || 0;
-    totNom[r]  += 1;
+    // Soporte opción múltiple: respuestas separadas por " | "
+    const partes = v.respuesta ? v.respuesta.split(" | ").map(s=>s.trim()).filter(Boolean) : [v.respuesta];
+    const coefPorParte = (parseFloat(String(v.coeficiente||0).replace(",",".")) || 0) / partes.length;
+    partes.forEach(r => {
+      if (!totCoef[r]) { totCoef[r]=0; totNom[r]=0; }
+      totCoef[r] += coefPorParte;
+      totNom[r]  += 1;
+    });
     totUniq.add(v.id_unidad);
   });
   const sumCoef = Object.values(totCoef).reduce((a,b)=>a+b, 0);
