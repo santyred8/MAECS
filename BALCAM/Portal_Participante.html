@@ -3137,12 +3137,12 @@ function selMobileOpcion(el, opcion, maxResp = 1) {
     arr.splice(existe, 1);
     el.classList.remove("selected");
   } else {
-    // Bloquear si ya se alcanzó el máximo — no rotar, simplemente avisar
+    // Límite alcanzado: quitar el más antiguo automáticamente
     if (arr.length >= maxResp) {
-      el.style.animation = "shake-no .3s ease";
-      el.addEventListener("animationend", () => { el.style.animation = ""; }, { once: true });
-      toast(`Máximo ${maxResp} opciones`, "warn");
-      return;
+      const primero = arr.shift();
+      document.querySelectorAll(".mvp-opcion").forEach(o => {
+        if (o.querySelector(".mvp-op-text")?.textContent === primero) o.classList.remove("selected");
+      });
     }
     arr.push(opcion);
     el.classList.add("selected");
