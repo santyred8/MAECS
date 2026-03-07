@@ -1076,6 +1076,7 @@ let preguntasCerradas = [];  // historial de cerradas
 let misVotos    = {};
 let unidadInfo  = null;
 let statsGlobal = { totalPart:0, totalVotaron:0, coefVotado:0 };
+let misPoderDe  = [];   // unidades que delegaron su poder a esta unidad
 let pollingInt  = null;  // intervalo de polling
 
 // ── CERRAR SESIÓN ────────────────────────────────────────
@@ -1099,7 +1100,7 @@ async function init() {
   document.getElementById("nav-unidad").textContent = "Unidad " + (SS.codigo || "—");
 
   try {
-    await Promise.all([cargarEvento(), cargarMisVotos(), cargarUnidadInfo()]);
+    await Promise.all([cargarEvento(), cargarMisVotos(), cargarUnidadInfo(), cargarMisPoderes()]);
     iniciarPolling();
     iniciarHeartbeat();
   } catch(e) {
@@ -1625,6 +1626,20 @@ async function cargarUnidadInfo() {
   unidadInfo = data || { en_mora: false, coeficiente: 0 };
 }
 
+// ── CARGAR PODERES RECIBIDOS ──────────────────────────
+async function cargarMisPoderes() {
+  const { data } = await sb.from("delegaciones")
+    .select("id_unidad_entrega, unidades!delegaciones_id_unidad_entrega_fkey(codigo, propietario_1, coeficiente)")
+    .eq("id_evento", EV_ID)
+    .eq("id_unidad_recibe", SS.unidadId);
+  misPoderDe = (data || []).map(d => ({
+    id:          d.id_unidad_entrega,
+    codigo:      d.unidades?.codigo      || "—",
+    nombre:      d.unidades?.propietario_1 || "",
+    coeficiente: d.unidades?.coeficiente || 0,
+  }));
+}
+
 // ── CARGAR MIS VOTOS ──────────────────────────────────
 async function cargarMisVotos() {
   const { data } = await sb.from("votos")
@@ -1750,6 +1765,7 @@ function renderMain() {
       </div>
       ${evData?.estado === "En curso" ? `<div id="stats-bar-wrap">${renderStatsBar()}</div>` : ""}
       ${evData?.estado === "En curso" && preguntas.length ? `<div id="progreso-wrap">${renderProgresoPreguntas()}</div>` : ""}
+      ${misPoderDe.length ? renderTarjetaPoderes() : ""}
     `;
   }
 
@@ -1758,6 +1774,11 @@ function renderMain() {
 
   if (!esDesktop() && evData?.estado === "En curso") {
     html += `<div id="stats-bar-wrap">${renderStatsBar()}</div>`;
+  }
+
+  // Tarjeta de poderes en móvil (justo antes del contenido)
+  if (!esDesktop() && misPoderDe.length) {
+    html += renderTarjetaPoderes();
   }
 
   if (evData?.estado === "Creado") {
@@ -1824,6 +1845,74 @@ function renderMain() {
       });
     });
   }
+}
+
+function renderTarjetaPoderes() {
+  const total = misPoderDe.length;
+  const coefTotal = misPoderDe.reduce((s, u) => {
+    return s + (parseFloat(String(u.coeficiente||0).replace(",",".")) || 0);
+  }, 0);
+
+  const items = misPoderDe.map(u => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;
+      border-bottom:1px solid rgba(255,255,255,.05);">
+      <div style="width:30px;height:30px;border-radius:8px;flex-shrink:0;
+        background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.2);
+        display:flex;align-items:center;justify-content:center;
+        font-size:11px;font-weight:900;color:#fbbf24;">${u.codigo}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.75);
+          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${u.nombre || "—"}</div>
+        <div style="font-size:10px;color:var(--muted);">Coef. ${u.coeficiente || "0"}</div>
+      </div>
+      <div style="flex-shrink:0;">
+        <svg width="14" height="14" fill="none" stroke="#fbbf24" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+    </div>`).join("");
+
+  return `
+  <div style="background:linear-gradient(135deg,rgba(234,179,8,.1),rgba(245,158,11,.06));
+    border:1px solid rgba(234,179,8,.25);border-radius:18px;padding:16px;
+    animation:slide-in .4s ease;">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="width:32px;height:32px;border-radius:10px;flex-shrink:0;
+        background:rgba(234,179,8,.15);border:1px solid rgba(234,179,8,.3);
+        display:flex;align-items:center;justify-content:center;">
+        <svg width="15" height="15" fill="none" stroke="#fbbf24" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:800;color:#fbbf24;letter-spacing:.01em;">
+          Tienes ${total} poder${total > 1 ? "es" : ""} delegado${total > 1 ? "s" : ""}
+        </div>
+        <div style="font-size:10px;color:rgba(251,191,36,.55);margin-top:1px;">
+          Tu voto también representa a ${total > 1 ? "estas unidades" : "esta unidad"}
+        </div>
+      </div>
+    </div>
+    <!-- Lista -->
+    <div style="margin-bottom:2px;">
+      ${items}
+    </div>
+    <!-- Totales -->
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(234,179,8,.15);
+      display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:10px;color:rgba(255,255,255,.35);font-weight:600;text-transform:uppercase;letter-spacing:.06em;">
+        Coeficiente delegado total
+      </div>
+      <div style="font-size:13px;font-weight:800;color:#fbbf24;">
+        ${coefTotal.toFixed ? coefTotal.toFixed(4) : coefTotal}
+      </div>
+    </div>
+  </div>`;
 }
 
 function renderResumenFinal() {
