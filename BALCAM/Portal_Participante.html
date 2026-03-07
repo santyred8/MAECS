@@ -2930,6 +2930,7 @@ window.addEventListener("message", (ev) => {
 // ── Panel flotante mobile ─────────────────────────────────────────────
 let _mobilePregActual = null;
 let _mobileOpcionSel  = null;
+let _mobileSelMulti   = {}; // { pregId: [texto1, texto2, ...] } para multi-select
 
 function mostrarFabMobile() {
   if (window.innerWidth >= 900) return;
@@ -2962,20 +2963,44 @@ function cerrarMobilePanel() {
 
 function renderMobilePanel(preg) {
   _mobilePregActual = preg;
-  _mobileOpcionSel  = misVotos[preg.id] || null;
   const opciones     = Array.isArray(preg.opciones) ? preg.opciones : [];
   const letras       = "ABCDEFGHIJKLMN";
+  const maxResp      = parseInt(preg.max_respuestas) || 1;
+  const esMulti      = maxResp > 1;
   const esCerrada    = preg.estado === "Cerrada" || !!preguntasCerradas.find(c => c.id === preg.id);
   const yaVoto       = !!misVotos[preg.id];
   const puedeCambiar = yaVoto && !!evData?.permitir_cambiar_respuestas && !esCerrada;
   const mostrarOpciones = (!yaVoto || puedeCambiar) && !esCerrada;
 
+  // Inicializar selección
+  if (mostrarOpciones) {
+    if (esMulti) {
+      if (!Array.isArray(_mobileSelMulti[preg.id])) {
+        const votoGuardado = misVotos[preg.id] || "";
+        _mobileSelMulti[preg.id] = votoGuardado
+          ? votoGuardado.split(" | ").map(s=>s.trim()).filter(Boolean)
+          : [];
+      }
+      _mobileOpcionSel = null;
+    } else {
+      _mobileOpcionSel = misVotos[preg.id] || null;
+      delete _mobileSelMulti[preg.id];
+    }
+  }
+
+  const selMultiActual = _mobileSelMulti[preg.id] || [];
+
   let opcionesHtml = mostrarOpciones ? opciones.map((op, i) => {
-    const sel = _mobileOpcionSel === op ? "selected" : "";
-    return `<div class="mvp-opcion ${sel}" onclick="selMobileOpcion(this,'${op.replace(/'/g,"\\'")}')">
-      <div class="mvp-op-radio"><div class="mvp-op-check"></div></div>
+    const texto = typeof op === "object" ? op.texto : op;
+    const sel = esMulti
+      ? (selMultiActual.includes(texto) ? "selected" : "")
+      : (_mobileOpcionSel === texto ? "selected" : "");
+    const radioStyle = esMulti ? "border-radius:5px;" : "";
+    const checkStyle = esMulti ? "border-radius:2px;" : "";
+    return `<div class="mvp-opcion ${sel}" onclick="selMobileOpcion(this,'${texto.replace(/'/g,"\\'")}',${maxResp})">
+      <div class="mvp-op-radio" style="${radioStyle}"><div class="mvp-op-check" style="${checkStyle}"></div></div>
       <div class="mvp-op-letra">${letras[i]}</div>
-      <div class="mvp-op-text">${op}</div>
+      <div class="mvp-op-text">${texto}</div>
     </div>`;
   }).join("") : "";
 
@@ -2983,17 +3008,20 @@ function renderMobilePanel(preg) {
     ? `<div style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;background:rgba(220,38,38,.15);border:1px solid rgba(220,38,38,.3);font-size:10px;font-weight:700;color:#f87171;margin-bottom:10px;">🔒 Cerrada</div>`
     : "";
 
+  const votoDisplay = yaVoto
+    ? (esMulti ? (misVotos[preg.id]||"").split(" | ").join(", ") : misVotos[preg.id])
+    : "";
+
   let votadoHtml = "";
   if (yaVoto) {
     votadoHtml = `<div class="mvp-votado">
-      ✓ Tu voto: <strong>${misVotos[preg.id]}</strong>
+      ✓ Tu voto: <strong>${votoDisplay}</strong>
       ${puedeCambiar ? '<span style="font-size:10px;opacity:.7;margin-left:6px;">puedes cambiar</span>' : ""}
     </div>`;
   } else if (esCerrada) {
     votadoHtml = `<div style="padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.05);font-size:12px;color:var(--muted);margin-bottom:10px;">Sin voto registrado</div>`;
   }
 
-  // Navegación entre todas (activas + cerradas)
   const todas = [...preguntas, ...preguntasCerradas];
   const idx = todas.findIndex(p => p.id === preg.id);
   let navHtml = "";
@@ -3006,15 +3034,23 @@ function renderMobilePanel(preg) {
   }
 
   const mostrarBtn = (!yaVoto || puedeCambiar) && !esCerrada;
-  const btnLabel   = yaVoto ? "Cambiar respuesta" : "Confirmar voto";
-  const resHtml    = yaVoto ? renderMobileResultados(preg.id, opciones) : "";
+  const tieneSeleccion = esMulti ? selMultiActual.length > 0 : !!_mobileOpcionSel;
+  const btnLabel = esMulti && tieneSeleccion
+    ? `Confirmar voto (${selMultiActual.length}/${maxResp})`
+    : (yaVoto ? "Cambiar respuesta" : "Confirmar voto");
+  const resHtml = yaVoto ? renderMobileResultados(preg.id, opciones) : "";
+
+  const multiHint = esMulti && mostrarOpciones
+    ? `<div style="font-size:11px;color:rgba(196,181,253,.6);margin-bottom:8px;">Seleccioná hasta ${maxResp} opciones</div>`
+    : "";
 
   document.getElementById("mvp-body").innerHTML = `
     <div class="mvp-titulo">${preg.titulo || "Pregunta"}</div>
+    ${esMulti && mostrarOpciones ? `<div style="margin:4px 0 8px;font-size:11px;font-weight:700;color:rgba(255,255,255,.5);background:rgba(255,255,255,.08);display:inline-block;padding:2px 8px;border-radius:20px;">Selección múltiple · máx. ${maxResp}</div>` : ""}
     ${estadoBadge}
     ${votadoHtml}
-    ${mostrarOpciones ? `<div class="mvp-opciones" id="mvp-opciones">${opcionesHtml}</div>` : ""}
-    ${mostrarBtn ? `<button class="mvp-btn-votar" id="mvp-btn-votar" onclick="votarMobile()" ${!_mobileOpcionSel?"disabled":""}>
+    ${mostrarOpciones ? `${multiHint}<div class="mvp-opciones" id="mvp-opciones">${opcionesHtml}</div>` : ""}
+    ${mostrarBtn ? `<button class="mvp-btn-votar" id="mvp-btn-votar" onclick="votarMobile()" ${!tieneSeleccion?"disabled":""}>
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
       ${btnLabel}
     </button>` : ""}
@@ -3023,45 +3059,92 @@ function renderMobilePanel(preg) {
 }
 
 function renderMobileResultados(pregId, opciones) {
-  // Usar datos del cache de gráficas si existen
   const cache = portalChartCache[pregId];
-  if (!cache || !cache.labels) return "";
-  const total = cache.data.reduce((a,b) => a+b, 0);
-  if (total === 0) return "";
-  const miVoto = misVotos[pregId];
-  const colores = ["#a855f7","#ec4899","#3b82f6","#10b981","#f59e0b","#ef4444"];
-  const filas = cache.labels.map((lbl, i) => {
-    const pct = total > 0 ? Math.round(cache.data[i] / total * 100) : 0;
-    const esMio = lbl === miVoto;
+  if (!cache || !cache.resData) return "";
+  const { resData, totalVotos } = cache;
+  if (!totalVotos) return "";
+  const miVotoRaw = misVotos[pregId] || "";
+  const misVotosArr = miVotoRaw.split(" | ").map(s=>s.trim()).filter(Boolean);
+  const colores = ["#a855f7","#22d3ee","#fb923c","#4ade80","#f87171","#facc15"];
+  const filas = resData.map((r, i) => {
+    const pct = r.coefPct.toFixed(1);
+    const esMio = misVotosArr.includes(r.texto);
     return `<div class="mvp-res-fila">
-      <div class="mvp-res-label ${esMio?"mio":""}">${lbl}</div>
-      <div class="mvp-res-track"><div class="mvp-res-fill" style="width:${pct}%;background:${esMio?'#4ade80':colores[i%colores.length]};"></div></div>
+      <div class="mvp-res-label ${esMio?"mio":""}">${r.texto}</div>
+      <div class="mvp-res-track"><div class="mvp-res-fill" style="width:${r.coefPct}%;background:${esMio?'#4ade80':colores[i%colores.length]};"></div></div>
       <div class="mvp-res-pct">${pct}%</div>
     </div>`;
   }).join("");
   return `<div class="mvp-res"><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Resultados</div>${filas}</div>`;
 }
 
-function selMobileOpcion(el, opcion) {
-  document.querySelectorAll(".mvp-opcion").forEach(o => o.classList.remove("selected"));
-  el.classList.add("selected");
-  _mobileOpcionSel = opcion;
+function selMobileOpcion(el, opcion, maxResp = 1) {
+  const esMulti = maxResp > 1;
+  const pregId  = _mobilePregActual?.id;
+
+  if (!esMulti) {
+    document.querySelectorAll(".mvp-opcion").forEach(o => o.classList.remove("selected"));
+    el.classList.add("selected");
+    _mobileOpcionSel = opcion;
+    const btn = document.getElementById("mvp-btn-votar");
+    if (btn) btn.disabled = false;
+    return;
+  }
+
+  // Multi: toggle en array
+  if (!Array.isArray(_mobileSelMulti[pregId])) _mobileSelMulti[pregId] = [];
+  const arr    = _mobileSelMulti[pregId];
+  const existe = arr.indexOf(opcion);
+
+  if (existe >= 0) {
+    arr.splice(existe, 1);
+    el.classList.remove("selected");
+  } else {
+    if (arr.length >= maxResp) {
+      const primero = arr.shift();
+      document.querySelectorAll(".mvp-opcion").forEach(o => {
+        if (o.querySelector(".mvp-op-text")?.textContent === primero) o.classList.remove("selected");
+      });
+    }
+    arr.push(opcion);
+    el.classList.add("selected");
+  }
+
   const btn = document.getElementById("mvp-btn-votar");
-  if (btn) btn.disabled = false;
+  if (btn) {
+    const svg = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`;
+    btn.disabled = arr.length === 0;
+    btn.innerHTML = arr.length > 0
+      ? `${svg} Confirmar voto (${arr.length}/${maxResp})`
+      : `${svg} Confirmar voto`;
+  }
 }
 
 async function votarMobile() {
-  if (!_mobileOpcionSel || !_mobilePregActual) return;
+  const preg    = _mobilePregActual;
+  if (!preg) return;
+  const pregId  = preg.id;
+  const maxResp = parseInt(preg.max_respuestas) || 1;
+  const esMulti = maxResp > 1;
+
+  let textoVoto;
+  if (esMulti) {
+    const arr = _mobileSelMulti[pregId] || [];
+    if (arr.length === 0) return;
+    textoVoto = arr.join(" | ");
+  } else {
+    if (!_mobileOpcionSel) return;
+    textoVoto = _mobileOpcionSel;
+  }
+
   const btn = document.getElementById("mvp-btn-votar");
   if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spin"></div> Votando…'; }
 
-  const pregId = _mobilePregActual.id;
-  const coef   = parseFloat(String(unidadInfo?.coeficiente||0).replace(",",".")) || 0;
+  const coef = parseFloat(String(unidadInfo?.coeficiente||0).replace(",",".")) || 0;
 
-  // Insertar voto propio
   const { error } = await sb.from("votos").upsert({
     id_pregunta: pregId, id_evento: EV_ID,
-    id_unidad: SS.unidadId, respuesta: _mobileOpcionSel, coeficiente: coef,
+    id_unidad: SS.unidadId, respuesta: textoVoto, coeficiente: coef,
   }, { onConflict: "id_pregunta,id_unidad" });
 
   if (error) {
@@ -3070,7 +3153,6 @@ async function votarMobile() {
     return;
   }
 
-  // Delegantes en paralelo
   const { data: delegantes } = await sb.from("delegaciones")
     .select("id_unidad_entrega")
     .eq("id_evento", EV_ID)
@@ -3084,33 +3166,26 @@ async function votarMobile() {
     await Promise.all(idsDel.map(id =>
       sb.from("votos").upsert({
         id_pregunta: pregId, id_evento: EV_ID,
-        id_unidad: id, respuesta: _mobileOpcionSel, coeficiente: coefMap[id]||0,
+        id_unidad: id, respuesta: textoVoto, coeficiente: coefMap[id]||0,
       }, { onConflict: "id_pregunta,id_unidad" })
     ));
   }
 
   const esCambioM = !!misVotos[pregId];
-  misVotos[pregId] = _mobileOpcionSel;
+  misVotos[pregId] = textoVoto;
+  delete _mobileSelMulti[pregId];
 
-  // Flash liviano en el botón (móvil — sin animaciones de layout)
   if (btn) {
-    const colorFlash = esCambioM
+    btn.style.background = esCambioM
       ? "linear-gradient(135deg,#d97706,#f59e0b)"
       : "linear-gradient(135deg,#16a34a,#22c55e)";
-    const labelFlash = esCambioM ? "✓ Actualizado" : "✓ Votado";
-    btn.style.background = colorFlash;
-    btn.innerHTML = labelFlash;
+    btn.innerHTML = esCambioM ? "✓ Actualizado" : "✓ Votado";
     btn.style.transition = "opacity .3s";
   }
 
   toast(esCambioM ? "✓ Respuesta actualizada" : "✓ Voto registrado", "ok");
-
-  // Forzar refresh de gráfica en próximo poll (mismo fix que PC)
   delete _votosCountCache[pregId];
-
-  // Re-render panel con resultado
   setTimeout(() => { if (_mobilePregActual) renderMobilePanel(_mobilePregActual); }, 200);
-  // Actualizar stats
   cargarStatsParticipacion().then(() => actualizarStatsInPlace());
 }
 
