@@ -885,11 +885,11 @@ function renderMain() {
         <div class="estado-chip ${chipClass}" style="display:inline-block;">${chipLabel}</div>
         ${(evData?.zoom_link && (evData?.tipo_evento === "Virtual" || evData?.tipo_evento === "Mixto")) ? `
         <div style="margin-top:14px;">
-          <a href="${evData.zoom_link}" target="_blank" rel="noopener"
-            style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;background:linear-gradient(135deg,#2563eb,#1d4ed8);border:1px solid rgba(59,130,246,.4);border-radius:12px;color:#fff;font-size:13px;font-weight:700;text-decoration:none;box-shadow:0 4px 16px rgba(37,99,235,.3);transition:opacity .2s;">
+          <button onclick="abrirZoom()" 
+            style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;background:linear-gradient(135deg,#2563eb,#1d4ed8);border:1px solid rgba(59,130,246,.4);border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(37,99,235,.3);">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/></svg>
             Unirse a Zoom
-          </a>
+          </button>
         </div>` : ""}
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);">
           <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Tu unidad</div>
@@ -911,11 +911,11 @@ function renderMain() {
 
   // ── Botón Zoom (mobile y desktop sin sidebar) ──
   if (evData?.zoom_link && (evData?.tipo_evento === "Virtual" || evData?.tipo_evento === "Mixto")) {
-    html += `<a href="${evData.zoom_link}" target="_blank" rel="noopener"
-      style="display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:13px;margin-bottom:14px;background:linear-gradient(135deg,#2563eb,#1d4ed8);border:1px solid rgba(59,130,246,.35);border-radius:14px;color:#fff;font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 4px 18px rgba(37,99,235,.35);">
+    html += `<button onclick="abrirZoom()"
+      style="display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:13px;margin-bottom:14px;background:linear-gradient(135deg,#2563eb,#1d4ed8);border:1px solid rgba(59,130,246,.35);border-radius:14px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 18px rgba(37,99,235,.35);">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/></svg>
       Unirse a la reunión Zoom
-    </a>`;
+    </button>`;
   }
 
   if (evData?.estado === "Creado") {
@@ -1641,6 +1641,50 @@ document.addEventListener("visibilitychange", () => {
 
 init();
 
+
+// ══ ZOOM IFRAME ═══════════════════════════════════════════
+function abrirZoom() {
+  const link = evData?.zoom_link;
+  if (!link) return;
+
+  // Extraer meeting ID
+  const idMatch = link.match(/zoom\.us\/(?:j|my)\/([0-9]{8,11})/i) ||
+                  link.match(/\/([0-9]{8,11})(?:\?|$)/);
+  // Extraer password
+  const pwdMatch = link.match(/[?&]pwd=([^&\s]+)/i);
+
+  if (!idMatch) {
+    // Si no se puede parsear, abrir en pestaña como fallback
+    window.open(link, '_blank');
+    return;
+  }
+
+  const meetingId = idMatch[1];
+  const pwd = pwdMatch ? pwdMatch[1] : '';
+  const nombre = encodeURIComponent(SS?.nombre || 'Participante');
+  const url = `https://app.zoom.us/wc/${meetingId}/join?prefer=1${pwd ? '&pwd=' + pwd : ''}&uname=${nombre}`;
+
+  const modal = document.getElementById('zoom-modal');
+  document.getElementById('zoom-iframe').src = url;
+  modal.style.display = 'flex';
+}
+
+function cerrarZoom() {
+  document.getElementById('zoom-modal').style.display = 'none';
+  document.getElementById('zoom-iframe').src = '';
+}
 </script>
+
+<!-- ══ MODAL ZOOM ══════════════════════════════════════════ -->
+<div id="zoom-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);flex-direction:column;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:#0f0f1a;border-bottom:1px solid rgba(255,255,255,.1);">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="#60a5fa"><path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+      <span style="color:#fff;font-weight:700;font-size:14px;">Reunión Zoom</span>
+    </div>
+    <button onclick="cerrarZoom()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:32px;height:32px;border-radius:8px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">&times;</button>
+  </div>
+  <iframe id="zoom-iframe" src="" allow="camera;microphone;fullscreen;display-capture" style="flex:1;width:100%;border:none;background:#000;"></iframe>
+</div>
 </body>
 </html>
