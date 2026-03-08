@@ -880,25 +880,81 @@ body{
   .mvp-res-fill { height: 100%; border-radius: 20px; transition: width .6s ease; min-width: 3px; }
   .mvp-res-pct { font-size: 11px; font-weight: 800; color: #c4b5fd; min-width: 36px; text-align: right; }
 
-  /* FAB votar — esquina inferior izquierda, compacto */
+  /* FAB votar — lateral izquierdo, diseño profesional */
   #mobile-vote-fab {
     display: none;
     position: fixed;
-    top: 60px;
-    left: 10px;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
     z-index: 9998;
-    background: linear-gradient(135deg, var(--p), var(--pink));
-    color: #fff; border: none; border-radius: 20px;
-    padding: 8px 12px; font-size: 11px; font-weight: 800;
-    cursor: pointer; font-family: 'Outfit', sans-serif;
-    box-shadow: 0 3px 14px rgba(124,58,237,.5);
-    white-space: nowrap;
-    align-items: center; gap: 5px;
-    opacity: 0.9;
+    background: linear-gradient(180deg, #5b21b6 0%, #7c3aed 50%, #6d28d9 100%);
+    color: #fff;
+    border: none;
+    border-radius: 0 14px 14px 0;
+    padding: 18px 10px;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    box-shadow: 3px 0 20px rgba(109,40,217,.45), 0 0 0 1px rgba(196,181,253,.1);
+    align-items: center;
+    gap: 0;
+    flex-direction: column;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    letter-spacing: .06em;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    opacity: 1;
+    transition: box-shadow .25s ease, transform .25s ease;
+    border-left: none;
+    border-top: 1px solid rgba(196,181,253,.15);
+    border-bottom: 1px solid rgba(196,181,253,.15);
+    border-right: 1px solid rgba(196,181,253,.12);
   }
-  @keyframes fab-pulse {
-    0%,100% { box-shadow: 0 3px 16px rgba(124,58,237,.5); }
-    50% { box-shadow: 0 3px 22px rgba(217,70,239,.7); }
+  #mobile-vote-fab:active {
+    transform: translateY(-50%) translateX(2px);
+    box-shadow: 1px 0 12px rgba(109,40,217,.3);
+  }
+  #mobile-vote-fab .fab-icon {
+    width: 28px; height: 28px;
+    background: rgba(255,255,255,.15);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 10px;
+    writing-mode: horizontal-tb;
+    flex-shrink: 0;
+  }
+  #mobile-vote-fab .fab-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #4ade80;
+    margin-top: 10px;
+    writing-mode: horizontal-tb;
+    flex-shrink: 0;
+    animation: fab-dot-pulse 2s ease-in-out infinite;
+  }
+  @keyframes fab-dot-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .5; transform: scale(.7); }
+  }
+  #mobile-vote-fab .fab-label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.9);
+  }
+  /* Indicador de votación pendiente */
+  #fab-pending-dot {
+    position: absolute;
+    top: 10px; right: -3px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #f43f5e;
+    border: 1.5px solid #0f0a1e;
+    display: none;
   }
 }
 
@@ -1094,9 +1150,16 @@ body{
   </div>
 </div>
 
-<!-- FAB botón votar (cuando panel está cerrado) -->
+<!-- FAB botón votar — lateral izquierdo profesional -->
 <button id="mobile-vote-fab" onclick="abrirMobilePanel()">
-  🗳️ Votar ahora
+  <span id="fab-pending-dot"></span>
+  <span class="fab-icon">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  </span>
+  <span class="fab-label">Votación</span>
+  <span class="fab-dot"></span>
 </button>
 
 <div id="toast"></div>
@@ -3040,9 +3103,14 @@ function mostrarFabMobile() {
   if (window.innerWidth >= 900) return;
   const fab = document.getElementById("mobile-vote-fab");
   if (!fab) return;
-  // Mostrar si hay preguntas activas O cerradas (para ver resultados)
   const hayAlgo = preguntas.length > 0 || preguntasCerradas.length > 0;
   fab.style.display = hayAlgo ? "flex" : "none";
+  // Punto rojo si hay preguntas activas sin votar
+  const pendingDot = document.getElementById("fab-pending-dot");
+  if (pendingDot) {
+    const sinVotar = preguntas.some(p => !misVotos[p.id]);
+    pendingDot.style.display = sinVotar ? "block" : "none";
+  }
 }
 
 function abrirMobilePanel() {
