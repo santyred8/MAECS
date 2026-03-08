@@ -198,71 +198,158 @@ select.inp option { background:#1e1b4b; color:#fff; }
   <!-- ═ INICIO ═ -->
   <section id="sec-inicio" class="seccion visible">
 
-    <!-- Saludo -->
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:28px;">
+    <!-- Header saludo -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px;">
       <div>
-        <p style="font-size:12px;font-weight:600;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.09em;margin-bottom:6px;" id="dash-fecha">—</p>
-        <h1 class="text-2xl font-bold" style="margin-bottom:4px;" id="dash-saludo">Panel de administración</h1>
-        <p style="font-size:14px;color:rgba(255,255,255,.35);">Sistema MAECS · BALCAM</p>
+        <p style="font-size:11px;font-weight:600;color:rgba(255,255,255,.28);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px;" id="dash-fecha">—</p>
+        <h1 class="text-2xl font-bold" style="margin-bottom:3px;" id="dash-saludo">Panel de administración</h1>
+        <p style="font-size:13px;color:rgba(255,255,255,.3);">Sistema MAECS · BALCAM</p>
       </div>
     </div>
 
-    <!-- Stats -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:28px;">
-      <div class="stat" onclick="ir('usuarios')" style="position:relative;overflow:hidden;">
-        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#7c3aed,transparent);border-radius:2px 2px 0 0;"></div>
-        <div style="width:36px;height:36px;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.25);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
-          <svg width="16" height="16" fill="none" stroke="#a78bfa" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+    <!-- Stats row -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+      <div class="stat" onclick="ir('usuarios')" style="position:relative;overflow:hidden;padding:16px 18px;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#7c3aed,transparent);"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="width:34px;height:34px;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.2);border-radius:9px;display:flex;align-items:center;justify-content:center;">
+            <svg width="15" height="15" fill="none" stroke="#a78bfa" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          </div>
+          <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
         </div>
-        <p style="font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1;" id="cnt-usuarios">—</p>
-        <p style="font-size:12px;color:rgba(255,255,255,.4);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Usuarios</p>
+        <p style="font-size:26px;font-weight:800;letter-spacing:-.5px;line-height:1;" id="cnt-usuarios">—</p>
+        <p style="font-size:11px;color:rgba(255,255,255,.35);margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Usuarios</p>
       </div>
-      <div class="stat" onclick="ir('organizaciones')" style="position:relative;overflow:hidden;">
-        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#6366f1,transparent);border-radius:2px 2px 0 0;"></div>
-        <div style="width:36px;height:36px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.25);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
-          <svg width="16" height="16" fill="none" stroke="#818cf8" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      <div class="stat" onclick="ir('organizaciones')" style="position:relative;overflow:hidden;padding:16px 18px;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#6366f1,transparent);"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="width:34px;height:34px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.2);border-radius:9px;display:flex;align-items:center;justify-content:center;">
+            <svg width="15" height="15" fill="none" stroke="#818cf8" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          </div>
+          <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
         </div>
-        <p style="font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1;" id="cnt-orgs">—</p>
-        <p style="font-size:12px;color:rgba(255,255,255,.4);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Organizaciones</p>
+        <p style="font-size:26px;font-weight:800;letter-spacing:-.5px;line-height:1;" id="cnt-orgs">—</p>
+        <p style="font-size:11px;color:rgba(255,255,255,.35);margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Organizaciones</p>
       </div>
-      <div class="stat" onclick="ir('eventos')" style="position:relative;overflow:hidden;">
-        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#ec4899,transparent);border-radius:2px 2px 0 0;"></div>
-        <div style="width:36px;height:36px;background:rgba(236,72,153,.15);border:1px solid rgba(236,72,153,.25);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
-          <svg width="16" height="16" fill="none" stroke="#f472b6" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <div class="stat" onclick="ir('eventos')" style="position:relative;overflow:hidden;padding:16px 18px;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#ec4899,transparent);"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="width:34px;height:34px;background:rgba(236,72,153,.15);border:1px solid rgba(236,72,153,.2);border-radius:9px;display:flex;align-items:center;justify-content:center;">
+            <svg width="15" height="15" fill="none" stroke="#f472b6" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
         </div>
-        <p style="font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1;" id="cnt-eventos">—</p>
-        <p style="font-size:12px;color:rgba(255,255,255,.4);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Eventos</p>
+        <p style="font-size:26px;font-weight:800;letter-spacing:-.5px;line-height:1;" id="cnt-eventos">—</p>
+        <p style="font-size:11px;color:rgba(255,255,255,.35);margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Eventos</p>
       </div>
-      <div class="stat" onclick="ir('unidades')" style="position:relative;overflow:hidden;">
-        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#14b8a6,transparent);border-radius:2px 2px 0 0;"></div>
-        <div style="width:36px;height:36px;background:rgba(20,184,166,.15);border:1px solid rgba(20,184,166,.25);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
-          <svg width="16" height="16" fill="none" stroke="#2dd4bf" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <div class="stat" onclick="ir('unidades')" style="position:relative;overflow:hidden;padding:16px 18px;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#14b8a6,transparent);"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="width:34px;height:34px;background:rgba(20,184,166,.15);border:1px solid rgba(20,184,166,.2);border-radius:9px;display:flex;align-items:center;justify-content:center;">
+            <svg width="15" height="15" fill="none" stroke="#2dd4bf" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          </div>
+          <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
         </div>
-        <p style="font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1;" id="cnt-unidades">—</p>
-        <p style="font-size:12px;color:rgba(255,255,255,.4);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Unidades</p>
+        <p style="font-size:26px;font-weight:800;letter-spacing:-.5px;line-height:1;" id="cnt-unidades">—</p>
+        <p style="font-size:11px;color:rgba(255,255,255,.35);margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Unidades</p>
       </div>
     </div>
 
-    <!-- Accesos rápidos -->
-    <div style="margin-bottom:8px;">
-      <p style="font-size:11px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.09em;margin-bottom:12px;">Accesos rápidos</p>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;">
-        <button onclick="ir('eventos');setTimeout(()=>document.getElementById('btn-nuevo-evento')?.click(),300)" style="background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.3);color:#c4b5fd;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;transition:.15s;">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          Nuevo evento
-        </button>
-        <button onclick="ir('usuarios');setTimeout(()=>document.querySelector('[onclick='abrirModal()']')?.click(),300)" style="background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;transition:.15s;">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          Nuevo usuario
-        </button>
-        <button onclick="ir('preguntas')" style="background:rgba(236,72,153,.1);border:1px solid rgba(236,72,153,.28);color:#f9a8d4;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;transition:.15s;">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          Preguntas
-        </button>
-        <button onclick="ir('delegaciones')" style="background:rgba(20,184,166,.1);border:1px solid rgba(20,184,166,.28);color:#5eead4;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;transition:.15s;">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Delegaciones
-        </button>
+    <!-- Grid principal 2 columnas -->
+    <div style="display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start;">
+
+      <!-- Columna izquierda -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Accesos rápidos -->
+        <div style="background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:18px 20px;">
+          <p style="font-size:11px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.09em;margin-bottom:14px;">Accesos rápidos</p>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">
+            <button onclick="ir('eventos');setTimeout(()=>document.getElementById('btn-nuevo-evento')?.click(),300)"
+              style="background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.25);color:#c4b5fd;border-radius:10px;padding:14px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:10px;transition:.15s;text-align:left;">
+              <div style="width:32px;height:32px;background:rgba(124,58,237,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="14" height="14" fill="none" stroke="#c4b5fd" stroke-width="2.5" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
+              </div>
+              <div><p style="font-size:13px;font-weight:700;margin-bottom:1px;">Nuevo evento</p><p style="font-size:11px;color:rgba(196,181,253,.5);font-weight:500;">Crear asamblea</p></div>
+            </button>
+            <button onclick="ir('usuarios');setTimeout(()=>document.querySelector('[onclick='abrirModal()']')?.click(),300)"
+              style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);color:#a5b4fc;border-radius:10px;padding:14px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:10px;transition:.15s;text-align:left;">
+              <div style="width:32px;height:32px;background:rgba(99,102,241,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="14" height="14" fill="none" stroke="#a5b4fc" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </div>
+              <div><p style="font-size:13px;font-weight:700;margin-bottom:1px;">Nuevo usuario</p><p style="font-size:11px;color:rgba(165,180,252,.5);font-weight:500;">Registrar acceso</p></div>
+            </button>
+            <button onclick="ir('preguntas')"
+              style="background:rgba(236,72,153,.08);border:1px solid rgba(236,72,153,.22);color:#f9a8d4;border-radius:10px;padding:14px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:10px;transition:.15s;text-align:left;">
+              <div style="width:32px;height:32px;background:rgba(236,72,153,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="14" height="14" fill="none" stroke="#f9a8d4" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </div>
+              <div><p style="font-size:13px;font-weight:700;margin-bottom:1px;">Preguntas</p><p style="font-size:11px;color:rgba(249,168,212,.5);font-weight:500;">Gestionar votaciones</p></div>
+            </button>
+            <button onclick="ir('delegaciones')"
+              style="background:rgba(20,184,166,.08);border:1px solid rgba(20,184,166,.22);color:#5eead4;border-radius:10px;padding:14px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:10px;transition:.15s;text-align:left;">
+              <div style="width:32px;height:32px;background:rgba(20,184,166,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="14" height="14" fill="none" stroke="#5eead4" stroke-width="2.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </div>
+              <div><p style="font-size:13px;font-weight:700;margin-bottom:1px;">Delegaciones</p><p style="font-size:11px;color:rgba(94,234,212,.5);font-weight:500;">Poderes y votos</p></div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Eventos recientes -->
+        <div style="background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:18px 20px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <p style="font-size:11px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.09em;">Eventos recientes</p>
+            <button onclick="ir('eventos')" style="font-size:11px;color:rgba(139,92,246,.7);background:none;border:none;cursor:pointer;font-family:inherit;font-weight:600;">Ver todos →</button>
+          </div>
+          <div id="dash-eventos-list">
+            <p style="font-size:13px;color:rgba(255,255,255,.2);text-align:center;padding:20px 0;">Cargando…</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Columna derecha -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Evento activo -->
+        <div id="dash-evento-activo-wrap" style="display:none;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:14px;padding:18px 20px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#4ade80;display:inline-block;animation:fab-dot-pulse 2s ease-in-out infinite;"></span>
+            <p style="font-size:11px;font-weight:700;color:#4ade80;text-transform:uppercase;letter-spacing:.09em;">En curso ahora</p>
+          </div>
+          <p style="font-size:15px;font-weight:700;color:#fff;margin-bottom:4px;line-height:1.3;" id="dash-activo-nombre">—</p>
+          <p style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:14px;" id="dash-activo-org">—</p>
+          <button onclick="ir('eventos')" style="width:100%;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:#4ade80;border-radius:8px;padding:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;">Ir al evento →</button>
+        </div>
+
+        <!-- Resumen por estado -->
+        <div style="background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:18px 20px;">
+          <p style="font-size:11px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.09em;margin-bottom:14px;">Estado de eventos</p>
+          <div id="dash-estado-wrap" style="display:flex;flex-direction:column;gap:8px;">
+            <p style="font-size:13px;color:rgba(255,255,255,.2);text-align:center;padding:10px 0;">Cargando…</p>
+          </div>
+        </div>
+
+        <!-- Links rápidos extra -->
+        <div style="background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:18px 20px;">
+          <p style="font-size:11px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.09em;margin-bottom:14px;">Más secciones</p>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <button onclick="ir('unidades')" style="background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;padding:8px 10px;border-radius:8px;display:flex;align-items:center;gap:10px;transition:.15s;width:100%;text-align:left;" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background='none'">
+              <svg width="13" height="13" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Unidades
+            </button>
+            <button onclick="ir('organizaciones')" style="background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;padding:8px 10px;border-radius:8px;display:flex;align-items:center;gap:10px;transition:.15s;width:100%;text-align:left;" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background='none'">
+              <svg width="13" height="13" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>Organizaciones
+            </button>
+            <button onclick="ir('delegaciones')" style="background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;padding:8px 10px;border-radius:8px;display:flex;align-items:center;gap:10px;transition:.15s;width:100%;text-align:left;" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background='none'">
+              <svg width="13" height="13" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>Delegaciones
+            </button>
+            <button onclick="ir('codigosqr')" style="background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;padding:8px 10px;border-radius:8px;display:flex;align-items:center;gap:10px;transition:.15s;width:100%;text-align:left;" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background='none'">
+              <svg width="13" height="13" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Códigos QR
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -1573,6 +1660,77 @@ function ir(id) {
 }
 
 // ─── STATS ────────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  if (!ev.todos) return;
+
+  // Evento en curso
+  const activo = ev.todos.find(e => e.estado === "En curso");
+  const wrapActivo = document.getElementById("dash-evento-activo-wrap");
+  if (wrapActivo) {
+    if (activo) {
+      wrapActivo.style.display = "block";
+      document.getElementById("dash-activo-nombre").textContent = activo.nombre || "—";
+      document.getElementById("dash-activo-org").textContent = activo.organizacion || activo.tipo || "—";
+    } else {
+      wrapActivo.style.display = "none";
+    }
+  }
+
+  // Resumen por estado
+  const estados = { "En curso": 0, "Creado": 0, "Cerrado": 0 };
+  ev.todos.forEach(e => {
+    const est = e.estado || "Creado";
+    if (estados[est] !== undefined) estados[est]++;
+    else estados["Cerrado"]++;
+  });
+  const colores = { "En curso": { c:"#4ade80", bg:"rgba(34,197,94,.12)", b:"rgba(34,197,94,.25)" },
+                    "Creado":   { c:"#93c5fd", bg:"rgba(59,130,246,.1)", b:"rgba(59,130,246,.22)" },
+                    "Cerrado":  { c:"rgba(255,255,255,.35)", bg:"rgba(255,255,255,.04)", b:"rgba(255,255,255,.1)" } };
+  const wrap = document.getElementById("dash-estado-wrap");
+  if (wrap) {
+    wrap.innerHTML = Object.entries(estados).map(([est, n]) => {
+      const col = colores[est] || colores["Cerrado"];
+      const pct = ev.todos.length ? Math.round(n / ev.todos.length * 100) : 0;
+      return `<div style="display:flex;flex-direction:column;gap:5px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:12px;font-weight:600;color:${col.c};">${est}</span>
+          <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,.6);">${n}</span>
+        </div>
+        <div style="height:4px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:${col.c};border-radius:4px;transition:width .4s ease;"></div>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  // Eventos recientes — últimos 5
+  const recientes = [...ev.todos]
+    .sort((a,b) => new Date(b.fecha||0) - new Date(a.fecha||0))
+    .slice(0,5);
+  const listEl = document.getElementById("dash-eventos-list");
+  if (listEl) {
+    if (!recientes.length) {
+      listEl.innerHTML = `<p style="font-size:13px;color:rgba(255,255,255,.2);text-align:center;padding:20px 0;">Sin eventos registrados</p>`;
+    } else {
+      const EV_C = { "En curso": { c:"#4ade80", bg:"rgba(34,197,94,.12)", b:"rgba(34,197,94,.25)" },
+                     "Creado":   { c:"#93c5fd", bg:"rgba(59,130,246,.1)",  b:"rgba(59,130,246,.2)" },
+                     "Cerrado":  { c:"rgba(255,255,255,.3)", bg:"rgba(255,255,255,.05)", b:"rgba(255,255,255,.1)" } };
+      listEl.innerHTML = recientes.map(r => {
+        const est = r.estado || "Creado";
+        const col = EV_C[est] || EV_C["Cerrado"];
+        const fecha = r.fecha ? new Date(r.fecha).toLocaleDateString("es-CO",{day:"2-digit",month:"short",year:"numeric"}) : "—";
+        return `<div onclick="ir('eventos')" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;" onmouseover="this.style.background='rgba(255,255,255,.02)'" onmouseout="this.style.background='none'">
+          <div style="flex:1;min-width:0;">
+            <p style="font-size:13px;font-weight:600;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.nombre||"—"}</p>
+            <p style="font-size:11px;color:rgba(255,255,255,.3);margin-top:2px;">${fecha} · ${r.tipo||"—"}</p>
+          </div>
+          <span style="padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;background:${col.bg};color:${col.c};border:1px solid ${col.b};white-space:nowrap;">${est}</span>
+        </div>`;
+      }).join("");
+    }
+  }
+}
+
 async function cargarStats() {
   const { count:cu } = await sb.from("usuarios").select("*",{count:"exact",head:true});
   const el = document.getElementById("cnt-usuarios");
@@ -1980,6 +2138,7 @@ async function cargarEventos() {
   ev.todos = data || [];
   document.getElementById("ev-total").textContent = ev.todos.length;
   document.getElementById("cnt-eventos").textContent = ev.todos.length;
+  renderDashboard();
   ev.filtrados = [...ev.todos];
   ev.pag = 1;
   renderEventos();
