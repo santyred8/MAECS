@@ -30,8 +30,26 @@ body { background: #0d0d1a; color: #e2e8f0; min-height: 100vh; }
 @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
 
 .tbl { width:100%; border-collapse:collapse; }
-.tmpl-btn{background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.25);color:#c4b5fd;border-radius:20px;padding:5px 13px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;font-family:inherit;}
-.tmpl-btn:hover{background:rgba(168,85,247,.25);border-color:rgba(168,85,247,.5);color:#fff;}
+.tmpl-btn{
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.1);
+  color:rgba(255,255,255,.75);
+  border-radius:8px;
+  padding:7px 14px;
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  transition:background .15s, border-color .15s, color .15s;
+  font-family:inherit;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  letter-spacing:.01em;
+}
+.tmpl-btn svg{flex-shrink:0;opacity:.6;transition:opacity .15s;}
+.tmpl-btn:hover{background:rgba(168,85,247,.15);border-color:rgba(168,85,247,.4);color:#fff;}
+.tmpl-btn:hover svg{opacity:1;}
+.tmpl-btn:active{transform:scale(.97);}
 .tbl thead tr { border-bottom:1px solid rgba(255,255,255,.08); }
 .tbl th {
   padding:10px 12px; font-size:11px; font-weight:700;
@@ -572,28 +590,31 @@ select.inp option { background:#1e1b4b; color:#fff; }
       </div>
 
       <!-- Templates rápidos -->
-      <div style="background:rgba(168,85,247,.06);border:1px solid rgba(168,85,247,.18);border-radius:14px;padding:14px 18px;margin-bottom:20px;">
-        <div style="font-size:12px;font-weight:700;color:#c4b5fd;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;">⚡ Preguntas frecuentes de asamblea</div>
-        <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;">Aprobaciones (Sí / No)</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-          <button onclick="usarTemplate('sn','¿Aprueba el orden del día?')" class="tmpl-btn">📋 Orden del día</button>
-          <button onclick="usarTemplate('sn','¿Aprueba el reglamento de la asamblea?')" class="tmpl-btn">📜 Reglamento</button>
-          <button onclick="usarTemplate('sn','¿Aprueba los estados financieros con corte al 31 de diciembre de 2025?')" class="tmpl-btn">📊 Estados financieros</button>
-          <button onclick="usarTemplate('sn','¿Aprueba el presupuesto 2026?')" class="tmpl-btn">💰 Presupuesto 2026</button>
+      <div style="background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:16px 18px;margin-bottom:20px;">
+        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);margin-bottom:14px;text-transform:uppercase;letter-spacing:.09em;">Plantillas de preguntas</div>
+
+        <div style="margin-bottom:8px;font-size:10px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;">Aprobaciones — Sí / No</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
+          <button onclick="usarTemplate('sn','¿Aprueba el orden del día?')" class="tmpl-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Orden del día</button>
+          <button onclick="usarTemplate('sn','¿Aprueba el reglamento de la asamblea?')" class="tmpl-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8l-5-5z"/><polyline points="8 3 8 8 3 8"/></svg> Reglamento</button>
+          <button onclick="usarTemplate('sn','¿Aprueba los estados financieros con corte al 31 de diciembre de 2025?')" class="tmpl-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Estados financieros</button>
+          <button onclick="usarTemplate('sn','¿Aprueba el presupuesto 2026?')" class="tmpl-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Presupuesto 2026</button>
         </div>
-        <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;">Elecciones (lista de candidatos)</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-          <button onclick="usarTemplate('candidatos','Elección de Presidente(a) y Secretario(a) para el periodo 2026.')" class="tmpl-btn">👥 Presidente y Secretario</button>
-          <button onclick="usarTemplate('candidatos','Elección de los candidatos postulados para integrar el Consejo de Administración periodo 2026.')" class="tmpl-btn">🏛 Consejo Admin.</button>
-          <button onclick="usarTemplate('candidatos','Elección de los candidatos postulados para integrar el Comité de Convivencia periodo 2026.')" class="tmpl-btn">🤝 Comité Convivencia</button>
-          <button onclick="usarTemplate('candidatos','Elección de los candidatos postulados como verificadores del acta.')" class="tmpl-btn">✍ Verificadores acta</button>
+
+        <div style="margin-bottom:8px;font-size:10px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;">Elecciones — lista de candidatos</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
+          <button onclick="usarTemplate('candidatos','Elección de Presidente(a) y Secretario(a) para el periodo 2026.')" class="tmpl-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Presidente y Secretario</button>
+          <button onclick="usarTemplate('candidatos','Elección de los candidatos postulados para integrar el Consejo de Administración periodo 2026.')" class="tmpl-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Consejo de Administración</button>
+          <button onclick="usarTemplate('candidatos','Elección de los candidatos postulados para integrar el Comité de Convivencia periodo 2026.')" class="tmpl-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Comité de Convivencia</button>
+          <button onclick="usarTemplate('candidatos','Elección de los candidatos postulados como verificadores del acta.')" class="tmpl-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Verificadores del acta</button>
         </div>
-        <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;">Candidato específico (Sí / No)</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;">
-          <button onclick="usarTemplate('candidato_pres_sec','')" class="tmpl-btn" style="background:rgba(168,85,247,.18);border-color:rgba(168,85,247,.4);">👥 Presidente y Secretario</button>
-          <button onclick="usarTemplate('candidato_sn_grupo','el Consejo de Administración 2026')" class="tmpl-btn">🏛 Consejo Admin.</button>
-          <button onclick="usarTemplate('candidato_sn_grupo','el Comité de Convivencia 2026')" class="tmpl-btn">🤝 Comité Convivencia</button>
-          <button onclick="usarTemplate('candidato_sn_grupo','como verificadores del acta')" class="tmpl-btn">✍ Verificadores acta</button>
+
+        <div style="margin-bottom:8px;font-size:10px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;">Candidato específico — Sí / No</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          <button onclick="usarTemplate('candidato_pres_sec','')" class="tmpl-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Presidente y Secretario</button>
+          <button onclick="usarTemplate('candidato_sn_grupo','el Consejo de Administración 2026')" class="tmpl-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Consejo de Administración</button>
+          <button onclick="usarTemplate('candidato_sn_grupo','el Comité de Convivencia 2026')" class="tmpl-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Comité de Convivencia</button>
+          <button onclick="usarTemplate('candidato_sn_grupo','como verificadores del acta')" class="tmpl-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Verificadores del acta</button>
         </div>
       </div>
 
