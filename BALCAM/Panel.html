@@ -197,30 +197,75 @@ select.inp option { background:#1e1b4b; color:#fff; }
 
   <!-- ═ INICIO ═ -->
   <section id="sec-inicio" class="seccion visible">
-    <h1 class="text-2xl font-bold mb-1">Panel de administración</h1>
-    <p style="font-size:14px;color:rgba(255,255,255,.4);margin-bottom:28px;">Sistema MAECS — BALCAM</p>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;">
-      <div class="stat" onclick="ir('usuarios')">
-        <div style="width:38px;height:38px;background:rgba(139,92,246,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;"><svg width="18" height="18" fill="none" stroke="#a78bfa" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
-        <p style="font-size:28px;font-weight:700;" id="cnt-usuarios">—</p>
-        <p style="font-size:13px;color:rgba(255,255,255,.4);">Usuarios</p>
-      </div>
-      <div class="stat" onclick="ir('organizaciones')">
-        <div style="width:38px;height:38px;background:rgba(99,102,241,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;"><svg width="18" height="18" fill="none" stroke="#818cf8" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
-        <p style="font-size:28px;font-weight:700;" id="cnt-orgs">—</p>
-        <p style="font-size:13px;color:rgba(255,255,255,.4);">Organizaciones</p>
-      </div>
-      <div class="stat" onclick="ir('eventos')">
-        <div style="width:38px;height:38px;background:rgba(236,72,153,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;"><svg width="18" height="18" fill="none" stroke="#f472b6" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
-        <p style="font-size:28px;font-weight:700;" id="cnt-eventos">—</p>
-        <p style="font-size:13px;color:rgba(255,255,255,.4);">Eventos</p>
-      </div>
-      <div class="stat" onclick="ir('unidades')">
-        <div style="width:38px;height:38px;background:rgba(20,184,166,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;"><svg width="18" height="18" fill="none" stroke="#2dd4bf" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
-        <p style="font-size:28px;font-weight:700;" id="cnt-unidades">—</p>
-        <p style="font-size:13px;color:rgba(255,255,255,.4);">Unidades</p>
+
+    <!-- Saludo -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:28px;">
+      <div>
+        <p style="font-size:12px;font-weight:600;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.09em;margin-bottom:6px;" id="dash-fecha">—</p>
+        <h1 class="text-2xl font-bold" style="margin-bottom:4px;" id="dash-saludo">Panel de administración</h1>
+        <p style="font-size:14px;color:rgba(255,255,255,.35);">Sistema MAECS · BALCAM</p>
       </div>
     </div>
+
+    <!-- Stats -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:28px;">
+      <div class="stat" onclick="ir('usuarios')" style="position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#7c3aed,transparent);border-radius:2px 2px 0 0;"></div>
+        <div style="width:36px;height:36px;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.25);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
+          <svg width="16" height="16" fill="none" stroke="#a78bfa" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        </div>
+        <p style="font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1;" id="cnt-usuarios">—</p>
+        <p style="font-size:12px;color:rgba(255,255,255,.4);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Usuarios</p>
+      </div>
+      <div class="stat" onclick="ir('organizaciones')" style="position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#6366f1,transparent);border-radius:2px 2px 0 0;"></div>
+        <div style="width:36px;height:36px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.25);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
+          <svg width="16" height="16" fill="none" stroke="#818cf8" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        </div>
+        <p style="font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1;" id="cnt-orgs">—</p>
+        <p style="font-size:12px;color:rgba(255,255,255,.4);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Organizaciones</p>
+      </div>
+      <div class="stat" onclick="ir('eventos')" style="position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#ec4899,transparent);border-radius:2px 2px 0 0;"></div>
+        <div style="width:36px;height:36px;background:rgba(236,72,153,.15);border:1px solid rgba(236,72,153,.25);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
+          <svg width="16" height="16" fill="none" stroke="#f472b6" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <p style="font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1;" id="cnt-eventos">—</p>
+        <p style="font-size:12px;color:rgba(255,255,255,.4);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Eventos</p>
+      </div>
+      <div class="stat" onclick="ir('unidades')" style="position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#14b8a6,transparent);border-radius:2px 2px 0 0;"></div>
+        <div style="width:36px;height:36px;background:rgba(20,184,166,.15);border:1px solid rgba(20,184,166,.25);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
+          <svg width="16" height="16" fill="none" stroke="#2dd4bf" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        </div>
+        <p style="font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1;" id="cnt-unidades">—</p>
+        <p style="font-size:12px;color:rgba(255,255,255,.4);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Unidades</p>
+      </div>
+    </div>
+
+    <!-- Accesos rápidos -->
+    <div style="margin-bottom:8px;">
+      <p style="font-size:11px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.09em;margin-bottom:12px;">Accesos rápidos</p>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;">
+        <button onclick="ir('eventos');setTimeout(()=>document.getElementById('btn-nuevo-evento')?.click(),300)" style="background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.3);color:#c4b5fd;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;transition:.15s;">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Nuevo evento
+        </button>
+        <button onclick="ir('usuarios');setTimeout(()=>document.querySelector('[onclick='abrirModal()']')?.click(),300)" style="background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;transition:.15s;">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Nuevo usuario
+        </button>
+        <button onclick="ir('preguntas')" style="background:rgba(236,72,153,.1);border:1px solid rgba(236,72,153,.28);color:#f9a8d4;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;transition:.15s;">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Preguntas
+        </button>
+        <button onclick="ir('delegaciones')" style="background:rgba(20,184,166,.1);border:1px solid rgba(20,184,166,.28);color:#5eead4;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;transition:.15s;">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Delegaciones
+        </button>
+      </div>
+    </div>
+
   </section>
 
   <!-- ═ USUARIOS ═ -->
@@ -1477,6 +1522,17 @@ let adminSecretarioDefault = null; // {nombre, guardado} — default secretario
 
   if (miPerfil) {
     perfilActual = miPerfil;
+    // Saludo personalizado en inicio
+    const nombre = miPerfil.primer_nombre || "";
+    const hora = new Date().getHours();
+    const saludo = hora < 12 ? "Buenos días" : hora < 19 ? "Buenas tardes" : "Buenas noches";
+    const el = document.getElementById("dash-saludo");
+    if (el) el.textContent = nombre ? `${saludo}, ${nombre}.` : "Panel de administración";
+    const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+    const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+    const hoy = new Date();
+    const elF = document.getElementById("dash-fecha");
+    if (elF) elF.textContent = `${dias[hoy.getDay()]}, ${hoy.getDate()} de ${meses[hoy.getMonth()]} de ${hoy.getFullYear()}`;
     // Recuperar secretario predeterminado guardado (nombre del administrador del edificio)
     const guardado = localStorage.getItem("maecs_secretario_default");
     adminSecretarioDefault = guardado ? JSON.parse(guardado) : null;
