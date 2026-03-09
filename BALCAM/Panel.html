@@ -4509,4 +4509,63 @@ function exportarDelCSV() {
   toast('CSV descargado','ok');
 }
 </script>
+
+<!-- ══ MODAL LINK PORTAL ══ -->
+<div id="modal-link-portal" onclick="cerrarLinkPortal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:900;align-items:center;justify-content:center;">
+  <div onclick="event.stopPropagation()" style="background:#1e1b2e;border:1px solid rgba(139,92,246,.25);border-radius:20px;padding:28px 32px;width:460px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.5);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div>
+        <div style="font-size:16px;font-weight:800;color:#fff;">Link de acceso</div>
+        <div id="mlp-ev-nombre" style="font-size:12px;color:rgba(255,255,255,.4);margin-top:3px;"></div>
+      </div>
+      <button onclick="cerrarLinkPortal()" style="background:rgba(255,255,255,.07);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;color:rgba(255,255,255,.5);font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px 16px;margin-bottom:16px;">
+      <div style="font-size:10px;color:rgba(255,255,255,.35);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">URL del portal</div>
+      <div id="mlp-link" style="font-size:13px;color:#c4b5fd;word-break:break-all;line-height:1.5;"></div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button id="mlp-btn-copiar" onclick="copiarLinkPortal()" style="flex:1;padding:11px;border:none;border-radius:12px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:.2s;">Copiar link</button>
+      <button onclick="abrirLinkPortal()" style="flex:1;padding:11px;border:1px solid rgba(255,255,255,.15);border-radius:12px;background:none;color:rgba(255,255,255,.7);font-size:13px;font-weight:700;cursor:pointer;transition:.2s;">Abrir →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+window._evData = window._evData || {};
+
+function mostrarLinkPortal(evId, orgId) {
+  const modal = document.getElementById("modal-link-portal");
+  const ev = window._evData[evId] || {};
+  const link = `${location.origin}${location.pathname.replace(/[^/]*$/, '')}Login_Participante.html?ev=${evId}&org=${orgId}`;
+  document.getElementById("mlp-link").textContent = link;
+  document.getElementById("mlp-ev-nombre").textContent = ev.nombre || "";
+  modal._link = link;
+  modal.style.display = "flex";
+}
+
+function cerrarLinkPortal() {
+  document.getElementById("modal-link-portal").style.display = "none";
+  const btn = document.getElementById("mlp-btn-copiar");
+  if (btn) { btn.textContent = "Copiar link"; btn.style.background = "linear-gradient(135deg,#7c3aed,#a855f7)"; }
+}
+
+function copiarLinkPortal() {
+  const modal = document.getElementById("modal-link-portal");
+  navigator.clipboard.writeText(modal._link || "").then(() => {
+    const btn = document.getElementById("mlp-btn-copiar");
+    btn.textContent = "¡Copiado!";
+    btn.style.background = "linear-gradient(135deg,#059669,#10b981)";
+    setTimeout(() => {
+      btn.textContent = "Copiar link";
+      btn.style.background = "linear-gradient(135deg,#7c3aed,#a855f7)";
+    }, 2000);
+  });
+}
+
+function abrirLinkPortal() {
+  const modal = document.getElementById("modal-link-portal");
+  if (modal._link) window.open(modal._link, "_blank");
+}
+</script>
 </body>
