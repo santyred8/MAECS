@@ -53,8 +53,8 @@ nav{
 .btn-out:hover{color:var(--red);}
 
 /* ══ LAYOUT ══ */
-.layout{display:grid;grid-template-columns:280px 1fr;gap:20px;padding:20px 24px;max-width:1500px;margin:0 auto;}
-.layout.sidebar-collapsed{grid-template-columns:0px 1fr;gap:0;}
+.layout{display:grid;grid-template-columns:280px 1fr;gap:16px;padding:14px 20px;max-width:1500px;margin:0 auto;height:calc(100vh - 60px);overflow:hidden;}
+.layout.sidebar-collapsed{grid-template-columns:0px 1fr;gap:0;padding-left:12px;}
 .layout.sidebar-collapsed .sidebar{opacity:0;pointer-events:none;overflow:hidden;width:0;min-width:0;}
 
 /* ── Botón toggle sidebar — en navbar ── */
@@ -66,7 +66,7 @@ nav{
 
 
 /* ══ SIDEBAR ══ */
-.sidebar{display:flex;flex-direction:column;gap:14px;}
+.sidebar{display:flex;flex-direction:column;gap:10px;height:100%;overflow-y:auto;padding-right:2px;}
 
 .card{background:var(--card);border-radius:18px;overflow:hidden;box-shadow:0 2px 20px rgba(124,58,237,.06);}
 
@@ -119,7 +119,7 @@ nav{
 .tmr-urgente #tmr-ring { animation: tmr-pulse-ring .6s ease infinite; }
 
 /* ══ CONTENIDO TABS ══ */
-.tab-section{display:none;flex-direction:column;gap:16px;}
+.tab-section{display:none;flex-direction:column;gap:10px;height:100%;overflow-y:auto;}
 .tab-section.on{display:flex;}
 #tab-temporizador.on{gap:0;overflow:hidden;}
 
@@ -162,9 +162,9 @@ nav{
 .hero-stat-lbl{font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.07em;font-weight:600;}
 
 /* Layout sin scroll — 2 columnas */
-.ev-layout{display:grid;grid-template-columns:1fr 260px;gap:14px;align-items:start;}
-.ev-left{display:flex;flex-direction:column;gap:12px;}
-.ev-right{display:flex;flex-direction:column;gap:10px;}
+.ev-layout{display:grid;grid-template-columns:1fr 240px;gap:12px;align-items:start;height:100%;}
+.ev-left{display:flex;flex-direction:column;gap:10px;overflow-y:auto;height:100%;}
+.ev-right{display:flex;flex-direction:column;gap:8px;}
 
 /* Row: quórum + acciones */
 .mid-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
@@ -438,7 +438,7 @@ nav{
     <div id="tab-evento" class="tab-section on">
 
       <!-- Hero compacto -->
-      <div class="hero" style="margin-bottom:12px;">
+      <div class="hero" style="margin-bottom:10px;padding:18px 22px;">
         <div class="hero-top" style="margin-bottom:0;">
           <div>
             <div id="h-nombre" class="hero-nombre">Cargando…</div>
