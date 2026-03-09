@@ -216,6 +216,30 @@ nav{
 .sb-line{flex:1;height:2px;background:#e2e8f0;border-radius:2px;margin-bottom:20px;transition:.3s;}
 .sb-line.done{background:var(--green);}
 
+/* Botón Zoom */
+.btn-zoom{
+  display:none;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  text-decoration:none;
+  width:100%;
+  padding:16px 24px;
+  border-radius:16px;
+  font-size:16px;
+  font-weight:700;
+  cursor:pointer;
+  border:none;
+  font-family:inherit;
+  background:linear-gradient(135deg,#0ea5e9,#0284c7);
+  color:#fff;
+  box-shadow:0 6px 20px rgba(14,165,233,.35);
+  transition:transform .2s,box-shadow .2s;
+  margin-top:12px;
+}
+.btn-zoom:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(14,165,233,.45);}
+.btn-zoom:active{transform:translateY(0);}
+
 /* Botón registro */
 .btn-registro{
   background:linear-gradient(135deg,var(--gold),#e48c00);
@@ -566,6 +590,12 @@ nav{
       <a id="btn-registro-link" href="#" target="_blank" class="btn-registro" onclick="prepararRegistro(this)" style="display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;">
         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
         Registro
+      </a>
+
+      <!-- Botón Zoom — solo si evento Virtual o Mixto -->
+      <a id="btn-zoom-link" href="#" target="_blank" class="btn-zoom" onclick="return prepararZoom(this)">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        Unirse a Zoom
       </a>
 
     </div><!-- /tab-evento -->
@@ -1214,6 +1244,18 @@ async function cargarEvento() {
 function renderEvento(r) {
   document.title = `BALCAM — ${r.nombre||"Evento"}`;
   document.getElementById("nav-ev-title").textContent = r.nombre||"—";
+
+  // Botón Zoom — visible solo si Virtual o Mixto y tiene meeting ID
+  const btnZoom = document.getElementById("btn-zoom-link");
+  if (btnZoom) {
+    const esVirtual = r.tipo_evento === "Virtual" || r.tipo_evento === "Mixto";
+    const tieneZoom = !!(r.zoom_meeting_id);
+    btnZoom.style.display = (esVirtual && tieneZoom) ? "flex" : "none";
+    if (r.zoom_meeting_id) {
+      const pwd = r.zoom_password ? `?pwd=${r.zoom_password}` : "";
+      btnZoom.href = `https://zoom.us/j/${r.zoom_meeting_id}${pwd}`;
+    }
+  }
 
   // Hero
   document.getElementById("h-nombre").textContent = r.nombre||"Sin nombre";
@@ -2226,13 +2268,10 @@ function renderResultados() {
   const porResp = {};
   opciones.forEach(op => { porResp[op] = { coef:0, nominal:0 }; });
   admVotos.forEach(v => {
-    const partes = v.respuesta ? v.respuesta.split(" | ").map(s=>s.trim()).filter(Boolean) : [v.respuesta];
-    const coefParte = toNumAdmin(v.coeficiente) / partes.length;
-    partes.forEach(r => {
-      if (!porResp[r]) porResp[r] = { coef:0, nominal:0 };
-      porResp[r].coef    += coefParte;
-      porResp[r].nominal += 1;
-    });
+    const r = v.respuesta;
+    if (!porResp[r]) porResp[r] = { coef:0, nominal:0 };
+    porResp[r].coef    += toNumAdmin(v.coeficiente);
+    porResp[r].nominal += 1;
   });
 
   const labels       = Object.keys(porResp);
@@ -2924,13 +2963,9 @@ async function generarInformeXLSX(EV_ID_ARG, ORG_ID_ARG) {
     const por    = {};
     opcs.forEach(o => { por[o] = {coef:0,nom:0}; });
     Object.values(votosP).forEach(v => {
-      const partes = v.respuesta ? v.respuesta.split(" | ").map(s=>s.trim()).filter(Boolean) : [v.respuesta];
-      const coefParte = toN(v.coeficiente) / partes.length;
-      partes.forEach(r => {
-        if (!por[r]) por[r] = {coef:0,nom:0};
-        por[r].coef += coefParte;
-        por[r].nom  += 1;
-      });
+      if (!por[v.respuesta]) por[v.respuesta] = {coef:0,nom:0};
+      por[v.respuesta].coef += toN(v.coeficiente);
+      por[v.respuesta].nom  += 1;
     });
     const votaron   = unisReg.filter(u =>  votosP[u.id]);
     const sinVotar  = unisReg.filter(u => !votosP[u.id]);
