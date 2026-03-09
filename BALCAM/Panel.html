@@ -2119,14 +2119,11 @@ function renderEventos() {
           </button>` : `<button style="width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.06);background:none;cursor:default;" disabled title="Sin link de videollamada">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
           </button>`}
-          <!-- Clip (próximamente) -->
-          <button style="width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:rgba(167,139,250,.6);border:1px solid rgba(167,139,250,.15);background:none;cursor:pointer;transition:.15s;" title="Próximamente" onclick="toast('Esta función se configurará próximamente','warn')">
+          <!-- Link portal participantes -->
+          <button onclick="mostrarLinkPortal('${r.id}','${r.id_organizacion}','${(r.nombre??'').replace(/'/g,\'\').replace(/"/g,\'\')}')" style="width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:rgba(167,139,250,.8);border:1px solid rgba(167,139,250,.22);background:none;cursor:pointer;transition:.15s;" onmouseover="this.style.background='rgba(167,139,250,.12)'" onmouseout="this.style.background='none'" title="Link de acceso para participantes">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
           </button>
-          <!-- Excel (próximamente) -->
-          <button style="width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:rgba(74,222,128,.5);border:1px solid rgba(74,222,128,.12);background:none;cursor:pointer;transition:.15s;" title="Próximamente" onclick="toast('Esta función se configurará próximamente','warn')">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          </button>
+
           <!-- Informe Asamblea — solo si está Cerrado -->
           ${r.estado==="Cerrado" ? `<button onclick="exportarInformePanel('${r.id}','${r.id_organizacion}')" style="width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:#4ade80;border:1px solid rgba(74,222,128,.35);background:rgba(74,222,128,.06);cursor:pointer;transition:.15s;" onmouseover="this.style.background='rgba(74,222,128,.15)'" onmouseout="this.style.background='rgba(74,222,128,.06)'" title="Descargar Informe Asamblea"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>` : `<button disabled style="width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.06);background:none;cursor:not-allowed;" title="El informe solo está disponible cuando la asamblea esté Cerrada"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>`}
           <a href="Administracion.html?ev=${r.id}&org=${r.id_organizacion}" target="_blank" style="width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:#f472b6;border:1px solid rgba(244,114,182,.2);background:none;cursor:pointer;transition:.15s;text-decoration:none;" onmouseover="this.style.background='rgba(244,114,182,.12)'" onmouseout="this.style.background='none'" title="Ir a administración del evento">
@@ -4263,6 +4260,48 @@ async function exportarInformePanel(evId, orgId) {
     toast("Error: "+e.message,"err");
   }
 }
+
+function mostrarLinkPortal(evId, orgId, nombre) {
+  const base = window.location.href.split("?")[0].replace(/[^/]*$/, "");
+  const url = base + "Login_Participante.html?ev=" + evId + "&org=" + orgId;
+  document.getElementById("mlp-nombre").textContent = nombre || "Evento";
+  document.getElementById("mlp-url").textContent = url;
+  document.getElementById("mlp-txt-copy").textContent = "Copiar link";
+  document.getElementById("mlp-ico-copy").setAttribute("d","");
+  const modal = document.getElementById("modal-link-portal");
+  modal.style.display = "flex";
+}
+
+function cerrarLinkPortal() {
+  document.getElementById("modal-link-portal").style.display = "none";
+}
+
+async function copiarLinkPortal() {
+  const url = document.getElementById("mlp-url").textContent;
+  try {
+    await navigator.clipboard.writeText(url);
+    const txt = document.getElementById("mlp-txt-copy");
+    const ico = document.getElementById("mlp-ico-copy");
+    txt.textContent = "¡Copiado!";
+    ico.outerHTML = '<svg id="mlp-ico-copy" width="13" height="13" fill="none" stroke="#4ade80" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+    document.getElementById("mlp-btn-copy").style.borderColor = "rgba(74,222,128,.4)";
+    document.getElementById("mlp-btn-copy").style.color = "#4ade80";
+    setTimeout(() => {
+      txt.textContent = "Copiar link";
+      document.getElementById("mlp-btn-copy").style.borderColor = "rgba(167,139,250,.3)";
+      document.getElementById("mlp-btn-copy").style.color = "#c4b5fd";
+    }, 2000);
+  } catch { toast("No se pudo copiar", "warn"); }
+}
+
+function abrirLinkPortal() {
+  const url = document.getElementById("mlp-url").textContent;
+  window.open(url, "_blank");
+}
+
+document.getElementById("modal-link-portal").addEventListener("click", function(e) {
+  if (e.target === this) cerrarLinkPortal();
+});
 
 async function logout(){await sb.auth.signOut();window.location.href="index.html";}
 
