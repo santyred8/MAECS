@@ -127,26 +127,39 @@ nav{
 
 /* Hero */
 .hero{
-  background:linear-gradient(135deg,var(--p) 0%,#9333ea 45%,var(--pink) 100%);
-  border-radius:22px;padding:28px 32px;color:#fff;
+  background:#0f0a1e;
+  border:1px solid rgba(124,58,237,.2);
+  border-radius:20px;padding:26px 30px;color:#fff;
   position:relative;overflow:hidden;
 }
-.hero::before{content:"";position:absolute;top:-60px;right:-60px;width:250px;height:250px;border-radius:50%;background:rgba(255,255,255,.05);}
-.hero::after{content:"";position:absolute;bottom:-40px;right:80px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.04);}
-.hero-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;position:relative;z-index:1;}
-.hero-nombre{font-size:24px;font-weight:900;letter-spacing:-.5px;max-width:420px;line-height:1.2;}
-.hero-tipo{font-size:12px;color:rgba(255,255,255,.65);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;}
-.hero-estado-badge{
-  padding:7px 18px;border-radius:30px;font-size:12px;font-weight:800;
-  border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.15);
-  backdrop-filter:blur(12px);white-space:nowrap;cursor:pointer;transition:.2s;
+.hero::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(139,92,246,.5),transparent);
 }
-.hero-estado-badge:hover{background:rgba(255,255,255,.25);}
-.hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;position:relative;z-index:1;}
-.hero-stat{background:rgba(255,255,255,.12);border-radius:14px;padding:14px 16px;backdrop-filter:blur(10px);transition:.2s;}
-.hero-stat:hover{background:rgba(255,255,255,.18);}
-.hero-stat-val{font-size:14px;font-weight:700;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.hero-stat-lbl{font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.06em;}
+.hero-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;position:relative;z-index:1;}
+.hero-nombre{font-size:22px;font-weight:800;letter-spacing:-.4px;max-width:460px;line-height:1.25;color:#fff;}
+.hero-meta{display:flex;align-items:center;gap:10px;margin-top:7px;}
+.hero-tipo{font-size:11px;color:rgba(255,255,255,.4);font-weight:600;text-transform:uppercase;letter-spacing:.08em;}
+.hero-sep{width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,.2);}
+.hero-modalidad{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;}
+.hero-estado-badge{
+  padding:6px 16px;border-radius:8px;font-size:11px;font-weight:700;
+  border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);
+  white-space:nowrap;cursor:pointer;transition:background .15s;
+  text-transform:uppercase;letter-spacing:.05em;
+}
+.hero-estado-badge:hover{background:rgba(255,255,255,.13);}
+.hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;position:relative;z-index:1;}
+.hero-stat{
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:12px;padding:13px 16px;
+  transition:border-color .15s;
+}
+.hero-stat:hover{border-color:rgba(139,92,246,.3);}
+.hero-stat-ico{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;margin-bottom:9px;}
+.hero-stat-val{font-size:13px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:rgba(255,255,255,.9);}
+.hero-stat-lbl{font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.07em;font-weight:600;}
 
 /* Row: quórum + acciones */
 .mid-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
@@ -425,22 +438,35 @@ nav{
         <div class="hero-top">
           <div>
             <div id="h-nombre" class="hero-nombre">Cargando…</div>
-            <div id="h-tipo" class="hero-tipo">—</div>
+            <div class="hero-meta">
+              <span id="h-tipo" class="hero-tipo">—</span>
+              <span class="hero-sep"></span>
+              <span id="h-modalidad" class="hero-modalidad" style="color:rgba(255,255,255,.4);">—</span>
+            </div>
           </div>
           <div id="h-estado" class="hero-estado-badge" onclick="ciclarEstado()" title="Clic para avanzar estado">—</div>
         </div>
         <div class="hero-stats">
           <div class="hero-stat">
+            <div class="hero-stat-ico" style="background:rgba(139,92,246,.15);">
+              <svg width="13" height="13" fill="none" stroke="#a78bfa" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
             <div id="h-fecha" class="hero-stat-val">—</div>
-            <div class="hero-stat-lbl">📅 Fecha y hora</div>
+            <div class="hero-stat-lbl">Fecha y hora</div>
           </div>
           <div class="hero-stat">
+            <div class="hero-stat-ico" style="background:rgba(236,72,153,.12);">
+              <svg width="13" height="13" fill="none" stroke="#f472b6" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </div>
             <div id="h-lugar" class="hero-stat-val">—</div>
-            <div class="hero-stat-lbl">📍 Lugar</div>
+            <div class="hero-stat-lbl">Lugar</div>
           </div>
           <div class="hero-stat">
+            <div class="hero-stat-ico" style="background:rgba(20,184,166,.12);">
+              <svg width="13" height="13" fill="none" stroke="#2dd4bf" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+            </div>
             <div id="h-soporte" class="hero-stat-val">—</div>
-            <div class="hero-stat-lbl">🗂 N° soporte</div>
+            <div class="hero-stat-lbl">N° soporte</div>
           </div>
         </div>
       </div>
@@ -1260,6 +1286,14 @@ function renderEvento(r) {
   // Hero
   document.getElementById("h-nombre").textContent = r.nombre||"Sin nombre";
   document.getElementById("h-tipo").textContent = r.tipo||"—";
+  const modEl = document.getElementById("h-modalidad");
+  if (modEl) {
+    const colores = { "Virtual": "#38bdf8", "Mixto": "#a78bfa", "Presencial": "#4ade80" };
+    modEl.textContent = r.tipo_evento || "";
+    modEl.style.color = colores[r.tipo_evento] || "rgba(255,255,255,.4)";
+    modEl.style.display = r.tipo_evento ? "" : "none";
+    document.querySelector(".hero-sep").style.display = r.tipo_evento ? "" : "none";
+  }
   document.getElementById("h-estado").textContent = r.estado||"—";
 
   const f = r.fecha ? new Date(r.fecha).toLocaleString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}) : "—";
