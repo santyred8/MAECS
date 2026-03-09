@@ -30,22 +30,7 @@ body { background: #0d0d1a; color: #e2e8f0; min-height: 100vh; }
 @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
 
 .tbl { width:100%; border-collapse:collapse; }
-.tmpl-btn{
-  background:rgba(139,92,246,.1);
-  border:1px solid rgba(139,92,246,.28);
-  color:#c4b5fd;
-  border-radius:8px;
-  padding:7px 14px;
-  font-size:12px;
-  font-weight:600;
-  cursor:pointer;
-  transition:background .15s, border-color .15s, color .15s;
-  font-family:inherit;
-  display:inline-flex;
-  align-items:center;
-  gap:7px;
-  letter-spacing:.01em;
-}
+.tmpl-btn{background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.28);color:#c4b5fd;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s,color .15s;font-family:inherit;display:inline-flex;align-items:center;gap:7px;letter-spacing:.01em;}
 .tmpl-btn svg{flex-shrink:0;opacity:.7;transition:opacity .15s;}
 .tmpl-btn:hover{background:rgba(139,92,246,.22);border-color:rgba(168,85,247,.55);color:#fff;}
 .tmpl-btn:hover svg{opacity:1;}
@@ -197,78 +182,48 @@ select.inp option { background:#1e1b4b; color:#fff; }
 
   <!-- ═ INICIO ═ -->
   <section id="sec-inicio" class="seccion visible">
-
-    <!-- Saludo -->
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:28px;">
-      <div>
-        <p style="font-size:11px;font-weight:600;color:rgba(255,255,255,.28);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px;" id="dash-fecha">—</p>
-        <h1 class="text-2xl font-bold" style="margin-bottom:3px;" id="dash-saludo">Panel de administración</h1>
-        <p style="font-size:13px;color:rgba(255,255,255,.3);">Sistema MAECS · BALCAM</p>
-      </div>
-    </div>
-
-    <!-- Stats -->
+    <p style="font-size:11px;font-weight:600;color:rgba(255,255,255,.28);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px;" id="dash-fecha">—</p>
+    <h1 class="text-2xl font-bold mb-1" id="dash-saludo">Panel de administración</h1>
+    <p style="font-size:14px;color:rgba(255,255,255,.4);margin-bottom:28px;">Sistema MAECS · BALCAM</p>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:28px;">
       <div class="stat" onclick="ir('usuarios')" style="position:relative;overflow:hidden;">
         <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#7c3aed,transparent);border-radius:2px 2px 0 0;"></div>
-        <div style="width:36px;height:36px;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.25);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
-          <svg width="16" height="16" fill="none" stroke="#a78bfa" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-        </div>
+        <div style="width:36px;height:36px;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.25);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><svg width="16" height="16" fill="none" stroke="#a78bfa" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
         <p style="font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1;" id="cnt-usuarios">—</p>
         <p style="font-size:12px;color:rgba(255,255,255,.4);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Usuarios</p>
       </div>
       <div class="stat" onclick="ir('organizaciones')" style="position:relative;overflow:hidden;">
         <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#6366f1,transparent);border-radius:2px 2px 0 0;"></div>
-        <div style="width:36px;height:36px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.25);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
-          <svg width="16" height="16" fill="none" stroke="#818cf8" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-        </div>
+        <div style="width:36px;height:36px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.25);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><svg width="16" height="16" fill="none" stroke="#818cf8" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
         <p style="font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1;" id="cnt-orgs">—</p>
         <p style="font-size:12px;color:rgba(255,255,255,.4);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Organizaciones</p>
       </div>
       <div class="stat" onclick="ir('eventos')" style="position:relative;overflow:hidden;">
         <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#ec4899,transparent);border-radius:2px 2px 0 0;"></div>
-        <div style="width:36px;height:36px;background:rgba(236,72,153,.15);border:1px solid rgba(236,72,153,.25);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
-          <svg width="16" height="16" fill="none" stroke="#f472b6" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        </div>
+        <div style="width:36px;height:36px;background:rgba(236,72,153,.15);border:1px solid rgba(236,72,153,.25);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><svg width="16" height="16" fill="none" stroke="#f472b6" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
         <p style="font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1;" id="cnt-eventos">—</p>
         <p style="font-size:12px;color:rgba(255,255,255,.4);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Eventos</p>
       </div>
       <div class="stat" onclick="ir('unidades')" style="position:relative;overflow:hidden;">
         <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#14b8a6,transparent);border-radius:2px 2px 0 0;"></div>
-        <div style="width:36px;height:36px;background:rgba(20,184,166,.15);border:1px solid rgba(20,184,166,.25);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
-          <svg width="16" height="16" fill="none" stroke="#2dd4bf" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-        </div>
+        <div style="width:36px;height:36px;background:rgba(20,184,166,.15);border:1px solid rgba(20,184,166,.25);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><svg width="16" height="16" fill="none" stroke="#2dd4bf" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
         <p style="font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1;" id="cnt-unidades">—</p>
         <p style="font-size:12px;color:rgba(255,255,255,.4);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Unidades</p>
       </div>
     </div>
-
     <!-- Accesos rápidos -->
-    <div style="margin-bottom:8px;">
+    <div>
       <p style="font-size:11px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.09em;margin-bottom:12px;">Accesos rápidos</p>
       <div style="display:flex;flex-wrap:wrap;gap:10px;">
-        <button onclick="ir('eventos');setTimeout(()=>document.getElementById('btn-nuevo-evento')?.click(),300)" style="background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.3);color:#c4b5fd;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;transition:.15s;">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          Nuevo evento
-        </button>
-        <button onclick="ir('usuarios');setTimeout(()=>document.querySelector('[onclick='abrirModal()']')?.click(),300)" style="background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;transition:.15s;">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          Nuevo usuario
-        </button>
-        <button onclick="ir('preguntas')" style="background:rgba(236,72,153,.1);border:1px solid rgba(236,72,153,.28);color:#f9a8d4;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;transition:.15s;">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          Preguntas
-        </button>
-        <button onclick="ir('delegaciones')" style="background:rgba(20,184,166,.1);border:1px solid rgba(20,184,166,.28);color:#5eead4;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;transition:.15s;">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Delegaciones
-        </button>
+        <button onclick="ir('eventos');setTimeout(()=>document.getElementById('btn-nuevo-evento')?.click(),300)" style="background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.3);color:#c4b5fd;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;transition:.15s;"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Nuevo evento</button>
+        <button onclick="ir('usuarios');setTimeout(()=>document.querySelector('[onclick='abrirModal()']')?.click(),300)" style="background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;transition:.15s;"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Nuevo usuario</button>
+        <button onclick="ir('preguntas')" style="background:rgba(236,72,153,.1);border:1px solid rgba(236,72,153,.28);color:#f9a8d4;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;transition:.15s;"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Preguntas</button>
+        <button onclick="ir('delegaciones')" style="background:rgba(20,184,166,.1);border:1px solid rgba(20,184,166,.28);color:#5eead4;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;transition:.15s;"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Delegaciones</button>
       </div>
     </div>
-
   </section>
 
-    <!-- ═ USUARIOS ═ -->
+  <!-- ═ USUARIOS ═ -->
   <section id="sec-usuarios" class="seccion">
 
     <!-- Vista para NO admins -->
@@ -637,7 +592,6 @@ select.inp option { background:#1e1b4b; color:#fff; }
       <!-- Templates rápidos -->
       <div style="background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:16px 18px;margin-bottom:20px;">
         <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);margin-bottom:14px;text-transform:uppercase;letter-spacing:.09em;">Plantillas de preguntas</div>
-
         <div style="margin-bottom:8px;font-size:10px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;">Aprobaciones — Sí / No</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
           <button onclick="usarTemplate('sn','¿Aprueba el orden del día?')" class="tmpl-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Orden del día</button>
@@ -645,7 +599,6 @@ select.inp option { background:#1e1b4b; color:#fff; }
           <button onclick="usarTemplate('sn','¿Aprueba los estados financieros con corte al 31 de diciembre de 2025?')" class="tmpl-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Estados financieros</button>
           <button onclick="usarTemplate('sn','¿Aprueba el presupuesto 2026?')" class="tmpl-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Presupuesto 2026</button>
         </div>
-
         <div style="margin-bottom:8px;font-size:10px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;">Elecciones — lista de candidatos</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
           <button onclick="usarTemplate('candidatos','Elección de Presidente(a) y Secretario(a) para el periodo 2026.')" class="tmpl-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Presidente y Secretario</button>
@@ -653,7 +606,6 @@ select.inp option { background:#1e1b4b; color:#fff; }
           <button onclick="usarTemplate('candidatos','Elección de los candidatos postulados para integrar el Comité de Convivencia periodo 2026.')" class="tmpl-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Comité de Convivencia</button>
           <button onclick="usarTemplate('candidatos','Elección de los candidatos postulados como verificadores del acta.')" class="tmpl-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Verificadores del acta</button>
         </div>
-
         <div style="margin-bottom:8px;font-size:10px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;">Candidato específico — Sí / No</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;">
           <button onclick="usarTemplate('candidato_pres_sec','')" class="tmpl-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Presidente y Secretario</button>
@@ -1133,7 +1085,7 @@ select.inp option { background:#1e1b4b; color:#fff; }
       </div>
     </div>
 
-    <!-- Fila 2: Estado + Modalidad + Fecha -->
+    <!-- Fila 2: Estado + Lugar + Fecha -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;">
       <div>
         <label class="flabel">Estado</label>
@@ -1145,24 +1097,13 @@ select.inp option { background:#1e1b4b; color:#fff; }
         </select>
       </div>
       <div>
-        <label class="flabel">Modalidad</label>
-        <select id="em-modalidad" class="inp" onchange="toggleZoomField()">
-          <option value="">— Seleccionar —</option>
-          <option value="Presencial">Presencial</option>
-          <option value="Virtual">Virtual</option>
-          <option value="Mixto">Mixto</option>
-        </select>
+        <label class="flabel">Lugar</label>
+        <input id="em-lugar" type="text" class="inp" placeholder="Salón Social, Zoom…">
       </div>
       <div>
         <label class="flabel">Fecha y hora</label>
         <input id="em-fecha" type="datetime-local" class="inp">
       </div>
-    </div>
-
-    <!-- Fila 2b: Lugar -->
-    <div style="margin-bottom:14px;">
-      <label class="flabel">Lugar</label>
-      <input id="em-lugar" type="text" class="inp" placeholder="Salón Social, Auditorio…">
     </div>
 
     <!-- Fila 3: Descripción -->
@@ -1181,17 +1122,10 @@ select.inp option { background:#1e1b4b; color:#fff; }
         <label class="flabel">Quórum mínimo</label>
         <input id="em-quorum" type="text" class="inp" placeholder="0.51">
       </div>
-    </div>
-
-    <!-- Zoom wrap — visible solo si Virtual o Mixto -->
-    <div id="em-zoom-wrap" style="display:none;margin-bottom:14px;">
-      <label class="flabel">
-        Link de Zoom
-        <span style="color:rgba(56,189,248,.6);font-size:10px;text-transform:none;font-weight:400;margin-left:6px;">Pega el enlace completo — se extrae el ID automáticamente</span>
-      </label>
-      <input id="em-link-zoom" type="text" class="inp" placeholder="https://zoom.us/j/12345678?pwd=abc..."
-        oninput="parsearZoomLink(this.value)" autocomplete="off">
-      <div id="em-zoom-preview" style="display:none;margin-top:8px;padding:10px 13px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2);border-radius:10px;font-size:12px;color:#7dd3fc;"></div>
+      <div>
+        <label class="flabel">URL reunión virtual <span style="color:rgba(56,189,248,.6);font-size:10px;text-transform:none;">● activa botón Zoom</span></label>
+        <input id="em-link-zoom" type="url" class="inp" placeholder="https://zoom.us/j/...">
+      </div>
     </div>
 
     <!-- Toggles de configuración -->
@@ -1522,12 +1456,11 @@ let adminSecretarioDefault = null; // {nombre, guardado} — default secretario
 
   if (miPerfil) {
     perfilActual = miPerfil;
-    // Saludo personalizado en inicio
     const nombre = miPerfil.primer_nombre || "";
     const hora = new Date().getHours();
     const saludo = hora < 12 ? "Buenos días" : hora < 19 ? "Buenas tardes" : "Buenas noches";
-    const el = document.getElementById("dash-saludo");
-    if (el) el.textContent = nombre ? `${saludo}, ${nombre}.` : "Panel de administración";
+    const elS = document.getElementById("dash-saludo");
+    if (elS) elS.textContent = nombre ? `${saludo}, ${nombre}.` : "Panel de administración";
     const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
     const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
     const hoy = new Date();
@@ -1573,77 +1506,6 @@ function ir(id) {
 }
 
 // ─── STATS ────────────────────────────────────────────────────────────────────
-function renderDashboard() {
-  if (!ev.todos) return;
-
-  // Evento en curso
-  const activo = ev.todos.find(e => e.estado === "En curso");
-  const wrapActivo = document.getElementById("dash-evento-activo-wrap");
-  if (wrapActivo) {
-    if (activo) {
-      wrapActivo.style.display = "block";
-      document.getElementById("dash-activo-nombre").textContent = activo.nombre || "—";
-      document.getElementById("dash-activo-org").textContent = activo.organizacion || activo.tipo || "—";
-    } else {
-      wrapActivo.style.display = "none";
-    }
-  }
-
-  // Resumen por estado
-  const estados = { "En curso": 0, "Creado": 0, "Cerrado": 0 };
-  ev.todos.forEach(e => {
-    const est = e.estado || "Creado";
-    if (estados[est] !== undefined) estados[est]++;
-    else estados["Cerrado"]++;
-  });
-  const colores = { "En curso": { c:"#4ade80", bg:"rgba(34,197,94,.12)", b:"rgba(34,197,94,.25)" },
-                    "Creado":   { c:"#93c5fd", bg:"rgba(59,130,246,.1)", b:"rgba(59,130,246,.22)" },
-                    "Cerrado":  { c:"rgba(255,255,255,.35)", bg:"rgba(255,255,255,.04)", b:"rgba(255,255,255,.1)" } };
-  const wrap = document.getElementById("dash-estado-wrap");
-  if (wrap) {
-    wrap.innerHTML = Object.entries(estados).map(([est, n]) => {
-      const col = colores[est] || colores["Cerrado"];
-      const pct = ev.todos.length ? Math.round(n / ev.todos.length * 100) : 0;
-      return `<div style="display:flex;flex-direction:column;gap:5px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:12px;font-weight:600;color:${col.c};">${est}</span>
-          <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,.6);">${n}</span>
-        </div>
-        <div style="height:4px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;">
-          <div style="height:100%;width:${pct}%;background:${col.c};border-radius:4px;transition:width .4s ease;"></div>
-        </div>
-      </div>`;
-    }).join("");
-  }
-
-  // Eventos recientes — últimos 5
-  const recientes = [...ev.todos]
-    .sort((a,b) => new Date(b.fecha||0) - new Date(a.fecha||0))
-    .slice(0,5);
-  const listEl = document.getElementById("dash-eventos-list");
-  if (listEl) {
-    if (!recientes.length) {
-      listEl.innerHTML = `<p style="font-size:13px;color:rgba(255,255,255,.2);text-align:center;padding:20px 0;">Sin eventos registrados</p>`;
-    } else {
-      const EV_C = { "En curso": { c:"#4ade80", bg:"rgba(34,197,94,.12)", b:"rgba(34,197,94,.25)" },
-                     "Creado":   { c:"#93c5fd", bg:"rgba(59,130,246,.1)",  b:"rgba(59,130,246,.2)" },
-                     "Cerrado":  { c:"rgba(255,255,255,.3)", bg:"rgba(255,255,255,.05)", b:"rgba(255,255,255,.1)" } };
-      listEl.innerHTML = recientes.map(r => {
-        const est = r.estado || "Creado";
-        const col = EV_C[est] || EV_C["Cerrado"];
-        const fecha = r.fecha ? new Date(r.fecha).toLocaleDateString("es-CO",{day:"2-digit",month:"short",year:"numeric"}) : "—";
-        return `<div onclick="ir('eventos')" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;" onmouseover="this.style.background='rgba(255,255,255,.02)'" onmouseout="this.style.background='none'">
-          <div style="flex:1;min-width:0;">
-            <p style="font-size:13px;font-weight:600;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.nombre||"—"}</p>
-            <p style="font-size:11px;color:rgba(255,255,255,.3);margin-top:2px;">${fecha} · ${r.tipo||"—"}</p>
-          </div>
-          <span style="padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;background:${col.bg};color:${col.c};border:1px solid ${col.b};white-space:nowrap;">${est}</span>
-        </div>`;
-      }).join("");
-    }
-  }
-}
-
 async function cargarStats() {
   const { count:cu } = await sb.from("usuarios").select("*",{count:"exact",head:true});
   const el = document.getElementById("cnt-usuarios");
@@ -1976,34 +1838,9 @@ const EV_ESTADOS = {
 };
 
 function toggleZoomField(){
-  const modalidad = document.getElementById("em-modalidad").value;
-  const mostrar = modalidad === "Virtual" || modalidad === "Mixto";
-  document.getElementById("em-zoom-wrap").style.display = mostrar ? "block" : "none";
-  if (!mostrar) {
-    document.getElementById("em-link-zoom").value = "";
-    document.getElementById("em-zoom-preview").style.display = "none";
-  }
-}
-
-function parsearZoomLink(val) {
-  const preview = document.getElementById("em-zoom-preview");
-  if (!val.trim()) { preview.style.display = "none"; return; }
-  // Extraer meeting ID
-  const idMatch = val.match(/zoom\.us\/(?:j|my)\/([0-9]{8,11})/i) ||
-                  val.match(/\/([0-9]{8,11})(?:\?|$)/);
-  // Extraer password
-  const pwdMatch = val.match(/[?&]pwd=([^&\s]+)/i);
-  if (idMatch) {
-    const mid = idMatch[1];
-    const pwd = pwdMatch ? pwdMatch[1] : null;
-    preview.style.display = "block";
-    preview.innerHTML = `<strong>✓ Zoom detectado</strong> &nbsp;&middot;&nbsp; ID: <code style="background:rgba(255,255,255,.1);padding:1px 6px;border-radius:4px;">${mid}</code>${pwd ? ` &nbsp;&middot;&nbsp; Contraseña: <code style="background:rgba(255,255,255,.1);padding:1px 6px;border-radius:4px;">${pwd}</code>` : " &nbsp;&middot;&nbsp; Sin contraseña"}`;
-  } else if (val.length > 10) {
-    preview.style.display = "block";
-    preview.innerHTML = `<span style="color:#fca5a5;">⚠ No se detectó un enlace Zoom válido. Verifica el formato.</span>`;
-  } else {
-    preview.style.display = "none";
-  }
+  const lugar = document.getElementById("em-lugar").value.toLowerCase();
+  const esVirtual = ["virtual","zoom","meet","teams","online"].some(k => lugar.includes(k));
+  document.getElementById("em-zoom-wrap").style.display = esVirtual ? "block" : "none";
 }
 
 async function llenarOrgSelectEventos() {
@@ -2049,9 +1886,9 @@ async function cargarEventos() {
   setEvLoading(false);
   if (error) { toast("Error: "+error.message,"err"); return; }
   ev.todos = data || [];
+  window._evData = Object.fromEntries((data||[]).map(e=>[e.id,e]));
   document.getElementById("ev-total").textContent = ev.todos.length;
   document.getElementById("cnt-eventos").textContent = ev.todos.length;
-  renderDashboard();
   ev.filtrados = [...ev.todos];
   ev.pag = 1;
   renderEventos();
@@ -2082,20 +1919,14 @@ function renderEventos() {
   slice.forEach((r, i) => {
     const est = EV_ESTADOS[r.estado] || EV_ESTADOS["Cerrado"];
     const badgeEst = `<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${est.bg};color:${est.color};border:1px solid ${est.border};">${r.estado??"—"}</span>`;
-    const tieneZoom = r.zoom_meeting_id && r.zoom_meeting_id.trim();
-    const modalidadBadge = r.tipo_evento
-      ? { "Virtual":    { dot: "#38bdf8", color: "#7dd3fc", bg: "rgba(56,189,248,.08)",  border: "rgba(56,189,248,.2)"  },
-          "Mixto":      { dot: "#a78bfa", color: "#c4b5fd", bg: "rgba(167,139,250,.1)", border: "rgba(167,139,250,.25)" },
-          "Presencial": { dot: "#4ade80", color: "#86efac", bg: "rgba(74,222,128,.08)", border: "rgba(74,222,128,.2)"  }
-        }[r.tipo_evento] || null
-      : null;
+    const tieneZoom = r.zoom_link && r.zoom_link.trim();
     const fecha = r.fecha ? new Date(r.fecha).toLocaleDateString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}) : "—";
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td style="color:rgba(255,255,255,.3);font-size:11px;">${ini+i+1}</td>
       <td style="font-weight:600;max-width:200px;">${r.nombre??"—"}</td>
-      <td style="font-size:12px;"><span class="badge b-rol">${r.tipo??"—"}</span>${modalidadBadge ? `<span style="margin-left:5px;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:600;background:${modalidadBadge.bg};color:${modalidadBadge.color};border:1px solid ${modalidadBadge.border};display:inline-flex;align-items:center;gap:4px;"><span style="width:5px;height:5px;border-radius:50%;background:${modalidadBadge.dot};flex-shrink:0;"></span>${r.tipo_evento}</span>` : ""}</td>
+      <td style="font-size:12px;"><span class="badge b-rol">${r.tipo??"—"}</span></td>
       <td>${badgeEst}</td>
       <td style="font-size:12px;">${r.lugar??"—"}</td>
       <td style="font-size:11px;white-space:nowrap;">${fecha}</td>
@@ -2114,13 +1945,13 @@ function renderEventos() {
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
           </button>
           <!-- Zoom (solo si hay link) -->
-          ${tieneZoom ? `<button style="width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:#38bdf8;border:1px solid rgba(56,189,248,.2);background:none;cursor:pointer;transition:.15s;" onmouseover="this.style.background='rgba(56,189,248,.15)'" onmouseout="this.style.background='none'" onclick="window.open('https://zoom.us/j/${r.zoom_meeting_id}' + (r.zoom_password?'?pwd='+r.zoom_password:''),'_blank')" title="Unirse a la videollamada">
+          ${tieneZoom ? `<button style="width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:#38bdf8;border:1px solid rgba(56,189,248,.2);background:none;cursor:pointer;transition:.15s;" onmouseover="this.style.background='rgba(56,189,248,.15)'" onmouseout="this.style.background='none'" onclick="window.open('${r.zoom_link}','_blank')" title="Unirse a la videollamada">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
           </button>` : `<button style="width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.06);background:none;cursor:default;" disabled title="Sin link de videollamada">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
           </button>`}
           <!-- Link portal participantes -->
-          <button onclick="mostrarLinkPortal('${r.id}','${r.id_organizacion}','${(r.nombre??'').replace(/'/g,\'\').replace(/"/g,\'\')}')" style="width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:rgba(167,139,250,.8);border:1px solid rgba(167,139,250,.22);background:none;cursor:pointer;transition:.15s;" onmouseover="this.style.background='rgba(167,139,250,.12)'" onmouseout="this.style.background='none'" title="Link de acceso para participantes">
+          <button onclick="mostrarLinkPortal('${r.id}','${r.id_organizacion}')" style="width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:rgba(167,139,250,.8);border:1px solid rgba(167,139,250,.22);background:none;cursor:pointer;transition:.15s;" onmouseover="this.style.background='rgba(167,139,250,.12)'" onmouseout="this.style.background='none'" title="Link de acceso para participantes">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
           </button>
 
@@ -2196,21 +2027,13 @@ function abrirEvEditar(id){
   document.getElementById("em-btn-txt").textContent="Guardar cambios";
   document.getElementById("em-nombre").value        = r.nombre??"";
   document.getElementById("em-tipo").value          = r.tipo??"";
-  document.getElementById("em-modalidad").value     = r.tipo_evento??"";
   document.getElementById("em-estado").value        = r.estado??"Creado";
   document.getElementById("em-lugar").value         = r.lugar??"";
   document.getElementById("em-fecha").value         = r.fecha ? r.fecha.slice(0,16) : "";
   document.getElementById("em-quorum").value        = r.quorum_minimo??"";
   document.getElementById("em-soporte").value       = r.numero_soporte??"";
-  // Reconstruir link desde meeting_id y password guardados
-  const _mid = r.zoom_meeting_id || "";
-  const _pwd = r.zoom_password   || "";
-  document.getElementById("em-link-zoom").value = _mid
-    ? ("https://zoom.us/j/" + _mid + (_pwd ? "?pwd=" + _pwd : ""))
-    : "";
+  document.getElementById("em-link-zoom").value     = r.zoom_link??"";
   document.getElementById("em-notas").value         = r.notas??"";
-  // Mostrar/ocultar campo Zoom y preview segun modalidad
-  setTimeout(() => { toggleZoomField(); parsearZoomLink(r.zoom_link||""); }, 0);
   document.getElementById("em-ocultar").checked     = !!r.ocultar_graficos;
   document.getElementById("em-mora").checked        = !!r.permitir_voto_mora;
   document.getElementById("em-reg-iniciado").checked= !!r.permitir_registro_iniciado;
@@ -2273,9 +2096,6 @@ function evBorrarBorrador(){
 function limpiarEvForm(){
   ["em-nombre","em-lugar","em-quorum","em-soporte","em-link-zoom","em-notas"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("em-tipo").value="";
-  document.getElementById("em-modalidad").value="";
-  document.getElementById("em-zoom-wrap").style.display="none";
-  document.getElementById("em-zoom-preview").style.display="none";
   document.getElementById("em-estado").value="Creado";
   document.getElementById("em-fecha").value="";
   ["em-ocultar","em-mora","em-reg-iniciado","em-cambiar","em-restringir"].forEach(id=>document.getElementById(id).checked=false);
@@ -2289,7 +2109,6 @@ async function guardarEvento(e){
     id_organizacion:             String(ev.orgId),
     nombre:                      document.getElementById("em-nombre").value.trim()||null,
     tipo:                        document.getElementById("em-tipo").value||null,
-    tipo_evento:                 document.getElementById("em-modalidad").value||null,
     estado:                      document.getElementById("em-estado").value||"Creado",
     lugar:                       document.getElementById("em-lugar").value.trim()||null,
     fecha:                       document.getElementById("em-fecha").value||null,
@@ -2302,17 +2121,8 @@ async function guardarEvento(e){
     permitir_cambiar_respuestas: document.getElementById("em-cambiar").checked,
     restringir_acceso:           document.getElementById("em-restringir").checked,
   };
-  // Extraer zoom_meeting_id y zoom_password del link
-  if (zoomVal) {
-    const idMatch = zoomVal.match(/zoom\.us\/(?:j|my)\/([0-9]{8,11})/i) ||
-                    zoomVal.match(/\/([0-9]{8,11})(?:\?|$)/);
-    const pwdMatch = zoomVal.match(/[?&]pwd=([^&\s]+)/i);
-    payload.zoom_meeting_id = idMatch ? idMatch[1] : null;
-    payload.zoom_password   = pwdMatch ? pwdMatch[1] : null;
-  } else {
-    payload.zoom_meeting_id = null;
-    payload.zoom_password   = null;
-  }
+  // Solo incluir zoom_link si la columna existe (se agrega cuando el admin ponga el ALTER TABLE)
+  if (zoomVal) payload.zoom_link = zoomVal;
   evBorrarBorrador();
   const{error}=ev.editId
     ?await sb.from("eventos").update(payload).eq("id",ev.editId)
@@ -4260,48 +4070,6 @@ async function exportarInformePanel(evId, orgId) {
     toast("Error: "+e.message,"err");
   }
 }
-
-function mostrarLinkPortal(evId, orgId, nombre) {
-  const base = window.location.href.split("?")[0].replace(/[^/]*$/, "");
-  const url = base + "Login_Participante.html?ev=" + evId + "&org=" + orgId;
-  document.getElementById("mlp-nombre").textContent = nombre || "Evento";
-  document.getElementById("mlp-url").textContent = url;
-  document.getElementById("mlp-txt-copy").textContent = "Copiar link";
-  document.getElementById("mlp-ico-copy").setAttribute("d","");
-  const modal = document.getElementById("modal-link-portal");
-  modal.style.display = "flex";
-}
-
-function cerrarLinkPortal() {
-  document.getElementById("modal-link-portal").style.display = "none";
-}
-
-async function copiarLinkPortal() {
-  const url = document.getElementById("mlp-url").textContent;
-  try {
-    await navigator.clipboard.writeText(url);
-    const txt = document.getElementById("mlp-txt-copy");
-    const ico = document.getElementById("mlp-ico-copy");
-    txt.textContent = "¡Copiado!";
-    ico.outerHTML = '<svg id="mlp-ico-copy" width="13" height="13" fill="none" stroke="#4ade80" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
-    document.getElementById("mlp-btn-copy").style.borderColor = "rgba(74,222,128,.4)";
-    document.getElementById("mlp-btn-copy").style.color = "#4ade80";
-    setTimeout(() => {
-      txt.textContent = "Copiar link";
-      document.getElementById("mlp-btn-copy").style.borderColor = "rgba(167,139,250,.3)";
-      document.getElementById("mlp-btn-copy").style.color = "#c4b5fd";
-    }, 2000);
-  } catch { toast("No se pudo copiar", "warn"); }
-}
-
-function abrirLinkPortal() {
-  const url = document.getElementById("mlp-url").textContent;
-  window.open(url, "_blank");
-}
-
-document.getElementById("modal-link-portal").addEventListener("click", function(e) {
-  if (e.target === this) cerrarLinkPortal();
-});
 
 async function logout(){await sb.auth.signOut();window.location.href="index.html";}
 
