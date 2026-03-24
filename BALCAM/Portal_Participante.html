@@ -2,9 +2,11 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<!-- Zoom: se usa Web Client vía iframe, no requiere SDK -->
 <title>BALCAM — Portal de Votación</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -30,55 +32,256 @@ body{
 /* ── NAV ── */
 .nav{
   position:sticky;top:0;z-index:100;
-  background:rgba(15,10,30,.85);backdrop-filter:blur(20px);
+  background:rgba(15,10,30,.9);backdrop-filter:blur(20px);
   border-bottom:1px solid var(--border);
   padding:0 20px;height:56px;
-  display:flex;align-items:center;justify-content:space-between;
+  display:flex;align-items:center;gap:12px;
 }
-.nav-brand{font-size:16px;font-weight:900;letter-spacing:-.5px;color:#fff;}
+.nav-brand{font-size:15px;font-weight:900;letter-spacing:-.5px;color:#fff;flex-shrink:0;}
 .nav-brand span{color:var(--pink);}
-.nav-user{text-align:right;}
-.nav-nombre{font-size:13px;font-weight:700;color:#fff;}
-.nav-unidad{font-size:11px;color:var(--muted);}
+.nav-divider{width:1px;height:20px;background:rgba(255,255,255,.1);flex-shrink:0;}
+.nav-org-block{display:flex;flex-direction:column;gap:1px;min-width:0;overflow:hidden;}
+.nav-org{font-size:13px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.2px;}
+.nav-tipo{font-size:10px;font-weight:600;color:var(--pink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.06em;}
 .nav-ev{
-  background:rgba(124,58,237,.15);border:1px solid var(--border);
+  background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.25);
   border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;
   color:#c4b5fd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  max-width:200px;
+  max-width:200px;flex-shrink:0;
+}
+.nav-user{text-align:right;flex-shrink:0;}
+.nav-nombre{font-size:12px;font-weight:700;color:#fff;}
+.nav-unidad{font-size:10px;color:var(--muted);}
+.nav-spacer{flex:1;}
+.nav-logout{
+  flex-shrink:0;
+  display:flex;align-items:center;gap:6px;
+  background:transparent;
+  border:1px solid rgba(255,255,255,.1);
+  color:rgba(255,255,255,.45);
+  padding:6px 10px;border-radius:8px;
+  font-size:11px;font-weight:700;cursor:pointer;
+  transition:all .2s;
+  font-family:'Outfit',sans-serif;
+  letter-spacing:.02em;
+}
+.nav-logout:hover{
+  background:rgba(239,68,68,.12);
+  border-color:rgba(239,68,68,.35);
+  color:#f87171;
+}
+.nav-logout-text{ display:none; }
+@media(min-width:640px){ .nav-logout-text{ display:inline; } }
+
+/* Indicador de conexión */
+#conn-dot{
+  width:7px;height:7px;border-radius:50%;background:#4ade80;flex-shrink:0;
+  transition:background .4s;box-shadow:0 0 5px #4ade8088;
+}
+#conn-dot.warn { background:#fbbf24;box-shadow:0 0 5px #fbbf2488; }
+#conn-dot.error{ background:#f87171;box-shadow:0 0 5px #f8717188;animation:pulse-dot 1s ease infinite; }
+/* Banner de error de red */
+#net-banner{
+  position:fixed;top:60px;left:50%;transform:translateX(-50%);
+  background:#1e1035;border:1px solid rgba(248,113,113,.4);
+  border-radius:14px;padding:12px 18px;
+  display:flex;align-items:center;gap:12px;
+  font-size:13px;color:#fca5a5;font-weight:600;
+  z-index:999;box-shadow:0 8px 32px rgba(0,0,0,.5);
+  animation:slide-in .3s ease;max-width:calc(100vw - 32px);
+}
+#net-banner button{
+  background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.3);
+  color:#fca5a5;border-radius:8px;padding:5px 12px;
+  font-size:12px;font-weight:700;cursor:pointer;
+  font-family:'Outfit',sans-serif;white-space:nowrap;
 }
 
-/* ── MAIN ── */
-.main{max-width:540px;margin:0 auto;padding:20px 16px 40px;}
+/* ── LAYOUT ── */
+.layout{display:flex;min-height:calc(100vh - 56px);}
+
+/* MOBILE: columna única centrada */
+.main{
+  width:100%;max-width:540px;
+  margin:0 auto;padding:20px 16px 40px;
+}
+.sidebar{display:none;}
+
+/* DESKTOP (≥900px): sidebar fijo izquierda + contenido derecha */
+@media(min-width:900px){
+  .layout{
+    max-width:1200px;margin:0 auto;
+    display:grid;
+    grid-template-columns:300px 1fr;
+    gap:28px;
+    padding:28px 32px 48px;
+    align-items:start;
+  }
+  .main{
+    max-width:100%;margin:0;padding:0;
+    grid-column:2;
+    /* Preguntas se muestran en grid de 1 col, más anchas */
+  }
+  .sidebar{
+    display:flex;flex-direction:column;gap:14px;
+    position:sticky;top:76px;
+    grid-column:1;
+  }
+  /* En desktop las pregunta-card se ven más amplias */
+  .preg-titulo{font-size:20px;}
+  .btn-votar{font-size:15px;padding:16px;}
+  .opcion{padding:16px 20px;}
+  .op-text{font-size:16px;}
+  /* Stats bar en desktop va al sidebar */
+  .stats-bar{margin-bottom:0;}
+  /* Dos columnas para opciones cuando hay muchas */
+  .opciones.muchas{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+}
+@media(min-width:1200px){
+  .layout{grid-template-columns:320px 1fr;}
+}
 
 /* ── ESPERANDO ── */
 .esperando{
-  text-align:center;padding:60px 20px;
+  text-align:center;padding:56px 24px 64px;
+  animation:slide-in .4s ease;
 }
-.esp-anim{
-  width:90px;height:90px;margin:0 auto 24px;position:relative;
+/* Ícono central */
+.esp-icon-wrap{
+  width:80px;height:80px;margin:0 auto 36px;
+  position:relative;overflow:visible;
+  display:flex;align-items:center;justify-content:center;
 }
-.esp-ring{
-  position:absolute;inset:0;border-radius:50%;
-  border:3px solid transparent;
-  border-top-color:var(--p2);border-right-color:var(--pink);
-  animation:spin-ring 2s linear infinite;
+.esp-icon-bg{
+  position:absolute;inset:0;border-radius:24px;
+  background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(217,70,239,.1));
+  border:1px solid rgba(124,58,237,.2);
 }
-.esp-ring2{
-  position:absolute;inset:8px;border-radius:50%;
-  border:2px solid transparent;
-  border-bottom-color:var(--pink);
-  animation:spin-ring 1.5s linear infinite reverse;
+.esp-icon-svg{
+  position:relative;z-index:1;
+  animation:esp-float 3s ease-in-out infinite;
 }
-.esp-dot{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;}
-@keyframes spin-ring{to{transform:rotate(360deg);}}
-.esp-title{font-size:20px;font-weight:800;margin-bottom:8px;}
-.esp-sub{font-size:14px;color:var(--muted);line-height:1.6;}
+@keyframes esp-float{
+  0%,100%{ transform:translateY(0); }
+  50%    { transform:translateY(-5px); }
+}
+/* Anillo de pulso (solo opacity+scale — GPU) */
+.esp-pulse-ring{
+  position:absolute;inset:-12px;border-radius:36px;
+  border:1.5px solid rgba(124,58,237,.4);
+  animation:esp-pulse 2s ease-out infinite;
+  pointer-events:none;
+}
+.esp-pulse-ring2{
+  position:absolute;inset:-24px;border-radius:44px;
+  border:1px solid rgba(217,70,239,.2);
+  animation:esp-pulse 2s ease-out .7s infinite;
+  pointer-events:none;
+}
+@keyframes esp-pulse{
+  0%  { opacity:1; transform:scale(1); }
+  100%{ opacity:0; transform:scale(1.3); }
+}
+@keyframes esp-float{
+  0%,100%{ transform:translateY(0); }
+  50%    { transform:translateY(-7px); }
+}
+/* Textos */
+.esp-title{
+  font-size:19px;font-weight:800;color:#fff;
+  letter-spacing:-.3px;margin-bottom:8px;
+}
+.esp-sub{
+  font-size:13px;color:var(--muted);line-height:1.7;
+  max-width:260px;margin:0 auto;
+}
+/* Indicador "conectado" — 3 puntos */
+.esp-dots{
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  margin:24px auto 0;
+}
+.esp-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:rgba(124,58,237,.5);
+  animation:esp-dot-pulse 1.4s ease-in-out infinite;
+}
+.esp-dot:nth-child(2){ animation-delay:.2s; }
+.esp-dot:nth-child(3){ animation-delay:.4s; }
+@keyframes esp-dot-pulse{
+  0%,100%{ opacity:.3; transform:scale(.8); }
+  50%    { opacity:1;  transform:scale(1); background:rgba(217,70,239,.8); }
+}
+/* Chip conexión */
+.esp-live{
+  display:inline-flex;align-items:center;gap:6px;
+  margin-top:20px;padding:5px 12px;border-radius:20px;
+  background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.2);
+  font-size:11px;font-weight:700;color:rgba(196,181,253,.7);
+  letter-spacing:.04em;
+}
+.esp-live-dot{
+  width:6px;height:6px;border-radius:50%;background:#a78bfa;
+  animation:esp-dot-pulse 1.8s ease-in-out infinite;
+}
+/* Estado finalizado — sin animaciones */
+.esp-static .esp-icon-svg{ animation:none; }
+.esp-static .esp-pulse-ring,
+.esp-static .esp-pulse-ring2{ display:none; }
+.esp-static .esp-dots{ display:none; }
+/* Chip de evento */
 .esp-ev{
-  margin-top:20px;background:rgba(124,58,237,.12);border:1px solid var(--border);
-  border-radius:14px;padding:14px 16px;
+  display:inline-block;margin-top:20px;
+  background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.2);
+  border-radius:12px;padding:10px 16px;
+  font-size:12px;font-weight:700;color:rgba(196,181,253,.8);
 }
-.esp-ev-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:4px;}
-.esp-ev-nombre{font-size:15px;font-weight:800;color:#fff;}
+.esp-ev-label{
+  font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.1em;color:var(--muted);margin-bottom:3px;
+}
+.esp-ev-nombre{ font-size:14px;font-weight:800;color:#fff; }
+
+/* ── PREGUNTA CERRADA (historial compacto) ── */
+.preg-cerrada-wrap {
+  margin-bottom:6px;border-radius:12px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+}
+.preg-cerrada-inner {
+  display:flex;align-items:center;gap:12px;padding:11px 14px;
+}
+.preg-cerrada-icon {
+  flex-shrink:0;width:28px;height:28px;border-radius:8px;
+  background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.2);
+  display:flex;align-items:center;justify-content:center;
+}
+.preg-cerrada-info {
+  flex:1;min-width:0;
+}
+.preg-cerrada-label {
+  font-size:10px;font-weight:700;color:rgba(248,113,113,.65);
+  text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;
+}
+.preg-cerrada-titulo {
+  font-size:13px;font-weight:700;color:rgba(255,255,255,.65);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.preg-cerrada-voto {
+  flex-shrink:0;display:flex;align-items:center;gap:5px;
+  padding:5px 11px;border-radius:20px;
+  background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);
+  font-size:12px;font-weight:700;color:#4ade80;
+  max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.preg-cerrada-novoto {
+  flex-shrink:0;padding:5px 10px;border-radius:20px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  font-size:11px;color:var(--muted);
+}
 
 /* ── PREGUNTA ── */
 .pregunta-card{
@@ -89,6 +292,45 @@ body{
   animation:slide-in .4s ease;
 }
 @keyframes slide-in{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.5;transform:scale(.7);}}
+@keyframes preg-cerrar-flash{
+  0%  { box-shadow: 0 8px 32px rgba(0,0,0,.4); border-color: var(--border); }
+  40% { box-shadow: 0 0 0 3px rgba(220,38,38,.35), 0 8px 32px rgba(220,38,38,.2); border-color: rgba(220,38,38,.5); }
+  100%{ box-shadow: 0 8px 32px rgba(0,0,0,.4); border-color: var(--border); }
+}
+@keyframes preg-colapsar{
+  from { opacity:1; max-height:var(--preg-h,600px); }
+  to   { opacity:0; max-height:0; }
+}
+@keyframes preg-cerrada-in{
+  from { opacity:0; transform:translateY(-8px) scale(.98); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes voto-flash-verde{
+  0%  { box-shadow:0 8px 32px rgba(0,0,0,.4); border-color:var(--border); background:var(--card); }
+  35% { box-shadow:0 0 0 4px rgba(74,222,128,.3), 0 8px 40px rgba(74,222,128,.25); border-color:rgba(74,222,128,.6); background:rgba(74,222,128,.07); }
+  100%{ box-shadow:0 8px 32px rgba(0,0,0,.4); border-color:var(--border); background:var(--card); }
+}
+@keyframes voto-flash-amber{
+  0%  { box-shadow:0 8px 32px rgba(0,0,0,.4); border-color:var(--border); background:var(--card); }
+  35% { box-shadow:0 0 0 4px rgba(245,158,11,.3), 0 8px 40px rgba(245,158,11,.2); border-color:rgba(245,158,11,.6); background:rgba(245,158,11,.07); }
+  100%{ box-shadow:0 8px 32px rgba(0,0,0,.4); border-color:var(--border); background:var(--card); }
+}
+@keyframes badge-in{
+  from { opacity:0; transform:translateY(-6px) scale(.95); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes check-draw{
+  from { stroke-dashoffset:30; opacity:0; }
+  to   { stroke-dashoffset:0;  opacity:1; }
+}
+@keyframes shake-no{
+  0%,100%{transform:translateX(0);}
+  20%{transform:translateX(-6px);}
+  40%{transform:translateX(5px);}
+  60%{transform:translateX(-4px);}
+  80%{transform:translateX(3px);}
+}
 .preg-head{
   background:linear-gradient(135deg,var(--p),var(--pink));
   padding:20px 22px;
@@ -100,6 +342,21 @@ body{
 
 /* Opciones */
 .opciones{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
+/* Opciones múltiples (checkbox) */
+.opcion.multi .op-radio{
+  border-radius:5px;
+}
+.opcion.multi .op-check{
+  border-radius:2px;
+  width:8px;height:8px;
+}
+.opcion.multi.selected .op-radio{
+  border-color:var(--p2);background:var(--p2);
+}
+.multi-hint{
+  font-size:11px;color:rgba(196,181,253,.6);
+  margin-bottom:12px;display:flex;align-items:center;gap:5px;
+}
 .opcion{
   display:flex;align-items:center;gap:14px;
   padding:14px 16px;border-radius:14px;cursor:pointer;
@@ -164,10 +421,18 @@ body{
 
 /* ── VOTADO ── */
 .votado-badge{
-  background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);
+  background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.25);
   border-radius:14px;padding:12px 16px;
   display:flex;align-items:center;gap:10px;
-  font-size:13px;font-weight:700;color:#6ee7b7;margin-bottom:16px;
+  font-size:13px;font-weight:700;color:#4ade80;margin-bottom:16px;
+  animation:badge-in .45s cubic-bezier(.34,1.56,.64,1) forwards;
+}
+.votado-badge.cambio{
+  background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.25);color:#fcd34d;
+}
+.votado-badge .check-svg polyline{
+  stroke-dasharray:30;stroke-dashoffset:30;
+  animation:check-draw .4s .1s ease forwards;
 }
 
 /* ── ESTADO DEL EVENTO ── */
@@ -197,202 +462,691 @@ body{
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);padding:12px 20px;border-radius:12px;font-size:13px;font-weight:700;color:#fff;opacity:0;pointer-events:none;transition:all .3s;z-index:999;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.3);}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
-/* ── ZOOM CARD ── */
-.zoom-card{
-  background:linear-gradient(135deg,rgba(79,5,153,.25),rgba(217,70,239,.15));
-  border:1px solid rgba(124,58,237,.4);
-  border-radius:18px;padding:18px 20px;margin-bottom:16px;
-  display:flex;align-items:center;gap:14px;
+/* ── RESULTADO CARD — nuevo sistema ── */
+.resultado-card{
+  background:var(--card2);border-radius:18px;border:1px solid var(--border);
+  padding:16px;margin-top:14px;
+  animation:slide-in .3s ease;
 }
-.zoom-icon{
-  width:48px;height:48px;border-radius:14px;flex-shrink:0;
-  background:linear-gradient(135deg,#2D8CFF,#1a5cbf);
-  display:flex;align-items:center;justify-content:center;font-size:22px;
+.res-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;}
+.res-title{font-size:12px;font-weight:700;color:var(--muted);}
+.res-tipo-btns{display:flex;gap:4px;}
+.res-tipo-btn{
+  padding:5px 10px;border-radius:8px;border:1.5px solid rgba(255,255,255,.1);
+  background:transparent;color:var(--muted);font-size:13px;cursor:pointer;
+  transition:all .2s;
 }
-.zoom-info{flex:1;min-width:0;}
-.zoom-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:3px;}
-.zoom-nombre{font-size:14px;font-weight:800;color:#fff;}
-.btn-zoom{
-  background:linear-gradient(135deg,#2D8CFF,#1a5cbf);
-  border:none;color:#fff;font-family:inherit;
-  font-size:13px;font-weight:800;
-  padding:10px 18px;border-radius:12px;cursor:pointer;
-  white-space:nowrap;transition:all .2s;flex-shrink:0;
+.res-tipo-btn.on{
+  border-color:rgba(168,85,247,.6);background:rgba(168,85,247,.2);color:#c4b5fd;
 }
-.btn-zoom:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(45,140,255,.4);}
+.res-leyenda{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;}
+.res-ley-item{
+  display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
+  font-size:11px;font-weight:600;color:var(--muted);
+}
+.res-ley-item.mio{background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.25);color:#4ade80;}
+.res-ley-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+/* Canvas wrapper — altura adaptiva por breakpoint */
+.res-canvas-wrap{
+  position:relative;
+  height: 150px; /* mobile <480px */
+  margin-bottom:12px;
+}
+@media(min-width:480px){ .res-canvas-wrap{ height:190px; } }
+@media(min-width:700px){ .res-canvas-wrap{ height:230px; } }
+@media(min-width:900px){ .res-canvas-wrap{ height:220px; } }
+/* Barras CSS */
+.res-barras-css{display:flex;flex-direction:column;gap:8px;}
+.res-fila{display:flex;align-items:center;gap:8px;}
+.res-fila-label{
+  font-size:11px;font-weight:600;color:var(--muted);
+  width:60px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+@media(min-width:480px){ .res-fila-label{ width:90px; } }
+.res-fila-label.mio{color:#4ade80;}
+.res-fila-track{
+  flex:1;height:7px;background:rgba(255,255,255,.07);border-radius:20px;overflow:hidden;
+}
+.res-fila-fill{height:100%;border-radius:20px;transition:width .6s ease;min-width:3px;}
+.res-fila-nums{display:flex;flex-direction:column;align-items:flex-end;min-width:52px;}
+.res-fila-pct{font-size:11px;font-weight:800;color:#c4b5fd;}
+.res-fila-cnt{font-size:10px;color:var(--muted);}
 
-/* ── TUTORIAL OVERLAY ── */
-#zoom-tutorial{
-  position:fixed;inset:0;z-index:2000;
-  background:rgba(10,6,20,.92);backdrop-filter:blur(12px);
-  display:flex;align-items:flex-end;justify-content:center;
-  padding:0 0 env(safe-area-inset-bottom,0);
-  animation:tut-in .35s ease;
+/* Sidebar card base */
+.sidebar > * { animation: slide-in .35s ease; }
+
+/* Desktop nav wider */
+@media(min-width:900px){
+  .nav{ padding:0 32px; }
+  .nav-ev{ max-width:360px; }
 }
-@keyframes tut-in{from{opacity:0;}to{opacity:1;}}
-.tut-sheet{
-  width:100%;max-width:540px;
-  background:var(--card);
-  border-radius:26px 26px 0 0;
-  border-top:1px solid var(--border);
-  padding:24px 22px 32px;
-  max-height:90vh;overflow-y:auto;
-  animation:sheet-up .35s cubic-bezier(.32,1.2,.4,1);
+
+/* ── STATS BAR ── */
+.stats-bar{
+  background:var(--card);border:1px solid var(--border);border-radius:20px;
+  padding:18px 20px;margin-bottom:16px;
+  animation:slide-in .4s ease;
 }
-@keyframes sheet-up{from{transform:translateY(60px);}to{transform:translateY(0);}}
-.tut-handle{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.15);margin:0 auto 20px;}
-.tut-title{font-size:18px;font-weight:900;color:#fff;text-align:center;margin-bottom:4px;}
-.tut-sub{font-size:13px;color:var(--muted);text-align:center;margin-bottom:22px;line-height:1.5;}
-.tut-tabs{display:flex;gap:8px;margin-bottom:20px;}
-.tut-tab{
-  flex:1;padding:9px;border-radius:12px;border:1px solid var(--border);
-  background:transparent;color:var(--muted);font-family:inherit;
-  font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;
+.stats-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:14px;}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.stat-item{}
+.stat-val{font-size:26px;font-weight:900;color:#fff;line-height:1;margin-bottom:3px;}
+.stat-val .stat-of{font-size:14px;font-weight:600;color:var(--muted);}
+.stat-lbl{font-size:11px;color:var(--muted);margin-bottom:7px;}
+.stat-track{height:6px;background:rgba(124,58,237,.15);border-radius:20px;overflow:hidden;margin-bottom:4px;}
+.stat-fill{height:100%;border-radius:20px;transition:width 1s ease;min-width:4px;}
+.stat-pct{font-size:11px;font-weight:700;color:rgba(255,255,255,.5);}
+.quorum-badge{
+  margin-top:12px;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);
+  border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;color:#6ee7b7;
+  text-align:center;
 }
-.tut-tab.active{background:rgba(124,58,237,.2);border-color:var(--p2);color:#c4b5fd;}
-.tut-steps{display:none;}
-.tut-steps.active{display:block;}
-.tut-step{
-  display:flex;align-items:flex-start;gap:14px;
-  padding:14px 0;border-bottom:1px solid rgba(124,58,237,.12);
+/* ── MORA BLOQUEO ── */
+.mora-bloqueo{
+  background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.25);
+  border-radius:22px;padding:40px 24px;text-align:center;margin-top:16px;
 }
-.tut-step:last-child{border-bottom:none;}
-.tut-step-num{
-  width:32px;height:32px;border-radius:10px;flex-shrink:0;
-  background:linear-gradient(135deg,var(--p),var(--p2));
+.mora-titulo{font-size:22px;font-weight:900;color:#fca5a5;margin-bottom:10px;}
+.mora-sub{font-size:14px;color:rgba(255,255,255,.7);line-height:1.6;margin-bottom:14px;}
+.mora-contacto{font-size:12px;color:rgba(255,255,255,.4);border-top:1px solid rgba(255,255,255,.1);padding-top:14px;margin-top:14px;}
+
+/* ══ ZOOM + PREGUNTAS SPLIT LAYOUT ══════════════════════════════════ */
+
+/* Notificación nueva pregunta */
+#notif-nueva-preg {
+  display:none;
+  position:fixed;top:64px;left:50%;transform:translateX(-50%);
+  z-index:9999;
+  background:linear-gradient(135deg,#7c3aed,#d946ef);
+  border-radius:16px;padding:14px 24px;
+  box-shadow:0 8px 40px rgba(124,58,237,.6);
+  animation:notif-in .4s cubic-bezier(.34,1.56,.64,1);
+  cursor:pointer;border:none;font-family:'Outfit',sans-serif;
+  display:none;align-items:center;gap:12px;
+  max-width:90vw;
+}
+@keyframes notif-in{from{opacity:0;transform:translateX(-50%) translateY(-20px) scale(.9);}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1);}}
+#notif-nueva-preg .notif-icon{font-size:22px;animation:bounce-bell .6s ease infinite alternate;}
+@keyframes bounce-bell{from{transform:rotate(-15deg);}to{transform:rotate(15deg);}}
+#notif-nueva-preg .notif-text{color:#fff;font-weight:800;font-size:14px;white-space:nowrap;}
+#notif-nueva-preg .notif-sub{color:rgba(255,255,255,.75);font-size:11px;margin-top:1px;}
+
+/* Barra Zoom */
+#zoom-join-bar {
+  display:none;
+  background:linear-gradient(135deg,rgba(26,106,255,.15),rgba(0,82,204,.1));
+  border-bottom:1px solid rgba(26,106,255,.25);
+  padding:10px 20px;
+  align-items:center;justify-content:space-between;gap:12px;
+  position:sticky;top:56px;z-index:90;
+  backdrop-filter:blur(10px);
+}
+
+/* Contenedor Zoom wrapper */
+#zoom-container-wrapper {
+  position:sticky;top:56px;z-index:88;
+  background:#000;
+  border-bottom:1px solid rgba(26,106,255,.2);
+  transition:height .3s ease;
+}
+#zoom-container-wrapper.minimized { height:0!important; overflow:hidden; }
+
+/* Controles de zoom */
+#zoom-controls {
+  position:absolute;top:8px;right:8px;z-index:100;
+  display:flex;gap:6px;
+}
+.zoom-ctrl-btn {
+  background:rgba(0,0,0,.6);backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.15);color:#fff;
+  width:30px;height:30px;border-radius:8px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  font-size:15px;font-weight:900;color:#fff;
+  font-size:13px;transition:.15s;
 }
-.tut-step-ico{font-size:22px;flex-shrink:0;line-height:32px;}
-.tut-step-info{}
-.tut-step-titulo{font-size:14px;font-weight:800;color:#fff;margin-bottom:3px;}
-.tut-step-desc{font-size:13px;color:var(--muted);line-height:1.5;}
-.tut-step-badge{
-  display:inline-block;margin-top:6px;
-  background:rgba(124,58,237,.15);border:1px solid var(--border);
-  border-radius:8px;padding:3px 10px;
-  font-size:11px;font-weight:700;color:#c4b5fd;
+.zoom-ctrl-btn:hover{background:rgba(255,255,255,.15);}
+
+/* Zoom PiP flotante */
+#zoom-container-wrapper.pip {
+  position:fixed!important;
+  bottom:20px;right:20px;
+  width:300px!important;height:200px!important;
+  border-radius:14px;overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,.7);
+  border:2px solid rgba(26,106,255,.4);
+  z-index:9990;top:auto;
 }
-.btn-confirmar-zoom{
-  width:100%;margin-top:22px;padding:15px;
-  background:linear-gradient(135deg,#2D8CFF,#1a5cbf);
-  border:none;border-radius:16px;
-  font-family:inherit;font-size:15px;font-weight:900;color:#fff;
-  cursor:pointer;transition:all .2s;
+
+/* Resize handle */
+#zoom-resize-handle {
+  width:100%;height:6px;background:rgba(124,58,237,.3);
+  cursor:ns-resize;display:flex;align-items:center;justify-content:center;
+  transition:.15s;
 }
-.btn-confirmar-zoom:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(45,140,255,.4);}
+#zoom-resize-handle:hover{background:rgba(124,58,237,.6);}
+#zoom-resize-handle::after{content:'';width:40px;height:3px;background:rgba(255,255,255,.3);border-radius:3px;}
+
+/* Split layout desktop — Zoom izquierda, preguntas derecha */
+@media(min-width:900px){
+  body.with-zoom-split {
+    overflow:hidden;
+    height:100vh;
+  }
+
+  /* Zoom fijo en columna izquierda */
+  body.with-zoom-split #zoom-container-wrapper {
+    position:fixed!important;
+    left:0;top:56px;
+    width:var(--zoom-col-w, 460px)!important;
+    height:var(--zoom-h, 340px)!important;
+    z-index:80;
+    border-right:1px solid rgba(26,106,255,.2);
+  }
+
+  /* Barra activa (En reunión / Salir) — debajo del zoom */
+  body.with-zoom-split #zoom-active-bar {
+    position:fixed!important;
+    left:0;
+    top:calc(56px + var(--zoom-h, 340px));
+    width:var(--zoom-col-w, 460px)!important;
+    z-index:82;
+    border-right:1px solid rgba(26,106,255,.2);
+  }
+
+  /* Join bar oculta cuando hay zoom activo */
+  body.with-zoom-split #zoom-join-bar {
+    display:none!important;
+  }
+
+  /* Handle de resize horizontal */
+  #zoom-col-handle {
+    display:none;
+    position:fixed;
+    top:56px;bottom:0;
+    width:6px;
+    background:rgba(124,58,237,.2);
+    cursor:col-resize;
+    z-index:200;
+    left:var(--zoom-col-w, 460px);
+    transform:translateX(-3px);
+    transition:background .15s;
+  }
+  #zoom-col-handle:hover, #zoom-col-handle.dragging {
+    background:rgba(124,58,237,.7);
+  }
+  body.with-zoom-split #zoom-col-handle { display:block; }
+  body.with-zoom-split #btn-cerrar-panel {
+    display:flex !important;
+    left:calc(var(--zoom-col-w, 460px) - 1px);
+  }
+
+  /* Panel derecho cerrado — zoom ocupa todo */
+  body.with-zoom-split.panel-cerrado .layout {
+    display:none !important;
+  }
+  body.with-zoom-split.panel-cerrado #zoom-container-wrapper {
+    width:100vw !important;
+  }
+  body.with-zoom-split.panel-cerrado #zoom-col-handle {
+    display:none !important;
+  }
+  body.with-zoom-split.panel-cerrado #btn-cerrar-panel {
+    display:none !important;
+  }
+  body.with-zoom-split.panel-cerrado #btn-abrir-panel {
+    display:flex !important;
+  }
+  body.with-zoom-split.panel-cerrado #zoom-sidebar-stats {
+    display:none !important;
+  }
+
+  /* Layout principal desplazado a la derecha */
+  body.with-zoom-split .layout {
+    margin-left:var(--zoom-col-w, 460px)!important;
+    max-width:calc(100vw - var(--zoom-col-w, 460px))!important;
+    padding:0!important;
+    height:calc(100vh - 56px);
+    overflow-y:auto;
+    display:block!important;
+  }
+  body.with-zoom-split .sidebar {
+    display:none!important;
+  }
+  body.with-zoom-split .main {
+    max-width:100%!important;
+    margin:0!important;
+    padding:20px 24px 40px!important;
+  }
+
+  /* Stats como overlay pequeño DENTRO del zoom (arriba izquierda, no tapa controles) */
+  #zoom-sidebar-stats {
+    display:none;
+    position:fixed;
+    left:8px;
+    top:calc(56px + 8px);
+    background:rgba(15,10,30,.75);
+    backdrop-filter:blur(8px);
+    border:1px solid rgba(124,58,237,.2);
+    border-radius:10px;
+    padding:8px 12px;
+    z-index:85;
+    pointer-events:none;
+  }
+  body.with-zoom-split #zoom-sidebar-stats { display:block; }
+
+  /* PiP */
+  body.with-zoom-split #zoom-container-wrapper.pip {
+    position:fixed!important;
+    bottom:20px!important;right:20px!important;
+    left:auto!important;top:auto!important;
+    width:300px!important;height:200px!important;
+    border-radius:14px;
+    border:2px solid rgba(26,106,255,.4);
+    box-shadow:0 8px 40px rgba(0,0,0,.7);
+  }
+  body.with-zoom-split #zoom-container-wrapper.pip ~ #zoom-col-handle { display:none!important; }
+}
+
+/* Mobile: botón abrir zoom en nueva pestaña */
+.zoom-mobile-btn {
+  width:100%;padding:12px;border-radius:14px;
+  background:linear-gradient(135deg,#1a6aff,#0052cc);
+  color:#fff;border:none;font-size:14px;font-weight:800;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+  margin-bottom:16px;font-family:'Outfit',sans-serif;
+}
+@media(min-width:900px){ .zoom-mobile-btn{display:none!important;} }
+
+/* Compactar preguntas cuando hay zoom */
+.with-zoom-split .pregunta-card { margin-bottom:14px; }
+.with-zoom-split .preg-head { padding:14px 16px; }
+.with-zoom-split .preg-titulo { font-size:15px; }
+.with-zoom-split .preg-body { padding:14px 16px; }
+.with-zoom-split .opcion { padding:10px 12px; }
+.with-zoom-split .op-text { font-size:13px; }
+.with-zoom-split .btn-votar { padding:11px; font-size:13px; }
+
+/* ══ MOBILE ZOOM MODE — panel flotante de preguntas ══════════════════ */
+/* Solo activo en móvil cuando hay zoom activo */
+
+/* Zoom fullscreen en móvil */
+@media(max-width:899px){
+  body.zoom-mobile-mode {
+    overflow: hidden;
+    height: 100vh;
+  }
+  body.zoom-mobile-mode .nav { display: none; }
+  body.zoom-mobile-mode #zoom-join-bar { display: none !important; }
+  body.zoom-mobile-mode .layout { display: none !important; }
+
+  /* Zoom ocupa toda la pantalla */
+  body.zoom-mobile-mode #zoom-mobile-fullscreen {
+    display: block !important;
+  }
+
+  /* Panel flotante de preguntas desde abajo */
+  #mobile-vote-panel {
+    display: block;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 9999;
+    background: rgba(15,10,30,.98);
+    border-top: 2px solid rgba(124,58,237,.4);
+    border-radius: 24px 24px 0 0;
+    padding: 0 0 env(safe-area-inset-bottom, 16px);
+    box-shadow: 0 -8px 40px rgba(0,0,0,.6);
+    transform: translateY(100%);
+    transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+    max-height: 85vh;
+    overflow-y: auto;
+    pointer-events: none;
+  }
+  #mobile-vote-panel.visible {
+    transform: translateY(0);
+    pointer-events: all;
+  }
+  .mvp-handle {
+    width: 36px; height: 4px;
+    background: rgba(255,255,255,.2);
+    border-radius: 2px;
+    margin: 10px auto 0;
+  }
+  .mvp-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 20px 8px;
+    border-bottom: 1px solid rgba(124,58,237,.15);
+  }
+  .mvp-badge {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(124,58,237,.2); border: 1px solid rgba(124,58,237,.4);
+    border-radius: 20px; padding: 4px 12px;
+    font-size: 11px; font-weight: 800; color: #c4b5fd;
+  }
+  .mvp-close {
+    background: rgba(255,255,255,.08); border: none; color: rgba(255,255,255,.5);
+    width: 28px; height: 28px; border-radius: 8px; cursor: pointer;
+    font-size: 14px; display: flex; align-items: center; justify-content: center;
+  }
+  .mvp-body { padding: 16px 20px 20px; }
+  .mvp-titulo {
+    font-size: 16px; font-weight: 800; color: #fff;
+    line-height: 1.3; margin-bottom: 14px;
+  }
+  .mvp-opciones { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .mvp-opcion {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px; border-radius: 12px; cursor: pointer;
+    border: 2px solid rgba(124,58,237,.2); background: rgba(124,58,237,.05);
+    transition: all .15s; position: relative; overflow: hidden;
+  }
+  .mvp-opcion:active { transform: scale(.98); }
+  .mvp-opcion.selected { border-color: var(--p2); background: rgba(124,58,237,.2); }
+  .mvp-op-radio {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid rgba(124,58,237,.4);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .mvp-opcion.selected .mvp-op-radio { border-color: var(--p2); background: var(--p2); }
+  .mvp-op-check { display:none; width:8px; height:8px; border-radius:50%; background:#fff; }
+  .mvp-opcion.selected .mvp-op-check { display:block; }
+  .mvp-op-letra {
+    width: 24px; height: 24px; border-radius: 6px;
+    background: rgba(124,58,237,.2); color: #c4b5fd;
+    font-size: 11px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .mvp-op-text { font-size: 14px; font-weight: 600; color: #fff; }
+  .mvp-btn-votar {
+    width: 100%; padding: 13px;
+    background: linear-gradient(135deg, var(--p), var(--p2));
+    color: #fff; border: none; border-radius: 12px;
+    font-size: 15px; font-weight: 800; cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .mvp-btn-votar:disabled { opacity: .5; }
+  .mvp-votado {
+    background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.3);
+    border-radius: 12px; padding: 10px 14px;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 700; color: #6ee7b7; margin-bottom: 12px;
+  }
+  /* Resultados mini */
+  .mvp-res { margin-top: 12px; }
+  .mvp-res-fila { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .mvp-res-label { font-size: 11px; font-weight: 600; color: var(--muted); width: 50px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mvp-res-label.mio { color: #4ade80; }
+  .mvp-res-track { flex:1; height: 6px; background: rgba(255,255,255,.07); border-radius: 20px; overflow: hidden; }
+  .mvp-res-fill { height: 100%; border-radius: 20px; transition: width .6s ease; min-width: 3px; }
+  .mvp-res-pct { font-size: 11px; font-weight: 800; color: #c4b5fd; min-width: 36px; text-align: right; }
+
+  /* FAB votar — posición original top:60px left:10px */
+  #mobile-vote-fab {
+    display: none;
+    position: fixed;
+    top: 60px;
+    left: 10px;
+    z-index: 9998;
+    background: rgba(15,10,30,.92);
+    border: 1px solid rgba(124,58,237,.35);
+    color: #fff;
+    border-radius: 14px;
+    padding: 9px 13px;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    box-shadow: 0 4px 18px rgba(0,0,0,.45), 0 0 0 1px rgba(124,58,237,.12);
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    backdrop-filter: blur(12px);
+    transition: border-color .2s, box-shadow .2s;
+  }
+  #mobile-vote-fab:active {
+    box-shadow: 0 2px 8px rgba(0,0,0,.4);
+    transform: scale(.97);
+  }
+  #mobile-vote-fab .fab-icon {
+    width: 26px; height: 26px;
+    background: linear-gradient(135deg, var(--p), var(--p2));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  #mobile-vote-fab .fab-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #e2d9f3;
+    letter-spacing: .01em;
+  }
+  #mobile-vote-fab .fab-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #4ade80;
+    flex-shrink: 0;
+    animation: fab-dot-pulse 2s ease-in-out infinite;
+  }
+  @keyframes fab-dot-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .35; }
+  }
+  /* Punto rojo pendiente */
+  #fab-pending-dot {
+    position: absolute;
+    top: -3px; right: -3px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #f43f5e;
+    border: 1.5px solid #0f0a1e;
+    display: none;
+  }
+}
+
+/* Zoom fullscreen wrapper mobile */
+#zoom-mobile-fullscreen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: #000;
+}
+#zoom-mobile-fullscreen iframe {
+  width: 100%; height: 100%; border: none;
+}
+#zoom-mobile-fullscreen .zmf-topbar {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 44px; background: rgba(0,0,0,.5);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px; z-index: 10;
+}
+#zoom-mobile-fullscreen .zmf-topbar button {
+  background: rgba(255,255,255,.15); border: none; color: #fff;
+  padding: 5px 12px; border-radius: 8px; font-size: 12px;
+  font-weight: 700; cursor: pointer; font-family: 'Outfit', sans-serif;
+}
 </style>
 </head>
 <body>
 
 <!-- NAV -->
 <nav class="nav">
-  <div>
-    <div class="nav-brand">BAL<span>CAM</span></div>
+  <div class="nav-brand">BAL<span>CAM</span></div>
+  <div class="nav-divider"></div>
+  <!-- Organización + tipo asamblea -->
+  <div class="nav-org-block">
+    <div id="nav-org" class="nav-org">—</div>
+    <div id="nav-tipo" class="nav-tipo">—</div>
   </div>
+  <div class="nav-spacer"></div>
+  <!-- Nombre evento (centro) -->
   <div id="nav-ev" class="nav-ev">Cargando…</div>
-  <div class="nav-user">
-    <div id="nav-nombre" class="nav-nombre">—</div>
-    <div id="nav-unidad" class="nav-unidad">Unidad —</div>
+  <div class="nav-divider"></div>
+  <!-- Usuario -->
+  <div class="nav-user" style="display:flex;align-items:center;gap:6px;">
+    <div id="conn-dot" title="Conexión activa"></div>
+    <div>
+      <div id="nav-nombre" class="nav-nombre">—</div>
+      <div id="nav-unidad" class="nav-unidad">—</div>
+    </div>
   </div>
+  <!-- Botón salir rediseñado -->
+  <button onclick="cerrarSesion()" class="nav-logout" title="Cerrar sesión">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+      <polyline points="10 17 15 12 10 7"/>
+      <line x1="15" y1="12" x2="3" y2="12"/>
+    </svg>
+    <span class="nav-logout-text">Salir</span>
+  </button>
 </nav>
 
-<!-- MAIN -->
-<div class="main" id="main">
-  <div style="display:flex;justify-content:center;padding:60px 0;">
-    <div class="spin-dark"></div>
+<!-- NOTIFICACIÓN NUEVA PREGUNTA -->
+<button id="notif-nueva-preg" onclick="scrollAlPrimer()" style="display:none;position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:9999;background:linear-gradient(135deg,#7c3aed,#d946ef);border-radius:16px;padding:14px 24px;box-shadow:0 8px 40px rgba(124,58,237,.6);cursor:pointer;border:none;font-family:'Outfit',sans-serif;align-items:center;gap:12px;max-width:90vw;">
+  <span style="font-size:22px;">🔔</span>
+  <div style="text-align:left;">
+    <div style="color:#fff;font-weight:800;font-size:14px;">¡Nueva pregunta activa!</div>
+    <div style="color:rgba(255,255,255,.75);font-size:11px;margin-top:1px;">Toca para ir a votar</div>
+  </div>
+</button>
+
+<!-- ZOOM JOIN BAR (solo desktop, sticky) -->
+<div id="zoom-join-bar" style="display:none;background:linear-gradient(135deg,rgba(29,78,216,.2),rgba(37,99,235,.12));border-bottom:1px solid rgba(59,130,246,.2);padding:10px 28px;align-items:center;justify-content:space-between;gap:16px;position:sticky;top:56px;z-index:90;backdrop-filter:blur(16px);">
+  <!-- Logo + info -->
+  <div style="display:flex;align-items:center;gap:14px;">
+    <div style="width:38px;height:38px;border-radius:10px;background:#fff;flex-shrink:0;
+      display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2);">
+      <svg width="24" height="24" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+        <rect width="512" height="512" rx="120" fill="#2D8CFF"/>
+        <path d="M296 160H144c-26.5 0-48 21.5-48 48v144c0 26.5 21.5 48 48 48h152c26.5 0 48-21.5 48-48V208c0-26.5-21.5-48-48-48z" fill="#fff"/>
+        <path d="M344 230l80-60v172l-80-60V230z" fill="#fff"/>
+      </svg>
+    </div>
+    <div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:14px;font-weight:800;color:#fff;letter-spacing:-.2px;">Reunión virtual activa</span>
+        <div style="display:flex;align-items:center;gap:5px;background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.3);border-radius:20px;padding:2px 8px;">
+          <div style="width:6px;height:6px;border-radius:50%;background:#4ade80;animation:pulse-dot 1.5s ease infinite;"></div>
+          <span style="font-size:10px;font-weight:800;color:#4ade80;text-transform:uppercase;letter-spacing:.06em;">En vivo</span>
+        </div>
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:1px;" id="zoom-meeting-id-label"></div>
+    </div>
+  </div>
+  <!-- Botón unirse -->
+  <button onclick="unirseZoom()" id="zoom-join-btn"
+    style="background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:none;
+    padding:10px 22px;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;
+    white-space:nowrap;font-family:'Outfit',sans-serif;display:flex;align-items:center;gap:8px;
+    box-shadow:0 4px 16px rgba(37,99,235,.4);transition:all .2s;letter-spacing:.02em;"
+    onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(37,99,235,.5)'"
+    onmouseout="this.style.transform='';this.style.boxShadow='0 4px 16px rgba(37,99,235,.4)'">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="23 7 16 12 23 17 23 7"/>
+      <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+    </svg>
+    Unirse a la reunión
+  </button>
+</div>
+
+<!-- zoom-active-bar removido -->
+
+<!-- ZOOM CONTAINER (desktop split) -->
+<div id="zoom-container-wrapper" style="display:none;width:100%;background:#000;position:relative;">
+  <iframe id="zoom-iframe" src="" allow="camera;microphone;fullscreen;display-capture" style="width:100%;height:100%;min-height:300px;border:none;display:block;"></iframe>
+  <div id="zoom-controls" style="position:absolute;top:8px;right:8px;z-index:100;display:flex;gap:6px;">
+    <button class="zoom-ctrl-btn" onclick="togglePip()" title="Modo flotante" id="btn-pip">⊡</button>
+  </div>
+  <div id="zoom-resize-handle" style="width:100%;height:8px;background:rgba(124,58,237,.25);cursor:ns-resize;display:none;align-items:center;justify-content:center;position:absolute;bottom:0;left:0;">
+    <div style="width:40px;height:3px;background:rgba(255,255,255,.3);border-radius:3px;"></div>
   </div>
 </div>
+<!-- Stats debajo del zoom en split -->
+<div id="zoom-sidebar-stats"></div>
+
+<!-- Handle resize columna zoom (barra vertical arrastrable) -->
+<div id="zoom-col-handle" onmousedown="iniciarResizeCol(event)" title="Arrastra para ajustar ancho"></div>
+
+<!-- Botón cerrar panel derecho (sobre el handle) -->
+<button id="btn-cerrar-panel" onclick="togglePanelDerecho()" title="Cerrar panel de preguntas"
+  style="display:none;position:fixed;z-index:201;
+  top:50%;transform:translateY(-50%);
+  width:22px;height:44px;border-radius:0 8px 8px 0;
+  background:rgba(239,68,68,.85);border:none;color:#fff;
+  font-size:11px;font-weight:900;cursor:pointer;
+  box-shadow:2px 0 8px rgba(0,0,0,.3);
+  align-items:center;justify-content:center;">✕</button>
+
+<!-- Botón reabrir panel (cuando está cerrado) -->
+<button id="btn-abrir-panel" onclick="togglePanelDerecho()" title="Ver preguntas y votar"
+  style="display:none;position:fixed;right:0;top:50%;transform:translateY(-50%);
+  z-index:201;background:linear-gradient(180deg,#7c3aed,#d946ef);
+  color:#fff;border:none;border-radius:10px 0 0 10px;padding:16px 10px;
+  font-size:12px;font-weight:900;cursor:pointer;font-family:'Outfit',sans-serif;
+  box-shadow:-3px 0 16px rgba(124,58,237,.6);writing-mode:vertical-rl;
+  text-orientation:mixed;letter-spacing:.08em;gap:8px;align-items:center;
+  text-transform:uppercase;">
+  🗳 Votar
+</button>
+
+<!-- LAYOUT WRAPPER -->
+<div class="layout">
+
+  <!-- SIDEBAR (solo visible en desktop) -->
+  <aside class="sidebar" id="sidebar">
+    <!-- Stats y info del evento van aquí en desktop -->
+    <div id="sidebar-content">
+      <div style="display:flex;justify-content:center;padding:40px 0;">
+        <div class="spin-dark"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="main" id="main">
+    <div id="zoom-mobile-wrap" style="display:none;margin-bottom:20px;"></div>
+    <div style="display:flex;justify-content:center;padding:60px 0;">
+      <div class="spin-dark"></div>
+    </div>
+  </div>
+
+</div><!-- /layout -->
+
+<!-- ZOOM FULLSCREEN MOBILE -->
+<div id="zoom-mobile-fullscreen">
+  <div class="zmf-topbar">
+    <span style="color:#fff;font-size:13px;font-weight:700;">📹 Reunión activa</span>
+    <button onclick="salirZoomMobile()">✕ Salir de Zoom</button>
+  </div>
+  <iframe id="zoom-iframe-mobile" src=""
+    allow="camera;microphone;fullscreen;display-capture"
+    style="width:100%;height:100%;padding-top:44px;border:none;"></iframe>
+</div>
+
+<!-- PANEL FLOTANTE VOTACIÓN MOBILE -->
+<div id="mobile-vote-panel">
+  <div class="mvp-handle"></div>
+  <div class="mvp-header">
+    <div class="mvp-badge">🗳️ Votación activa</div>
+    <button class="mvp-close" onclick="cerrarMobilePanel()">✕</button>
+  </div>
+  <div class="mvp-body" id="mvp-body">
+    <!-- Contenido dinámico -->
+  </div>
+</div>
+
+<!-- FAB botón votar -->
+<button id="mobile-vote-fab" onclick="abrirMobilePanel()">
+  <span id="fab-pending-dot"></span>
+  <span class="fab-icon">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  </span>
+  <span class="fab-label">Votar</span>
+  <span class="fab-dot"></span>
+</button>
 
 <div id="toast"></div>
-
-<!-- TUTORIAL ZOOM -->
-<div id="zoom-tutorial" style="display:none;">
-  <div class="tut-sheet">
-    <div class="tut-handle"></div>
-    <div class="tut-title">📹 Antes de entrar al Zoom</div>
-    <div class="tut-sub">Lee estas instrucciones para poder<br>participar correctamente en la asamblea.</div>
-
-    <div class="tut-tabs">
-      <button class="tut-tab" id="tab-pc" onclick="switchTutTab('pc')">🖥️ Computador</button>
-      <button class="tut-tab" id="tab-cel" onclick="switchTutTab('cel')">📱 Celular</button>
-    </div>
-
-    <!-- PC -->
-    <div class="tut-steps" id="steps-pc">
-      <div class="tut-step">
-        <div class="tut-step-ico">🎤</div>
-        <div class="tut-step-info">
-          <div class="tut-step-titulo">Micrófono</div>
-          <div class="tut-step-desc">Está en la barra inferior izquierda. Al entrar estará <strong>silenciado</strong> — solo actívalo cuando el moderador te lo indique.</div>
-          <span class="tut-step-badge">🔇 Barra inferior izquierda</span>
-        </div>
-      </div>
-      <div class="tut-step">
-        <div class="tut-step-ico">📷</div>
-        <div class="tut-step-info">
-          <div class="tut-step-titulo">Cámara</div>
-          <div class="tut-step-desc">Justo al lado del micrófono. Puedes activarla o desactivarla según las instrucciones del moderador.</div>
-          <span class="tut-step-badge">📹 Barra inferior izquierda</span>
-        </div>
-      </div>
-      <div class="tut-step">
-        <div class="tut-step-ico">✋</div>
-        <div class="tut-step-info">
-          <div class="tut-step-titulo">Levantar la mano</div>
-          <div class="tut-step-desc">Haz clic en <strong>"Reacciones"</strong> en la barra inferior y selecciona <strong>"Levantar la mano"</strong> para pedir la palabra.</div>
-          <span class="tut-step-badge">👆 Reacciones → Levantar la mano</span>
-        </div>
-      </div>
-      <div class="tut-step">
-        <div class="tut-step-ico">💬</div>
-        <div class="tut-step-info">
-          <div class="tut-step-titulo">Chat</div>
-          <div class="tut-step-desc">Haz clic en <strong>"Chat"</strong> en la barra inferior para abrir el panel de mensajes y escribir al grupo.</div>
-          <span class="tut-step-badge">💬 Chat → barra inferior</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Celular -->
-    <div class="tut-steps" id="steps-cel">
-      <div class="tut-step">
-        <div class="tut-step-ico">🎤</div>
-        <div class="tut-step-info">
-          <div class="tut-step-titulo">Micrófono</div>
-          <div class="tut-step-desc">Toca la pantalla para ver los controles. El micrófono aparece <strong>abajo a la izquierda</strong>. Estará silenciado al entrar.</div>
-          <span class="tut-step-badge">🔇 Abajo izquierda</span>
-        </div>
-      </div>
-      <div class="tut-step">
-        <div class="tut-step-ico">📷</div>
-        <div class="tut-step-info">
-          <div class="tut-step-titulo">Cámara</div>
-          <div class="tut-step-desc">Toca la pantalla y busca el ícono de cámara en la barra inferior. Tócalo para activar o desactivar tu video.</div>
-          <span class="tut-step-badge">📹 Barra inferior</span>
-        </div>
-      </div>
-      <div class="tut-step">
-        <div class="tut-step-ico">✋</div>
-        <div class="tut-step-info">
-          <div class="tut-step-titulo">Levantar la mano</div>
-          <div class="tut-step-desc">Toca <strong>"Más"</strong> (los tres puntos o el botón ···) en la barra inferior y selecciona <strong>"Levantar la mano"</strong>.</div>
-          <span class="tut-step-badge">··· Más → Levantar la mano</span>
-        </div>
-      </div>
-      <div class="tut-step">
-        <div class="tut-step-ico">💬</div>
-        <div class="tut-step-info">
-          <div class="tut-step-titulo">Chat</div>
-          <div class="tut-step-desc">Toca <strong>"Más"</strong> en la barra inferior y selecciona <strong>"Chat"</strong> para enviar mensajes al grupo.</div>
-          <span class="tut-step-badge">··· Más → Chat</span>
-        </div>
-      </div>
-    </div>
-
-    <button class="btn-confirmar-zoom" onclick="confirmarZoom()">✅ Entendido — Unirme al Zoom</button>
-  </div>
-</div>
 
 <script>
 const sb = supabase.createClient(
@@ -400,49 +1154,642 @@ const sb = supabase.createClient(
   "sb_publishable_e1x6gdl3QHjwdKa5UIjYxQ_eMkUaTad"
 );
 
-// Recuperar sesión del participante
+// ── SESIÓN ────────────────────────────────────────────
 const SS = {
-  unidadId: sessionStorage.getItem("part_unidad_id"),
-  codigo:   sessionStorage.getItem("part_codigo"),
-  nombre:   sessionStorage.getItem("part_nombre"),
-  evId:     sessionStorage.getItem("part_ev_id"),
-  orgId:    sessionStorage.getItem("part_org_id"),
+  unidadId: localStorage.getItem("part_unidad_id"),
+  codigo:   localStorage.getItem("part_codigo"),
+  nombre:   localStorage.getItem("part_nombre"),
+  evId:     localStorage.getItem("part_ev_id"),
+  orgId:    localStorage.getItem("part_org_id"),
 };
-
-const params = new URLSearchParams(location.search);
-const EV_ID  = SS.evId  || params.get("ev");
-const ORG_ID = SS.orgId || params.get("org");
+const EV_ID  = SS.evId;
+const ORG_ID = SS.orgId;
 
 let evData      = null;
+let orgNombre   = "";   // nombre de la organización (para resumen final)
 let preguntas   = [];
-let misVotos    = {};  // id_pregunta -> respuesta
-let realtimeCh  = null;
+let preguntasCerradas = [];  // historial de cerradas
+let misVotos    = {};
+let unidadInfo  = null;
+let statsGlobal = { totalPart:0, totalVotaron:0, coefVotado:0 };
+let misPoderDe  = [];   // unidades que delegaron su poder a esta unidad
+let pollingInt  = null;  // intervalo de polling
 
-// ── INIT ─────────────────────────────────────────────
+// ── CERRAR SESIÓN ────────────────────────────────────────
+function cerrarSesion() {
+  if (!confirm("¿Seguro que quieres cerrar sesión?")) return;
+  // Limpiar sesión guardada
+  ["part_unidad_id","part_codigo","part_nombre","part_ev_id","part_org_id"]
+    .forEach(k => localStorage.removeItem(k));
+  // Marcar participante como inactivo
+  pingSession(true);
+  // Ir al login
+  location.replace(`Login_Participante.html?ev=${EV_ID||""}&org=${ORG_ID||""}`);
+}
+// ── INIT ──────────────────────────────────────────────
 async function init() {
-  // Si no hay sesión, volver al login
   if (!SS.unidadId || !EV_ID) {
     location.href = `Login_Participante.html?ev=${EV_ID||""}&org=${ORG_ID||""}`;
     return;
   }
-  // Poblar nav
   document.getElementById("nav-nombre").textContent = SS.nombre || "Participante";
   document.getElementById("nav-unidad").textContent = "Unidad " + (SS.codigo || "—");
 
-  await Promise.all([cargarEvento(), cargarMisVotos()]);
-  suscribirRealtime();
+  try {
+    await Promise.all([cargarEvento(), cargarMisVotos(), cargarUnidadInfo(), cargarMisPoderes()]);
+    iniciarPolling();
+    iniciarHeartbeat();
+  } catch(e) {
+    mostrarError("Error al cargar el portal. Recarga la página.");
+  }
+}
+
+function mostrarError(msg) {
+  document.getElementById("main").innerHTML = `
+    <div style="text-align:center;padding:60px 20px;">
+      <div style="font-size:40px;margin-bottom:16px;">⚠️</div>
+      <div style="font-size:16px;font-weight:700;color:#f87171;margin-bottom:8px;">${msg}</div>
+      <button onclick="location.reload()" style="margin-top:16px;padding:12px 24px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">🔄 Reintentar</button>
+    </div>`;
+}
+
+// ── POLLING INTELIGENTE ───────────────────────────────
+// Cada 6s revisa: config del evento, estado de preguntas, stats y gráficas
+// Aplica cambios quirúrgicamente sin reconstruir el DOM
+// ── HEARTBEAT — mantiene la sesión activa ────────────
+// Actualiza session_ping cada 30s en Supabase
+// Si el browser se cierra, el ping se detiene → otra sesión puede entrar tras 90s
+let _heartbeatInt = null;
+function iniciarHeartbeat() {
+  // Ping inmediato al entrar
+  pingSession();
+  // Luego cada 30s
+  _heartbeatInt = setInterval(pingSession, 30000);
+  // Al cerrar/salir: intentar marcar sesión como inactiva
+  window.addEventListener("beforeunload", () => {
+    // Usar sendBeacon para garantizar que se envíe aunque el browser esté cerrando
+    // Como Supabase no soporta sendBeacon directamente, actualizamos sync
+    pingSession(true);
+  });
+  // En móvil, pagehide es más confiable que beforeunload
+  window.addEventListener("pagehide", () => {
+    pingSession(true);
+  });
+}
+
+async function pingSession(esLimpieza = false) {
+  if (!SS.unidadId || !EV_ID) return;
+  try {
+    await sb.from("participantes").update({
+      session_ping: esLimpieza ? null : new Date().toISOString()
+    })
+    .eq("id_evento", EV_ID)
+    .eq("id_unidad", SS.unidadId);
+  } catch(e) {
+    // Silencioso — no interrumpir la UX si falla el ping
+  }
+}
+
+let _pollingBusy = false;
+let _votosCountCache = {}; // cache: pregId → total votos
+
+function iniciarPolling() {
+  if (pollingInt) clearInterval(pollingInt);
+  pollingInt = setInterval(async () => {
+    if (document.hidden || _pollingBusy) return;
+    _pollingBusy = true;
+    try {
+      await Promise.all([pollEvento(), pollPreguntas()]);
+      cargarStatsParticipacion().then(() => actualizarStatsInPlace());
+      if (!evData?.ocultar_graficos) actualizarGraficasSiCambiaron();
+      // Conexión OK
+      _pollFallosConsec = 0;
+      setConnState("ok");
+      ocultarBannerRed();
+    } catch(e) {
+      console.warn("Poll error:", e);
+      _pollFallosConsec++;
+      if (_pollFallosConsec === 1) setConnState("warn");
+      if (_pollFallosConsec >= 2) {
+        setConnState("error");
+        mostrarBannerRed("poll");
+      }
+    } finally {
+      _pollingBusy = false;
+    }
+  }, 5000);
+}
+
+// Actualiza gráficas solo si cambió la distribución de votos (no solo el total)
+async function actualizarGraficasSiCambiaron() {
+  const pregIdsConGrafica = Object.keys(portalCharts);
+  if (!pregIdsConGrafica.length) return;
+
+  // Una sola query con respuesta y pregunta
+  const { data } = await sb.from("votos")
+    .select("id_pregunta,respuesta")
+    .eq("id_evento", EV_ID)
+    .in("id_pregunta", pregIdsConGrafica);
+
+  if (!data) return;
+
+  // Construir hash de distribución por pregunta: "A:50|B:30|C:20"
+  const distribuciones = {};
+  data.forEach(v => {
+    if (!distribuciones[v.id_pregunta]) distribuciones[v.id_pregunta] = {};
+    // Soporte opción múltiple
+    const partes = v.respuesta ? v.respuesta.split(" | ").map(s=>s.trim()).filter(Boolean) : [v.respuesta];
+    partes.forEach(r => {
+      distribuciones[v.id_pregunta][r] = (distribuciones[v.id_pregunta][r] || 0) + 1;
+    });
+  });
+
+  for (const pregId of pregIdsConGrafica) {
+    const dist = distribuciones[pregId] || {};
+    const hash = Object.entries(dist).sort().map(([k,v]) => `${k}:${v}`).join("|");
+    if (hash !== (_votosCountCache[pregId] || "")) {
+      _votosCountCache[pregId] = hash;
+      cargarYActualizarGrafica(pregId);
+    }
+  }
+}
+
+// ── POLL EVENTO — detecta cambios de config ───────────
+let _pollFallosConsec = 0; // fallos consecutivos del polling general
+
+function setConnState(state) {
+  // state: "ok" | "warn" | "error"
+  const dot = document.getElementById("conn-dot");
+  if (!dot) return;
+  dot.className = state === "ok" ? "" : state;
+  const titles = { ok: "Conexión activa", warn: "Conexión inestable", error: "Sin conexión" };
+  dot.title = titles[state] || "";
+}
+
+function mostrarBannerRed(tipo) {
+  // tipo: "voto" | "poll"
+  if (document.getElementById("net-banner")) return; // ya visible
+  const msg = tipo === "voto"
+    ? "Tu voto no llegó — revisa tu conexión"
+    : "Sin conexión — los datos pueden estar desactualizados";
+  const banner = document.createElement("div");
+  banner.id = "net-banner";
+  banner.innerHTML = `
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    <span>${msg}</span>
+    <button onclick="location.reload()">Recargar</button>
+    <button onclick="this.closest('#net-banner').remove()" style="background:none;border:none;color:rgba(255,255,255,.3);font-size:16px;padding:0 4px;">✕</button>`;
+  document.body.appendChild(banner);
+}
+
+function ocultarBannerRed() {
+  document.getElementById("net-banner")?.remove();
+}
+async function pollEvento() {
+  // Verificar si el participante sigue registrado — si lo quitaron, cerrar sesión
+  const { data: partCheck, error: partErr } = await sb.from("participantes")
+    .select("estado,activo")
+    .eq("id_evento", EV_ID)
+    .eq("id_unidad", SS.unidadId)
+    .maybeSingle();
+
+  // Si hay error de red, no cerrar sesión — puede ser un fallo temporal
+  if (partErr) {
+    _pollEventoFallos++;
+    console.warn("Poll error temporal:", partErr.message);
+    return; // No actuar en errores de red
+  }
+
+  // Solo cerrar sesión si hay respuesta definitiva de que no está registrado
+  // Y solo después de confirmar 2 veces seguidas (evita falsos positivos)
+  if (!partCheck || partCheck.estado !== "Registrado") {
+    _pollEventoFallos++;
+    if (_pollEventoFallos < 2) return; // dar una segunda oportunidad
+    ["part_unidad_id","part_codigo","part_nombre","part_ev_id","part_org_id"]
+      .forEach(k => localStorage.removeItem(k));
+    clearInterval(pollingInt);
+    clearInterval(_heartbeatInt);
+    alert("Tu registro fue removido por la administración. Serás redirigido al inicio.");
+    location.replace("Login_Participante.html?ev=" + (EV_ID||"") + "&org=" + (ORG_ID||""));
+    return;
+  }
+
+  _pollEventoFallos = 0; // resetear contador si va bien
+
+  const { data } = await sb.from("eventos")
+    .select("id,nombre,estado,tipo,ocultar_graficos,permitir_voto_mora,permitir_cambiar_respuestas,fecha,quorum_minimo")
+    .eq("id", EV_ID).single();
+  if (!data || !evData) return;
+
+  const cambios = [];
+  // Usar !! para comparar booleanos — Supabase puede devolver true/1/"true"
+  if (!!data.ocultar_graficos           !== !!evData.ocultar_graficos)           cambios.push("graficos");
+  if (!!data.permitir_cambiar_respuestas !== !!evData.permitir_cambiar_respuestas) cambios.push("cambiar");
+  if (data.estado                       !== evData.estado)                        cambios.push("estado");
+  if (!!data.permitir_voto_mora         !== !!evData.permitir_voto_mora)          cambios.push("mora");
+  if (String(data.quorum_minimo||"")    !== String(evData.quorum_minimo||""))     cambios.push("quorum");
+
+  if (!cambios.length) return; // sin cambios, no hacer nada
+
+  evData = data; // actualizar estado global
+
+  // Aplicar cada cambio quirúrgicamente
+  if (cambios.includes("estado")) {
+    // Estado del evento cambió → necesita re-render completo
+    await cargarPreguntas();
+    return;
+  }
+  if (cambios.includes("cambiar")) {
+    // Botón cambiar respuesta: mostrar/ocultar en cada pregunta
+    aplicarCambiarRespuestas(data.permitir_cambiar_respuestas);
+  }
+  if (cambios.includes("graficos")) {
+    // Gráficas: mostrar u ocultar
+    aplicarOcultarGraficos(data.ocultar_graficos);
+  }
+  if (cambios.includes("mora")) {
+    // Si cambia la política de mora y la unidad está en mora → re-render
+    if (unidadInfo?.en_mora) await cargarPreguntas();
+  }
+  if (cambios.includes("quorum")) {
+    actualizarStatsInPlace();
+  }
+}
+
+// Mostrar/ocultar botón "Cambiar respuesta" en cada pregunta ya votada
+function aplicarCambiarRespuestas(permitir) {
+  preguntas.forEach(p => {
+    const voto = misVotos[p.id];
+    if (!voto) return;
+    const body  = document.getElementById(`preg-body-${p.id}`);
+    if (!body) return;
+    const btn   = document.getElementById(`btnv-${p.id}`);
+    const ops   = document.getElementById(`ops-${p.id}`);
+    const badge = document.getElementById(`vbadge-${p.id}`);
+
+    if (permitir) {
+      // Si las ops no existen en el DOM → el card fue renderizado en modo "solo badge"
+      // Hay que reconstruir el body completo para incluir opciones + botón cambiar
+      if (!ops) {
+        const pregData = preguntas.find(x => x.id === p.id);
+        if (!pregData) return;
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = renderPregunta(pregData, preguntas.indexOf(pregData), voto, Array.isArray(pregData.opciones)?pregData.opciones:[]);
+        const nuevoBody = tempDiv.firstElementChild?.querySelector(`#preg-body-${p.id}`);
+        if (nuevoBody) body.innerHTML = nuevoBody.innerHTML;
+        // Cargar gráfica si corresponde
+        if (!evData?.ocultar_graficos) {
+          const resEl = document.getElementById(`res-${p.id}`);
+          if (resEl && !portalCharts[p.id]) cargarYActualizarGrafica(p.id);
+        }
+        return;
+      }
+      // ops existe → solo mostrar + re-sincronizar selecciones desde misVotos
+      ops.style.display = "";
+      if (btn) { btn.style.display = ""; btn.disabled = true; }
+      // Limpiar selected visual y re-marcar solo los votos actuales
+      const pregData = preguntas.find(x => x.id === p.id);
+      const maxResp  = parseInt(pregData?.max_respuestas) || 1;
+      const esMulti  = maxResp > 1;
+      const votoArr  = esMulti
+        ? voto.split(" | ").map(s=>s.trim()).filter(Boolean)
+        : [voto];
+      // Re-init array de selecciones
+      selecciones[p.id] = esMulti ? [...votoArr] : { idx:-1, texto: voto };
+      // Limpiar y re-marcar visualmente
+      ops.querySelectorAll(".opcion").forEach(el => {
+        const txt = el.querySelector(".op-text")?.textContent || "";
+        if (votoArr.includes(txt)) el.classList.add("selected");
+        else el.classList.remove("selected");
+      });
+      if (badge) {
+        badge.style.cssText = "background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#fcd34d;display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:12px;border:1px solid;margin-bottom:12px;font-size:14px;font-weight:600;";
+        badge.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Votaste: <strong id="vtexto-${p.id}">${voto}</strong> — <span style="opacity:.7;font-size:12px;">puedes cambiar</span>`;
+      }
+    } else {
+      // Ocultar opciones y botón
+      if (ops) ops.style.display = "none";
+      if (btn) btn.style.display = "none";
+      if (badge) {
+        badge.style.cssText = "";
+        badge.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Tu voto: <strong id="vtexto-${p.id}">${voto}</strong>`;
+      }
+    }
+  });
+}
+
+// Mostrar u ocultar gráficas sin reconstruir las preguntas
+function aplicarOcultarGraficos(ocultar) {
+  preguntas.forEach(p => {
+    if (ocultar) {
+      // Ocultar: destruir chart y esconder contenedor
+      if (portalCharts[p.id]) { portalCharts[p.id].destroy(); delete portalCharts[p.id]; }
+      delete portalChartCache[p.id];
+      const resEl = document.getElementById(`rescard-${p.id}`) || document.getElementById(`res-${p.id}`);
+      if (resEl) resEl.style.display = "none";
+    } else {
+      // Mostrar: solo aplica si el usuario ya votó esta pregunta
+      if (!misVotos[p.id]) return;
+      // Asegurar que el div contenedor exista
+      let resEl = document.getElementById(`rescard-${p.id}`) || document.getElementById(`res-${p.id}`);
+      if (!resEl) {
+        const body = document.getElementById(`preg-body-${p.id}`);
+        if (!body) return;
+        resEl = document.createElement("div");
+        resEl.id = `res-${p.id}`;
+        resEl.style.marginTop = "12px";
+        body.appendChild(resEl);
+      }
+      resEl.style.display = "";
+      resEl.innerHTML = ""; // limpiar por si tiene contenido viejo
+      // Pequeño delay para que el DOM esté estable antes de dibujar el canvas
+      setTimeout(() => cargarYActualizarGrafica(p.id), 50);
+    }
+  });
+}
+
+// ── POLL PREGUNTAS ───────────────────────────────────
+// Maneja 3 estados: Activa, Cerrada, Inactiva
+// • Activa   → visible con opciones de voto
+// • Cerrada  → historial compacto (sin gráfica, sin opciones)
+// • Inactiva → invisible completamente (no existe para el usuario)
+async function pollPreguntas() {
+  const { data } = await sb.from("preguntas")
+    .select("id,titulo,estado,opciones,orden,descripcion,max_respuestas")
+    .eq("id_evento", EV_ID)
+    .order("orden");
+  if (!data) return;
+
+  const activas   = data.filter(p => p.estado === "Activa");
+  const cerradas  = data.filter(p => p.estado === "Cerrada");
+  // Inactivas = ni Activa ni Cerrada (estado Inactiva u otro)
+
+  // Comparar con estado actual
+  const actualesIds = preguntas.map(p => p.id).sort().join(",");
+  const nuevasIds   = activas.map(p => p.id).sort().join(",");
+
+  // También detectar preguntas que cambiaron de Cerrada a Activa (re-apertura)
+  const reabiertas = activas.filter(a => {
+    const enCard = document.getElementById(`preg-${a.id}`);
+    // Caso 1: existe en DOM pero en modo historial cerrado
+    if (enCard && enCard.dataset.estado === "cerrada") return true;
+    // Caso 2: no existe en DOM pero ya estuvo activa antes (tenía voto o estaba en preguntas previas)
+    // → lo maneja "nuevasCards" más abajo, no aquí
+    return false;
+  });
+
+  // Sin ningún cambio → salir
+  const cerradasIds = cerradas.map(p=>p.id).sort().join(",");
+  const prevCerradasIds = (window._prevCerradasIds || "");
+  const sinCambios = actualesIds === nuevasIds && cerradasIds === prevCerradasIds;
+  window._prevCerradasIds = cerradasIds;
+  if (sinCambios && !reabiertas.length) return;
+
+  // ── Preguntas que se volvieron Inactivas: quitar del DOM completamente
+  // Buscar en el DOM todos los cards actuales (activas + cerradas que estaban antes)
+  // Una pregunta se inactiva si ya no aparece ni en activas ni en cerradas
+  const todasEnDOM = Array.from(document.querySelectorAll(".pregunta-card, .preg-cerrada-wrap"))
+    .map(el => el.id.replace("preg-",""));
+  const inactivadas = todasEnDOM.filter(domId =>
+    !activas.find(a => String(a.id) === domId) &&
+    !cerradas.find(c => String(c.id) === domId)
+  );
+  inactivadas.forEach(domId => {
+    // Destruir chart
+    if (portalCharts[domId]) { portalCharts[domId].destroy(); delete portalCharts[domId]; }
+    delete portalChartCache[domId];
+    // NO borrar misVotos — si se reactiva necesitamos saber si ya votó
+    // Quitar card del DOM
+    const card = document.getElementById(`preg-${domId}`);
+    if (card) card.remove();
+    // Si no quedan cards activos → mostrar "esperando"
+    const main = document.getElementById("main");
+    const tieneCards = main && main.querySelector(".pregunta-card");
+    if (!tieneCards && activas.length === 0) {
+      const esperandoExiste = main && main.querySelector(".esperando");
+      if (!esperandoExiste && main) {
+        const div = document.createElement("div");
+        div.id = "esp-wrap";
+        div.innerHTML = renderEsperando("⏳","Esperando preguntas","El administrador activará las preguntas pronto.");
+        main.appendChild(div);
+      }
+    }
+  });
+
+  // ── Preguntas Cerradas: colapsar a historial compacto
+  const recienCerradas = cerradas.filter(c => {
+    const card = document.getElementById(`preg-${c.id}`);
+    return card && card.dataset.estado !== "cerrada"; // ya procesadas no retocar
+  });
+  recienCerradas.forEach(p => {
+    const card = document.getElementById(`preg-${p.id}`);
+    if (!card) return;
+    card.dataset.estado = "cerrada";
+    if (portalCharts[p.id]) { portalCharts[p.id].destroy(); delete portalCharts[p.id]; }
+    delete portalChartCache[p.id];
+    delete _votosCountCache[p.id];
+    const miVoto = misVotos[p.id];
+
+    const compactaHTML = `
+      <div id="preg-body-${p.id}" class="preg-cerrada-inner">
+        <div class="preg-cerrada-icon">
+          <svg width="12" height="12" fill="none" stroke="#f87171" stroke-width="2.5" viewBox="0 0 24 24">
+            <rect x="3" y="11" width="18" height="11" rx="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
+        <div class="preg-cerrada-info">
+          <div class="preg-cerrada-label">Cerrada</div>
+          <div class="preg-cerrada-titulo">${p.titulo||"Sin título"}</div>
+        </div>
+        ${miVoto
+          ? `<div class="preg-cerrada-voto">
+              <svg width="10" height="10" fill="none" stroke="#4ade80" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>${miVoto}</span>
+             </div>`
+          : `<div class="preg-cerrada-novoto">Sin voto</div>`
+        }
+      </div>`;
+
+    const reemplazarConCompacta = (animada) => {
+      const compacta = document.createElement("div");
+      compacta.className = "preg-cerrada-wrap";
+      compacta.id = `preg-${p.id}`;
+      compacta.dataset.estado = "cerrada";
+      if (animada) compacta.style.animation = "preg-cerrada-in .35s cubic-bezier(.4,0,.2,1) forwards";
+      compacta.innerHTML = compactaHTML;
+      card.parentNode?.replaceChild(compacta, card);
+    };
+
+    if (esDesktop()) {
+      // PC: animación en 3 fases
+      card.style.animation = "preg-cerrar-flash .7s ease forwards";
+      setTimeout(() => {
+        const h = card.offsetHeight;
+        card.style.setProperty("--preg-h", h + "px");
+        card.style.overflow  = "hidden";
+        card.style.animation = "preg-colapsar .45s cubic-bezier(.4,0,.2,1) forwards";
+        setTimeout(() => reemplazarConCompacta(true), 450);
+      }, 700);
+    } else {
+      // Móvil: cambio directo, sin demoras
+      reemplazarConCompacta(false);
+    }
+  });
+
+  // ── Preguntas Re-abiertas (Cerrada/Inactiva → Activa): restaurar UI completa
+  for (const p of reabiertas) {
+    const pregData = activas.find(a => a.id === p.id);
+    if (!pregData) continue;
+    const card = document.getElementById(`preg-${p.id}`);
+    if (!card) continue;
+
+    // Re-sincronizar voto desde BD (por si cambió mientras estaba cerrada)
+    const { data: votoFresh } = await sb.from("votos")
+      .select("respuesta").eq("id_pregunta", p.id).eq("id_unidad", SS.unidadId).maybeSingle();
+    if (votoFresh) misVotos[p.id] = votoFresh.respuesta;
+    else delete misVotos[p.id];
+
+    // Reemplazar la card COMPLETA (el preg-head fue eliminado al cerrar)
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = renderPregunta(pregData, activas.indexOf(pregData), misVotos[p.id], Array.isArray(pregData.opciones)?pregData.opciones:[]);
+    const nuevaCard = tempDiv.firstElementChild;
+    if (nuevaCard) {
+      card.parentNode.replaceChild(nuevaCard, card);
+    }
+
+    if (!evData?.ocultar_graficos && misVotos[p.id]) {
+      setTimeout(() => cargarYActualizarGrafica(p.id), 80);
+    }
+  }
+
+  // ── Preguntas Nuevas (Activa por primera vez): insertar en DOM
+  const nuevasCards = activas.filter(a => !document.getElementById(`preg-${a.id}`));
+  if (nuevasCards.length) {
+    // Quitar cualquier "esperando preguntas" que exista (con o sin id)
+    document.getElementById("esp-wrap")?.remove();
+    document.querySelectorAll(".esperando").forEach(el => el.remove());
+    const main = document.getElementById("main");
+    // Insertar en orden correcto
+    nuevasCards.forEach(p => {
+      const div = document.createElement("div");
+      div.innerHTML = renderPregunta(p, activas.indexOf(p), misVotos[p.id], Array.isArray(p.opciones)?p.opciones:[]);
+      // Insertar en posición correcta según orden
+      const siguiente = activas[activas.indexOf(p)+1];
+      const siguienteEl = siguiente ? document.getElementById(`preg-${siguiente.id}`) : null;
+      if (siguienteEl) {
+        main.insertBefore(div.firstElementChild, siguienteEl);
+      } else {
+        main.appendChild(div.firstElementChild);
+      }
+    });
+
+    // 🔔 Notificación si ya había cargado antes (no es la carga inicial)
+    if (window._yaInicializado) {
+      mostrarNotifPregunta();
+    }
+  }
+
+  // Actualizar lista global de activas
+  preguntas = activas;
+  preguntasCerradas = cerradas;
+  actualizarNumeracionPreguntas();
+
+  // Mobile: actualizar FAB y panel si está abierto
+  mostrarFabMobile();
+  if (document.body.classList.contains("zoom-mobile-mode")) {
+    const panel = document.getElementById("mobile-vote-panel");
+    if (panel?.classList.contains("visible") && _mobilePregActual) {
+      // Si la pregunta actual se cerró, redirigir a primera activa o primera cerrada
+      const sigueActiva = activas.find(a => a.id === _mobilePregActual.id);
+      if (!sigueActiva) {
+        const nueva = activas[0] || cerradas[0];
+        if (nueva) renderMobilePanel(nueva);
+      } else {
+        renderMobilePanel(sigueActiva);
+      }
+    }
+  }
+}
+
+// Actualizar "Pregunta X de N" en todos los cards
+function actualizarNumeracionPreguntas() {
+  preguntas.forEach((p, i) => {
+    const numEl = document.querySelector(`#preg-${p.id} .preg-num`);
+    if (numEl) numEl.textContent = `Pregunta ${i+1} de ${preguntas.length}`;
+  });
 }
 
 // ── CARGAR EVENTO ─────────────────────────────────────
 async function cargarEvento() {
   const { data } = await sb.from("eventos")
-    .select("id,nombre,estado,tipo,ocultar_graficos,zoom_meeting_id,zoom_password")
+    .select("id,nombre,estado,tipo,ocultar_graficos,permitir_voto_mora,permitir_cambiar_respuestas,fecha,quorum_minimo,zoom_meeting_id,zoom_password,id_organizacion")
     .eq("id", EV_ID).single();
-  if (!data) return;
+  if (!data) { mostrarError("No se encontró el evento."); return; }
   evData = data;
   document.title = data.nombre + " — Portal";
+
+  // Nombre organización
+  if (data.id_organizacion) {
+    sb.from("organizaciones").select("nombre").eq("id", data.id_organizacion).single()
+      .then(({ data: org }) => {
+        const el = document.getElementById("nav-org");
+        if (org?.nombre) {
+          if (el) el.textContent = org.nombre;
+          orgNombre = org.nombre; // guardar globalmente para resumen final
+        }
+      });
+  }
+
+  // Tipo evento en nav
+  const tipoEl = document.getElementById("nav-tipo");
+  if (tipoEl && data.tipo) tipoEl.textContent = data.tipo;
+
   document.getElementById("nav-ev").textContent = data.nombre;
+
+  // Mostrar barra de Zoom si el evento tiene reunión
+  if (data.zoom_meeting_id) {
+    document.getElementById("zoom-meeting-id-label").textContent = "Meeting ID: " + data.zoom_meeting_id;
+    if (window.innerWidth >= 900) {
+      // Desktop: barra sticky arriba
+      const bar = document.getElementById("zoom-join-bar");
+      if (bar) bar.style.display = "flex";
+    } else {
+      // Mobile: tarjeta dentro del main
+      const mw = document.getElementById("zoom-mobile-wrap");
+      if (mw) {
+        mw.innerHTML = zoomMobileCardHTML();
+        mw.style.display = "block";
+      }
+    }
+  }
+
   await cargarPreguntas();
+  // Marcar que ya cargó — a partir de aquí las nuevas preguntas muestran notificación
+  window._yaInicializado = true;
+}
+
+// ── CARGAR UNIDAD INFO ────────────────────────────────
+async function cargarUnidadInfo() {
+  const { data } = await sb.from("unidades")
+    .select("en_mora,coeficiente").eq("id", SS.unidadId).single();
+  unidadInfo = data || { en_mora: false, coeficiente: 0 };
+}
+
+// ── CARGAR PODERES RECIBIDOS ──────────────────────────
+async function cargarMisPoderes() {
+  const { data } = await sb.from("delegaciones")
+    .select("id_unidad_entrega, unidades!delegaciones_id_unidad_entrega_fkey(codigo, propietario_1, coeficiente)")
+    .eq("id_evento", EV_ID)
+    .eq("id_unidad_recibe", SS.unidadId);
+  misPoderDe = (data || []).map(d => ({
+    id:          d.id_unidad_entrega,
+    codigo:      d.unidades?.codigo      || "—",
+    nombre:      d.unidades?.propietario_1 || "",
+    coeficiente: d.unidades?.coeficiente || 0,
+  }));
 }
 
 // ── CARGAR MIS VOTOS ──────────────────────────────────
@@ -451,284 +1798,1192 @@ async function cargarMisVotos() {
     .select("id_pregunta,respuesta")
     .eq("id_evento", EV_ID)
     .eq("id_unidad", SS.unidadId);
+  misVotos = {};
   (data||[]).forEach(v => { misVotos[v.id_pregunta] = v.respuesta; });
 }
 
-// ── CARGAR PREGUNTAS ──────────────────────────────────
+// ── CARGAR PREGUNTAS ACTIVAS + CERRADAS ──────────────
 async function cargarPreguntas() {
   const { data } = await sb.from("preguntas")
-    .select("*")
-    .eq("id_evento", EV_ID)
-    .eq("estado", "activa")
+    .select("*").eq("id_evento", EV_ID)
+    .in("estado", ["Activa", "Cerrada"])
     .order("orden");
-  preguntas = data || [];
+  const todas = data || [];
+  preguntas = todas.filter(p => p.estado === "Activa");
+  preguntasCerradas = todas.filter(p => p.estado === "Cerrada");
+  await cargarStatsParticipacion();
   renderMain();
 }
 
-// ── RENDER PRINCIPAL ──────────────────────────────────
-function renderMain() {
-  const main = document.getElementById("main");
+// ── STATS PARTICIPACIÓN ───────────────────────────────
+async function cargarStatsParticipacion() {
+  // Todos los registrados — incluyendo delegantes (activo=false pero estado=Registrado)
+  const { count: totalPart } = await sb.from("participantes")
+    .select("*", { count:"exact", head:true })
+    .eq("id_evento", EV_ID)
+    .eq("estado", "Registrado");
 
-  // Estado del evento
+  // Votos únicos por unidad
+  const { data: votosUniq } = await sb.from("votos")
+    .select("id_unidad,coeficiente")
+    .eq("id_evento", EV_ID);
+
+  let coefVotado = 0;
+  const unidadesContadas = new Set();
+  (votosUniq||[]).forEach(v => {
+    if (!unidadesContadas.has(v.id_unidad)) {
+      unidadesContadas.add(v.id_unidad);
+      coefVotado += parseFloat(String(v.coeficiente||0).replace(",",".")) || 0;
+    }
+  });
+
+  statsGlobal = {
+    totalPart:    totalPart || 0,
+    totalVotaron: unidadesContadas.size,
+    coefVotado,
+  };
+}
+
+// ── RENDER PRINCIPAL ──────────────────────────────────
+function esDesktop() { return window.innerWidth >= 900; }
+
+function zoomMobileCardHTML() {
+  const meetingId = evData?.zoom_meeting_id || "";
+  return `
+    <div style="background:linear-gradient(135deg,rgba(37,99,235,.18),rgba(29,78,216,.1));
+      border:1px solid rgba(59,130,246,.25);border-radius:20px;overflow:hidden;">
+      <div style="background:linear-gradient(135deg,#1d4ed8,#2563eb);padding:16px 18px;
+        display:flex;align-items:center;gap:12px;">
+        <div style="width:40px;height:40px;border-radius:10px;background:#fff;flex-shrink:0;
+          display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2);">
+          <svg width="25" height="25" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+            <rect width="512" height="512" rx="120" fill="#2D8CFF"/>
+            <path d="M296 160H144c-26.5 0-48 21.5-48 48v144c0 26.5 21.5 48 48 48h152c26.5 0 48-21.5 48-48V208c0-26.5-21.5-48-48-48z" fill="#fff"/>
+            <path d="M344 230l80-60v172l-80-60V230z" fill="#fff"/>
+          </svg>
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:15px;font-weight:900;color:#fff;letter-spacing:-.3px;">Reunión virtual activa</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.65);margin-top:1px;">${meetingId ? "Meeting ID: "+meetingId : ""}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.15);border-radius:20px;padding:4px 9px;">
+          <div style="width:6px;height:6px;border-radius:50%;background:#4ade80;animation:pulse-dot 1.5s ease infinite;"></div>
+          <span style="font-size:10px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.06em;">En vivo</span>
+        </div>
+      </div>
+      <div style="padding:14px 18px;">
+        <p style="font-size:12px;color:rgba(255,255,255,.5);margin:0 0 12px;line-height:1.5;">
+          El anfitrión ha iniciado la sesión. Únete para participar en la asamblea.
+        </p>
+        <button onclick="abrirZoomMobile()"
+          style="width:100%;padding:13px;border-radius:13px;
+          background:linear-gradient(135deg,#2563eb,#1d4ed8);
+          color:#fff;border:none;font-size:14px;font-weight:900;cursor:pointer;
+          font-family:'Outfit',sans-serif;display:flex;align-items:center;
+          justify-content:center;gap:10px;box-shadow:0 4px 16px rgba(37,99,235,.35);">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="23 7 16 12 23 17 23 7"/>
+            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+          </svg>
+          Unirse a la reunión
+        </button>
+      </div>
+    </div>`;
+}
+
+function renderMain() {
+  const main    = document.getElementById("main");
+  const sidebar = document.getElementById("sidebar-content");
   const estadoMap = {
-    "Creado":      ["chip-creado",   "Creado"],
-    "En registro": ["chip-registro", "En registro"],
-    "En curso":    ["chip-curso",    "En curso"],
-    "Cerrado":     ["chip-cerrado",  "Cerrado"],
+    "Creado":      ["chip-creado","Creado"],
+    "En registro": ["chip-registro","En registro"],
+    "En curso":    ["chip-curso","En curso"],
+    "Cerrado":     ["chip-cerrado","Cerrado"],
   };
   const [chipClass, chipLabel] = estadoMap[evData?.estado] || ["chip-creado","—"];
 
-  let html = `
-    <div class="ev-estado-bar">
-      <div id="ev-nombre-bar" class="ev-nombre-bar">${evData?.nombre||"—"}</div>
-      <div class="estado-chip ${chipClass}">${chipLabel}</div>
-    </div>
-  `;
-
-  // Tarjeta de Zoom si hay meeting configurado
-  if (evData?.zoom_meeting_id) {
-    html += `
-    <div class="zoom-card">
-      <div class="zoom-icon">📹</div>
-      <div class="zoom-info">
-        <div class="zoom-label">Reunión Zoom</div>
-        <div class="zoom-nombre">ID: ${evData.zoom_meeting_id}</div>
+  // ── SIDEBAR en desktop ──
+  if (esDesktop() && sidebar) {
+    sidebar.innerHTML = `
+      <div style="background:linear-gradient(135deg,rgba(79,5,153,.5),rgba(124,58,237,.3));border:1px solid var(--border);border-radius:20px;padding:20px;">
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:rgba(196,181,253,.6);margin-bottom:8px;">Evento activo</div>
+        <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:12px;">${evData?.nombre||"—"}</div>
+        <div class="estado-chip ${chipClass}" style="display:inline-block;">${chipLabel}</div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Tu unidad</div>
+          <div style="font-size:20px;font-weight:900;color:#c4b5fd;">${SS.codigo||"—"}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">${SS.nombre||""}</div>
+        </div>
       </div>
-      <button class="btn-zoom" onclick="abrirZoomTutorial()">Unirse</button>
-    </div>`;
+      ${evData?.estado === "En curso" ? `<div id="stats-bar-wrap">${renderStatsBar()}</div>` : ""}
+      ${evData?.estado === "En curso" && preguntas.length ? `<div id="progreso-wrap">${renderProgresoPreguntas()}</div>` : ""}
+      ${misPoderDe.length ? renderTarjetaPoderes() : ""}
+    `;
   }
 
-  // Si el evento no está en curso, mostrar espera
-  if (!evData || evData.estado !== "En curso") {
-    const msgs = {
-      "Creado":      { ico:"📋", t:"Evento no iniciado",   s:"El administrador aún no ha iniciado el evento. Por favor espera." },
-      "En registro": { ico:"📝", t:"Registro en proceso",  s:"El registro está abierto. El evento comenzará pronto." },
-      "Cerrado":     { ico:"🔒", t:"Evento finalizado",    s:"Este evento ya ha concluido. Gracias por participar." },
-    };
-    const m = msgs[evData?.estado] || { ico:"⏳", t:"Esperando…", s:"Por favor espera las instrucciones." };
-    html += `
-      <div class="esperando">
-        <div class="esp-anim">
-          <div class="esp-ring"></div>
-          <div class="esp-ring2"></div>
-          <div class="esp-dot">${m.ico}</div>
-        </div>
-        <div class="esp-title">${m.t}</div>
-        <div class="esp-sub">${m.s}</div>
-        <div class="esp-ev">
-          <div class="esp-ev-label">Evento</div>
-          <div class="esp-ev-nombre">${evData?.nombre||"—"}</div>
-        </div>
-      </div>`;
-    main.innerHTML = html;
+  // ── MAIN CONTENT ──
+  let html = "";
+
+  if (!esDesktop() && evData?.estado === "En curso") {
+    html += `<div id="stats-bar-wrap">${renderStatsBar()}</div>`;
+  }
+
+  // Tarjeta de poderes en móvil (justo antes del contenido)
+  if (!esDesktop() && misPoderDe.length) {
+    html += renderTarjetaPoderes();
+  }
+
+  if (evData?.estado === "Creado") {
+    html += renderEsperando("📋","Evento no iniciado","El evento aún no ha comenzado. Espera las instrucciones.");
+  } else if (evData?.estado === "En registro") {
+    html += renderEsperando("📝","Registro en proceso","El registro está abierto. En breve comenzará la votación.");
+  } else if (evData?.estado === "Cerrado") {
+    html += renderResumenFinal();
+  } else if (evData?.estado === "En curso") {
+    if (unidadInfo?.en_mora && !evData?.permitir_voto_mora) {
+      // Mora: mostrar aviso fijo + historial cerradas + preguntas en modo solo lectura
+      html += renderMoraAviso();
+      preguntasCerradas.forEach(p => { html += renderHistorialCerrada(p); });
+      if (preguntas.length) {
+        html += preguntas.map((p,i) => renderPreguntaMora(p, i)).join("");
+      } else if (!preguntasCerradas.length) {
+        html += `<div id="esp-wrap">${renderEsperando("⏳","Esperando preguntas","El administrador activará las preguntas pronto.")}</div>`;
+      }
+    } else {
+      // Preguntas cerradas primero (historial compacto)
+      preguntasCerradas.forEach(p => {
+        html += renderHistorialCerrada(p);
+      });
+      // Luego las activas
+      if (!preguntas.length && !preguntasCerradas.length) {
+        html += `<div id="esp-wrap">${renderEsperando("⏳","Esperando preguntas","El administrador activará las preguntas pronto.")}</div>`;
+      } else if (!preguntas.length) {
+        html += `<div id="esp-wrap">${renderEsperando("⏳","Esperando siguiente pregunta","El administrador activará la próxima pregunta pronto.", true)}</div>`;
+      } else {
+        html += preguntas.map((p,i) => renderPregunta(p, i, misVotos[p.id], Array.isArray(p.opciones)?p.opciones:[])).join("");
+      }
+    }
+  }
+
+  // Guard: en móvil si ya hay cards de preguntas activas, NO reconstruir (evita parpadeo)
+  // pollPreguntas() maneja cambios quirúrgicamente
+  const primerActiva = preguntas[0];
+  const yaTieneActivas = !!primerActiva && !!document.getElementById(`preg-${primerActiva.id}`);
+  if (yaTieneActivas && evData?.estado === "En curso" && !unidadInfo?.en_mora) {
+    actualizarStatsInPlace();
     return;
   }
-
-  // Evento en curso — mostrar preguntas
-  if (!preguntas.length) {
-    html += `
-      <div class="sin-preg">
-        <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        <h3>Sin preguntas activas</h3>
-        <p>El administrador aún no ha activado preguntas para votar.</p>
-      </div>`;
-    main.innerHTML = html;
-    return;
-  }
-
-  // Renderizar cada pregunta
-  preguntas.forEach((preg, idx) => {
-    const yaVote = misVotos[preg.id];
-    const opciones = Array.isArray(preg.opciones) ? preg.opciones : [];
-    html += renderPregunta(preg, idx, yaVote, opciones);
-  });
 
   main.innerHTML = html;
+
+  // FIX: Restaurar tarjeta zoom mobile si existe en este evento
+  if (evData?.zoom_meeting_id && !esDesktop()) {
+    const mw = document.getElementById("zoom-mobile-wrap");
+    if (!mw) {
+      const div = document.createElement("div");
+      div.id = "zoom-mobile-wrap";
+      div.style.marginBottom = "20px";
+      div.innerHTML = zoomMobileCardHTML();
+      main.insertBefore(div, main.firstChild);
+    }
+  }
+
+  // Cargar gráficas para preguntas ya votadas (y mora: mostrar a todos)
+  if (!evData?.ocultar_graficos && evData?.estado === "En curso") {
+    requestAnimationFrame(() => {
+      preguntas.forEach(p => {
+        const enMora = unidadInfo?.en_mora && !evData?.permitir_voto_mora;
+        if (misVotos[p.id] || enMora) cargarYActualizarGrafica(p.id);
+      });
+    });
+  }
 }
 
-function renderPregunta(preg, idx, yaVote, opciones) {
-  const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+function renderTarjetaPoderes() {
+  const total = misPoderDe.length;
+  const coefTotal = misPoderDe.reduce((s, u) => {
+    return s + (parseFloat(String(u.coeficiente||0).replace(",",".")) || 0);
+  }, 0);
 
-  let html = `<div class="pregunta-card" id="preg-${preg.id}" style="margin-bottom:16px;">
+  const items = misPoderDe.map(u => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;
+      border-bottom:1px solid rgba(255,255,255,.05);">
+      <div style="width:30px;height:30px;border-radius:8px;flex-shrink:0;
+        background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.2);
+        display:flex;align-items:center;justify-content:center;
+        font-size:11px;font-weight:900;color:#fbbf24;">${u.codigo}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.75);
+          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${u.nombre || "—"}</div>
+        <div style="font-size:10px;color:var(--muted);">Coef. ${u.coeficiente || "0"}</div>
+      </div>
+      <div style="flex-shrink:0;">
+        <svg width="14" height="14" fill="none" stroke="#fbbf24" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+    </div>`).join("");
+
+  return `
+  <div style="background:linear-gradient(135deg,rgba(234,179,8,.1),rgba(245,158,11,.06));
+    border:1px solid rgba(234,179,8,.25);border-radius:18px;padding:16px;
+    animation:slide-in .4s ease;">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="width:32px;height:32px;border-radius:10px;flex-shrink:0;
+        background:rgba(234,179,8,.15);border:1px solid rgba(234,179,8,.3);
+        display:flex;align-items:center;justify-content:center;">
+        <svg width="15" height="15" fill="none" stroke="#fbbf24" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:800;color:#fbbf24;letter-spacing:.01em;">
+          Tienes ${total} poder${total > 1 ? "es" : ""} delegado${total > 1 ? "s" : ""}
+        </div>
+        <div style="font-size:10px;color:rgba(251,191,36,.55);margin-top:1px;">
+          Tu voto también representa a ${total > 1 ? "estas unidades" : "esta unidad"}
+        </div>
+      </div>
+    </div>
+    <!-- Lista -->
+    <div style="margin-bottom:2px;">
+      ${items}
+    </div>
+    <!-- Totales -->
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(234,179,8,.15);
+      display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:10px;color:rgba(255,255,255,.35);font-weight:600;text-transform:uppercase;letter-spacing:.06em;">
+        Coeficiente delegado total
+      </div>
+      <div style="font-size:13px;font-weight:800;color:#fbbf24;">
+        ${coefTotal.toFixed ? coefTotal.toFixed(4) : coefTotal}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderResumenFinal() {
+  const todasLasPreguntas = [...preguntasCerradas, ...preguntas];
+  const totalPregs   = todasLasPreguntas.length;
+  const totalVotadas = todasLasPreguntas.filter(p => misVotos[p.id]).length;
+  const pct          = totalPregs > 0 ? Math.round(totalVotadas / totalPregs * 100) : 0;
+  const org          = orgNombre || (document.getElementById("nav-org")?.textContent || "");
+  const evNombre     = evData?.nombre || "";
+  const hora         = new Date().toLocaleTimeString("es-CO", { hour:"2-digit", minute:"2-digit" });
+
+  const participacionColor = pct === 100 ? "#4ade80" : pct >= 50 ? "#fbbf24" : "#f87171";
+
+  const itemsVotos = todasLasPreguntas.map((p, i) => {
+    const voto = misVotos[p.id];
+    return `
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;
+      ${i < todasLasPreguntas.length - 1 ? "border-bottom:1px solid rgba(255,255,255,.06);" : ""}">
+      <div style="flex-shrink:0;width:26px;height:26px;border-radius:8px;
+        background:${voto ? "rgba(74,222,128,.12)" : "rgba(255,255,255,.06)"};
+        border:1px solid ${voto ? "rgba(74,222,128,.2)" : "rgba(255,255,255,.08)"};
+        display:flex;align-items:center;justify-content:center;
+        font-size:11px;font-weight:800;color:${voto ? "#4ade80" : "var(--muted)"};">
+        ${i + 1}
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,.7);
+          margin-bottom:${voto ? "4px" : "0"};">${p.titulo || "Sin título"}</div>
+        ${voto
+          ? `<div style="display:inline-flex;align-items:center;gap:5px;
+              padding:3px 10px;border-radius:20px;
+              background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2);">
+              <svg width="10" height="10" fill="none" stroke="#4ade80" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              <span style="font-size:12px;font-weight:700;color:#4ade80;">${voto}</span>
+             </div>`
+          : `<div style="font-size:11px;color:var(--muted);font-style:italic;">Sin voto registrado</div>`
+        }
+      </div>
+    </div>`;
+  }).join("");
+
+  return `
+  <div style="animation:slide-in .5s ease;">
+    <!-- Header de cierre -->
+    <div style="text-align:center;padding:40px 20px 32px;">
+      <!-- Sello de finalizado -->
+      <div style="width:72px;height:72px;margin:0 auto 20px;border-radius:22px;
+        background:linear-gradient(135deg,rgba(124,58,237,.2),rgba(217,70,239,.15));
+        border:1px solid rgba(124,58,237,.3);
+        display:flex;align-items:center;justify-content:center;">
+        <svg width="34" height="34" fill="none" stroke="url(#gpFinal)" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+          <defs>
+            <linearGradient id="gpFinal" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#7c3aed"/>
+              <stop offset="100%" stop-color="#d946ef"/>
+            </linearGradient>
+          </defs>
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+      </div>
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;
+        color:var(--pink);margin-bottom:8px;">Asamblea finalizada</div>
+      <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-.4px;
+        margin-bottom:6px;line-height:1.2;">${evNombre}</div>
+      ${org ? `<div style="font-size:13px;color:var(--muted);">${org}</div>` : ""}
+      <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:6px;">Cerrada a las ${hora}</div>
+    </div>
+
+    <!-- Tarjeta participación -->
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:20px;
+      padding:20px;margin-bottom:12px;">
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;
+        color:var(--muted);margin-bottom:14px;">Tu participación</div>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">
+        <div style="text-align:center;flex-shrink:0;">
+          <div style="font-size:38px;font-weight:900;color:${participacionColor};line-height:1;">
+            ${totalVotadas}
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">de ${totalPregs}</div>
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,.7);margin-bottom:8px;">
+            ${pct === 100
+              ? "✓ Participaste en todas las votaciones"
+              : pct === 0
+              ? "No emitiste votos en esta sesión"
+              : `Votaste en ${pct}% de las preguntas`}
+          </div>
+          <div style="height:6px;background:rgba(255,255,255,.08);border-radius:20px;overflow:hidden;">
+            <div style="height:100%;border-radius:20px;width:${pct}%;
+              background:linear-gradient(90deg,${participacionColor}99,${participacionColor});
+              transition:width 1s ease;"></div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,.3);
+        padding-top:12px;border-top:1px solid rgba(255,255,255,.06);">
+        Unidad ${SS.codigo || "—"} · ${SS.nombre || ""}
+      </div>
+    </div>
+
+    <!-- Detalle de votos -->
+    ${totalPregs > 0 ? `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:20px;
+      padding:20px;margin-bottom:16px;">
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;
+        color:var(--muted);margin-bottom:4px;">Detalle de tus votos</div>
+      ${itemsVotos}
+    </div>` : ""}
+
+    <!-- Mensaje de cierre -->
+    <div style="text-align:center;padding:8px 20px 48px;">
+      <div style="font-size:13px;color:rgba(255,255,255,.35);line-height:1.7;">
+        Gracias por tu participación.<br>
+        ${org ? `<span style="color:rgba(255,255,255,.2);">${org}</span>` : ""}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderEsperando(icon, titulo, sub, sinAnim=false) {
+  // Íconos SVG por estado
+  const iconos = {
+    "⏳": { svg: `<svg width="32" height="32" fill="none" stroke="url(#gp)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><defs><linearGradient id="gp" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#d946ef"/></linearGradient></defs><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`, color:"rgba(124,58,237,.2)" },
+    "📋": { svg: `<svg width="32" height="32" fill="none" stroke="url(#gp2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><defs><linearGradient id="gp2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#d946ef"/></linearGradient></defs><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>`, color:"rgba(124,58,237,.2)" },
+    "📝": { svg: `<svg width="32" height="32" fill="none" stroke="url(#gp3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><defs><linearGradient id="gp3" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#d946ef"/></linearGradient></defs><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>`, color:"rgba(124,58,237,.2)" },
+    "🔒": { svg: `<svg width="32" height="32" fill="none" stroke="rgba(148,163,184,.6)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`, color:"rgba(255,255,255,.06)" },
+  };
+  const ic = iconos[icon] || iconos["⏳"];
+  const esEstatico = sinAnim || icon === "🔒" || icon === "⏳";
+  const wrapClass = `esp-icon-wrap${esEstatico ? "" : ""}`;
+  const cardClass = `esperando${esEstatico ? " esp-static" : ""}`;
+
+  const anillos = esEstatico ? "" : `
+    <div class="esp-pulse-ring"></div>
+    <div class="esp-pulse-ring2"></div>`;
+
+  const footer = esEstatico
+    ? ""
+    : `<div class="esp-dots">
+        <div class="esp-dot"></div>
+        <div class="esp-dot"></div>
+        <div class="esp-dot"></div>
+       </div>`;
+
+  return `<div class="${cardClass}">
+    <div class="${wrapClass}">
+      <div class="esp-icon-bg" style="background:linear-gradient(135deg,${ic.color},rgba(217,70,239,.08));border-color:${ic.color};"></div>
+      ${anillos}
+      <div class="esp-icon-svg">${ic.svg}</div>
+    </div>
+    <div class="esp-title">${titulo}</div>
+    <div class="esp-sub">${sub}</div>
+    ${footer}
+  </div>`;
+}
+
+function renderHistorialCerrada(p) {
+  const miVoto = misVotos[p.id];
+  return `<div class="preg-cerrada-wrap" id="preg-${p.id}" data-estado="cerrada">
+    <div id="preg-body-${p.id}" class="preg-cerrada-inner">
+      <div class="preg-cerrada-icon">
+        <svg width="12" height="12" fill="none" stroke="#f87171" stroke-width="2.5" viewBox="0 0 24 24">
+          <rect x="3" y="11" width="18" height="11" rx="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <div class="preg-cerrada-info">
+        <div class="preg-cerrada-label">Cerrada</div>
+        <div class="preg-cerrada-titulo">${p.titulo||"Sin título"}</div>
+      </div>
+      ${miVoto
+        ? `<div class="preg-cerrada-voto">
+            <svg width="10" height="10" fill="none" stroke="#4ade80" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>${miVoto}</span>
+           </div>`
+        : `<div class="preg-cerrada-novoto">Sin voto</div>`
+      }
+    </div>
+  </div>`;
+}
+
+// ── STATS BAR ─────────────────────────────────────────
+function renderStatsBar() {
+  const total      = statsGlobal.totalPart || 0;
+  const votaron    = statsGlobal.totalVotaron || 0;
+  const coefVot    = statsGlobal.coefVotado || 0;
+  const quorumMin  = parseFloat(evData?.quorum_minimo || 0);
+  const pctNom     = total > 0 ? Math.round(votaron / total * 100) : 0;
+  const coefPct    = (coefVot * 100).toFixed(2);
+  const quorumAlc  = quorumMin > 0 ? (coefVot / quorumMin * 100) : null;
+  const quorumColor = quorumAlc === null ? "#7c3aed" : quorumAlc >= 100 ? "#10b981" : quorumAlc >= 50 ? "#f59e0b" : "#a855f7";
+  return `
+  <div class="stats-bar" id="stats-bar">
+    <div class="stats-title">Participación en tiempo real</div>
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-val" id="sv-votaron">${votaron}<span class="stat-of">/${total}</span></div>
+        <div class="stat-lbl">Unidades votando</div>
+        <div class="stat-track"><div class="stat-fill" id="sf-nom" style="width:${pctNom}%;background:linear-gradient(90deg,#7c3aed,#c026d3);"></div></div>
+        <div class="stat-pct" id="sp-nom">${pctNom}%</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val" id="sv-coef" style="color:${quorumColor};">${coefPct}%</div>
+        <div class="stat-lbl">Coeficiente votado</div>
+        ${quorumAlc !== null ? `
+        <div class="stat-track"><div class="stat-fill" id="sf-quorum" style="width:${Math.min(quorumAlc,100).toFixed(1)}%;background:linear-gradient(90deg,${quorumColor},${quorumColor}88);"></div></div>
+        <div class="stat-pct" id="sp-quorum" style="color:${quorumColor};">${quorumAlc.toFixed(1)}% del quórum</div>
+        ` : `<div style="height:14px;"></div>`}
+      </div>
+    </div>
+    ${quorumAlc !== null && quorumAlc >= 100 ? `<div class="quorum-badge" id="qbadge">✓ Quórum alcanzado</div>` : `<div id="qbadge"></div>`}
+  </div>`;
+}
+
+// Actualiza stats IN-PLACE — NO toca el DOM de las preguntas
+function actualizarStatsInPlace() {
+  const total      = statsGlobal.totalPart || 0;
+  const votaron    = statsGlobal.totalVotaron || 0;
+  const coefVot    = statsGlobal.coefVotado || 0;
+  const quorumMin  = parseFloat(evData?.quorum_minimo || 0);
+  const pctNom     = total > 0 ? Math.round(votaron / total * 100) : 0;
+  const coefPct    = (coefVot * 100).toFixed(2);
+  const quorumAlc  = quorumMin > 0 ? (coefVot / quorumMin * 100) : null;
+  const quorumColor = quorumAlc === null ? "#7c3aed" : quorumAlc >= 100 ? "#10b981" : quorumAlc >= 50 ? "#f59e0b" : "#a855f7";
+
+  const setEl = (id, val) => { const e = document.getElementById(id); if(e) e.textContent = val; };
+  const setStyle = (id, prop, val) => { const e = document.getElementById(id); if(e) e.style[prop] = val; };
+
+  const svV = document.getElementById("sv-votaron");
+  if (svV) svV.innerHTML = `${votaron}<span class="stat-of">/${total}</span>`;
+  setStyle("sf-nom", "width", pctNom + "%");
+  setEl("sp-nom", pctNom + "%");
+  setEl("sv-coef", coefPct + "%");
+  setStyle("sv-coef", "color", quorumColor);
+  if (quorumAlc !== null) {
+    setStyle("sf-quorum", "width", Math.min(quorumAlc,100).toFixed(1) + "%");
+    setEl("sp-quorum", quorumAlc.toFixed(1) + "% del quórum");
+    setStyle("sp-quorum", "color", quorumColor);
+    const badge = document.getElementById("qbadge");
+    if (badge) {
+      badge.textContent = quorumAlc >= 100 ? "✓ Quórum alcanzado" : "";
+      badge.className = quorumAlc >= 100 ? "quorum-badge" : "";
+    }
+  }
+
+  // Actualizar progreso sidebar
+  const progWrap = document.getElementById("progreso-wrap");
+  if (progWrap) progWrap.innerHTML = renderProgresoPreguntas();
+}
+
+// ── MORA ──────────────────────────────────────────────
+function renderMoraAviso() {
+  return `<div style="background:rgba(220,38,38,.1);border:1.5px solid rgba(220,38,38,.35);border-radius:16px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px;">
+    <div style="font-size:24px;flex-shrink:0;">⚠️</div>
+    <div>
+      <div style="font-size:14px;font-weight:800;color:#f87171;margin-bottom:4px;">Unidad en mora — solo lectura</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.65);line-height:1.5;">La unidad <strong style="color:#fff;">${SS.codigo}</strong> tiene cartera pendiente. Podés ver las preguntas y gráficas, pero <strong style="color:#fca5a5;">no podés emitir votos</strong> hasta ponerte al día.<br><span style="opacity:.6;font-size:11px;">Comunícate con la Administración para regularizar tu situación.</span></div>
+    </div>
+  </div>`;
+}
+
+function renderPreguntaMora(preg, idx) {
+  // Pregunta en modo solo lectura para unidades en mora
+  const opciones = Array.isArray(preg.opciones) ? preg.opciones : [];
+  const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  return `<div class="pregunta-card" id="preg-${preg.id}" style="opacity:.85;">
     <div class="preg-head">
       <div class="preg-num">Pregunta ${idx+1} de ${preguntas.length}</div>
       <div class="preg-titulo">${preg.titulo||"Sin título"}</div>
       ${preg.descripcion ? `<div class="preg-desc">${preg.descripcion}</div>` : ""}
     </div>
-    <div class="preg-body">`;
+    <div class="preg-body" id="preg-body-${preg.id}">
+      <div class="opciones" style="pointer-events:none;opacity:.5;">
+        ${opciones.map((op,i) => {
+          const texto = typeof op==="object"?op.texto:op;
+          return `<div class="opcion" id="op-${preg.id}-${i}">
+            <div class="op-radio"></div>
+            <div class="op-letra">${letras[i]}</div>
+            <div class="op-text">${texto}</div>
+          </div>`;
+        }).join("")}
+      </div>
+      <div style="background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.25);border-radius:10px;padding:10px 14px;text-align:center;font-size:12px;font-weight:700;color:#f87171;margin-top:8px;">
+        🔒 No podés votar — unidad en mora
+      </div>
+      ${!evData?.ocultar_graficos ? `<div id="res-${preg.id}" style="margin-top:12px;"></div>` : ""}
+    </div>
+  </div>`;
+}
 
-  if (yaVote) {
-    // Ya votó — mostrar badge + resultados si están habilitados
-    html += `<div class="votado-badge">
+// ── RENDER PREGUNTA ───────────────────────────────────
+function renderPregunta(preg, idx, yaVote, opciones) {
+  const letras   = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const maxResp  = parseInt(preg.max_respuestas) || 1;
+  const esMulti  = maxResp > 1;
+  const puedeEditar = yaVote && evData?.permitir_cambiar_respuestas;
+
+  // Para multi: yaVote es string con respuestas separadas por " | "
+  const votosActuales = yaVote
+    ? (esMulti ? yaVote.split(" | ").map(v => v.trim()).filter(Boolean) : [yaVote])
+    : [];
+
+  let html = `<div class="pregunta-card" id="preg-${preg.id}">
+    <div class="preg-head">
+      <div class="preg-num">Pregunta ${idx+1} de ${preguntas.length}</div>
+      <div class="preg-titulo">${preg.titulo||"Sin título"}</div>
+      ${preg.descripcion ? `<div class="preg-desc">${preg.descripcion}</div>` : ""}
+      ${esMulti ? `<div style="margin-top:6px;font-size:11px;font-weight:700;color:rgba(255,255,255,.6);background:rgba(255,255,255,.1);display:inline-block;padding:3px 10px;border-radius:20px;">Selección múltiple · máx. ${maxResp}</div>` : ""}
+    </div>
+    <div class="preg-body" id="preg-body-${preg.id}">`;
+
+  if (yaVote && !puedeEditar) {
+    const displayVoto = esMulti ? votosActuales.join(", ") : yaVote;
+    html += `<div class="votado-badge" id="vbadge-${preg.id}">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-      Tu voto: <strong>${yaVote}</strong>
+      Tu voto: <strong id="vtexto-${preg.id}">${displayVoto}</strong>
     </div>`;
+    if (!evData?.ocultar_graficos) html += `<div id="res-${preg.id}"></div>`;
 
-    if (!evData?.ocultar_graficos) {
-      html += `<div id="res-${preg.id}"><div class="spin-dark" style="width:24px;height:24px;margin:8px auto;"></div></div>`;
+  } else if (yaVote && puedeEditar) {
+    const displayVoto = esMulti ? votosActuales.join(", ") : yaVote;
+    // Pre-cargar selecciones actuales para que el límite funcione desde el primer click
+    if (esMulti) {
+      selecciones[preg.id] = [...votosActuales];
+    } else {
+      selecciones[preg.id] = { idx: opciones.findIndex(op => (typeof op==="object"?op.texto:op) === yaVote), texto: yaVote };
     }
-  } else {
-    // Mostrar opciones para votar
-    html += `<div class="opciones" id="ops-${preg.id}">`;
+    html += `<div class="votado-badge cambio" id="vbadge-${preg.id}">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      Votaste: <strong id="vtexto-${preg.id}">${displayVoto}</strong> — <span style="opacity:.7;font-size:12px;">puedes cambiar</span>
+    </div>
+    <div class="opciones" id="ops-${preg.id}">`;
     opciones.forEach((op, i) => {
-      const texto = typeof op === "object" ? op.texto : op;
-      html += `<div class="opcion" id="op-${preg.id}-${i}" onclick="seleccionar('${preg.id}',${i},'${texto.replace(/'/g,"\\'")}')">
+      const texto    = typeof op === "object" ? op.texto : op;
+      const selected = votosActuales.includes(texto);
+      html += `<div class="opcion${esMulti?" multi":""}${selected?" selected":""}" id="op-${preg.id}-${i}"
+        onclick="seleccionar('${preg.id}',${i},'${texto.replace(/'/g,"\\'")}',${maxResp})">
         <div class="op-radio"><div class="op-check"></div></div>
         <div class="op-letra">${letras[i]}</div>
         <div class="op-text">${texto}</div>
       </div>`;
     });
     html += `</div>
-    <button class="btn-votar" id="btnv-${preg.id}" onclick="votar('${preg.id}')" disabled>
+    <button class="btn-votar" id="btnv-${preg.id}" onclick="votar('${preg.id}')" disabled style="background:linear-gradient(135deg,#d97706,#f59e0b);">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+      Cambiar respuesta
+    </button>`;
+    if (!evData?.ocultar_graficos) html += `<div id="res-${preg.id}" style="margin-top:12px;"></div>`;
+
+  } else {
+    const selActual = selecciones[preg.id]; // array para multi, {idx,texto} para simple
+    html += `<div class="opciones" id="ops-${preg.id}">`;
+    if (esMulti) {
+      html += `<div class="multi-hint"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Seleccioná hasta ${maxResp} opción${maxResp>1?"es":""}</div>`;
+    }
+    opciones.forEach((op, i) => {
+      const texto    = typeof op === "object" ? op.texto : op;
+      const selected = esMulti
+        ? (Array.isArray(selActual) && selActual.includes(texto))
+        : (selActual?.idx === i);
+      html += `<div class="opcion${esMulti?" multi":""}${selected?" selected":""}" id="op-${preg.id}-${i}"
+        onclick="seleccionar('${preg.id}',${i},'${texto.replace(/'/g,"\\'")}',${maxResp})">
+        <div class="op-radio"><div class="op-check"></div></div>
+        <div class="op-letra">${letras[i]}</div>
+        <div class="op-text">${texto}</div>
+      </div>`;
+    });
+    const tieneSeleccion = esMulti ? (Array.isArray(selActual) && selActual.length > 0) : !!selActual;
+    html += `</div>
+    <button class="btn-votar" id="btnv-${preg.id}" onclick="votar('${preg.id}')" ${tieneSeleccion?"":"disabled"}>
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
       Confirmar voto
     </button>`;
   }
-
   html += `</div></div>`;
   return html;
 }
 
-// Selección temporal en el DOM
+// ── PROGRESO SIDEBAR ──────────────────────────────────
+function renderProgresoPreguntas() {
+  const total   = preguntas.length;
+  const votadas = preguntas.filter(p => misVotos[p.id]).length;
+  const pct     = total > 0 ? Math.round((votadas/total)*100) : 0;
+  return `
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;">
+    <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:14px;">Tu progreso</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+      <div style="font-size:32px;font-weight:900;color:#fff;">${votadas}</div>
+      <div style="color:var(--muted);font-size:13px;">de ${total}<br>preguntas<br>respondidas</div>
+    </div>
+    <div style="height:8px;background:rgba(124,58,237,.15);border-radius:20px;overflow:hidden;">
+      <div style="height:100%;border-radius:20px;background:linear-gradient(90deg,var(--p2),var(--pink));width:${pct}%;transition:width .8s;"></div>
+    </div>
+    <div style="margin-top:8px;font-size:12px;font-weight:700;color:${pct===100?'#4ade80':'var(--muted)'};">${pct===100?"✓ Todas respondidas":pct+"% completado"}</div>
+    <div style="margin-top:14px;display:flex;flex-direction:column;gap:6px;">
+      ${preguntas.map((p,i) => {
+        const voto = misVotos[p.id];
+        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:10px;background:${voto?'rgba(74,222,128,.08)':'rgba(255,255,255,.04)'};border:1px solid ${voto?'rgba(74,222,128,.2)':'rgba(255,255,255,.06)'};">
+          <div style="width:20px;height:20px;border-radius:6px;background:${voto?'rgba(74,222,128,.2)':'rgba(124,58,237,.2)'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:${voto?'#4ade80':'#c4b5fd'};flex-shrink:0;">${i+1}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:11px;font-weight:600;color:${voto?'#fff':'var(--muted)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.titulo||"Pregunta "+(i+1)}</div>
+            ${voto ? `<div style="font-size:10px;color:#4ade80;font-weight:700;">✓ ${voto}</div>` : `<div style="font-size:10px;color:var(--muted);">Pendiente</div>`}
+          </div>
+        </div>`;
+      }).join("")}
+    </div>
+  </div>`;
+}
+
+// ── SELECCIONAR OPCIÓN ────────────────────────────────
 const selecciones = {};
-function seleccionar(pregId, idx, texto) {
-  selecciones[pregId] = { idx, texto };
-  // Visual
-  document.querySelectorAll(`#ops-${pregId} .opcion`).forEach(el => el.classList.remove("selected"));
-  document.getElementById(`op-${pregId}-${idx}`)?.classList.add("selected");
-  document.getElementById(`btnv-${pregId}`)?.removeAttribute("disabled");
+function seleccionar(pregId, idx, texto, maxResp = 1) {
+  const esMulti = maxResp > 1;
+
+  if (!esMulti) {
+    // Selección simple — comportamiento original
+    selecciones[pregId] = { idx, texto };
+    document.querySelectorAll(`#ops-${pregId} .opcion`).forEach(el => el.classList.remove("selected"));
+    document.getElementById(`op-${pregId}-${idx}`)?.classList.add("selected");
+    const btn = document.getElementById(`btnv-${pregId}`);
+    if (btn) btn.removeAttribute("disabled");
+    return;
+  }
+
+  // Selección múltiple — toggle con bump automático del más antiguo
+  if (!Array.isArray(selecciones[pregId])) selecciones[pregId] = [];
+  const arr    = selecciones[pregId];
+  const existe = arr.indexOf(texto);
+
+  if (existe >= 0) {
+    // Deseleccionar
+    arr.splice(existe, 1);
+    document.getElementById(`op-${pregId}-${idx}`)?.classList.remove("selected");
+  } else {
+    // Si llegó al límite: quitar el más antiguo visualmente y del array
+    if (arr.length >= maxResp) {
+      const quitado = arr.shift();
+      // Buscar el elemento DOM por texto y quitarle selected
+      document.querySelectorAll(`#ops-${pregId} .opcion`).forEach(el => {
+        if (el.querySelector(".op-text")?.textContent === quitado) el.classList.remove("selected");
+      });
+    }
+    arr.push(texto);
+    document.getElementById(`op-${pregId}-${idx}`)?.classList.add("selected");
+  }
+
+  const btn = document.getElementById(`btnv-${pregId}`);
+  if (btn) {
+    if (arr.length > 0) btn.removeAttribute("disabled");
+    else btn.setAttribute("disabled", "");
+    // Actualizar label del botón con contador
+    const svg = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`;
+    btn.innerHTML = arr.length > 0
+      ? `${svg} Confirmar voto (${arr.length}/${maxResp})`
+      : `${svg} Confirmar voto`;
+  }
 }
 
 // ── VOTAR ─────────────────────────────────────────────
 async function votar(pregId) {
-  const sel = selecciones[pregId];
+  const sel    = selecciones[pregId];
+  const preg   = preguntas.find(p => String(p.id) === String(pregId));
+  const esMulti = parseInt(preg?.max_respuestas) > 1;
+
+  // Validar que haya selección
   if (!sel) return;
+  if (esMulti && (!Array.isArray(sel) || sel.length === 0)) return;
+
+  // Texto final a guardar
+  const textoVoto = esMulti ? sel.join(" | ") : sel.texto;
 
   const btn = document.getElementById(`btnv-${pregId}`);
-  btn.disabled = true;
-  btn.innerHTML = `<div class="spin"></div>Enviando…`;
+  if (btn) { btn.disabled = true; btn.innerHTML = `<div class="spin"></div>Enviando…`; }
 
-  // Obtener coeficiente de la unidad
-  const { data: unidadData } = await sb.from("unidades")
-    .select("coeficiente").eq("id", SS.unidadId).single();
-  const coef = unidadData?.coeficiente || 0;
-
-  // Upsert — si ya votó, actualiza; si no, inserta
+  const coef = parseFloat(String(unidadInfo?.coeficiente||0).replace(",",".")) || 0;
   const { error } = await sb.from("votos").upsert({
-    id_pregunta:  pregId,
-    id_evento:    EV_ID,
-    id_unidad:    SS.unidadId,
-    respuesta:    sel.texto,
-    coeficiente:  coef,
+    id_pregunta: pregId, id_evento: EV_ID,
+    id_unidad: SS.unidadId, respuesta: textoVoto, coeficiente: coef,
   }, { onConflict: "id_pregunta,id_unidad" });
 
   if (error) {
-    btn.disabled = false;
-    btn.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Confirmar voto`;
-    toast("Error al votar. Intenta de nuevo.", "err");
+    if (btn) { btn.disabled = false; btn.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Confirmar voto`; }
+    const esRed = !error.code || error.message?.includes("fetch") || error.message?.includes("network");
+    if (esRed) mostrarBannerRed("voto");
+    else toast(error.code==="42501" ? "Sin permisos. Contacta al administrador." : "Error: "+(error.message||"Intenta de nuevo"), "err");
     return;
   }
 
-  misVotos[pregId] = sel.texto;
-  toast("✓ Voto registrado correctamente", "ok");
+  // Votar automáticamente en nombre de las unidades que delegaron su poder
+  const { data: delegantes } = await sb.from("delegaciones")
+    .select("id_unidad_entrega")
+    .eq("id_evento", EV_ID)
+    .eq("id_unidad_recibe", SS.unidadId);
 
-  // Cargar resultados si no están ocultos
-  if (!evData?.ocultar_graficos) {
-    await cargarResultados(pregId);
+  if (delegantes && delegantes.length > 0) {
+    // Obtener coeficientes de todos los delegantes en una sola query
+    const idsDel = delegantes.map(d => d.id_unidad_entrega).filter(Boolean);
+    const { data: unidadesDel } = await sb.from("unidades")
+      .select("id,coeficiente").in("id", idsDel);
+    const coefMap = {};
+    (unidadesDel||[]).forEach(u => { coefMap[u.id] = parseFloat(String(u.coeficiente||0).replace(",",".")) || 0; });
+
+    // Upsert todos en paralelo
+    await Promise.all(idsDel.map(idDel =>
+      sb.from("votos").upsert({
+        id_pregunta: pregId, id_evento: EV_ID,
+        id_unidad: idDel, respuesta: textoVoto, coeficiente: coefMap[idDel] || 0,
+      }, { onConflict: "id_pregunta,id_unidad" })
+    ));
   }
 
-  // Re-render solo esta pregunta
-  const idx = preguntas.findIndex(p => p.id === pregId);
-  const preg = preguntas[idx];
-  const opciones = Array.isArray(preg.opciones) ? preg.opciones : [];
-  const card = document.getElementById(`preg-${pregId}`);
-  if (card) {
-    card.outerHTML = renderPregunta(preg, idx, sel.texto, opciones);
-    if (!evData?.ocultar_graficos) cargarResultados(pregId);
+  const esCambio = !!misVotos[pregId];
+  misVotos[pregId] = textoVoto;
+  const displayVoto = esMulti ? sel.join(", ") : textoVoto;
+  toast(esCambio ? "✓ Respuesta actualizada" : "✓ Voto registrado", "ok");
+
+  // Flash en el card (solo desktop — mobile usa panel flotante)
+  if (esDesktop()) {
+    const card = document.getElementById(`preg-${pregId}`);
+    if (card) {
+      card.style.animation = esCambio
+        ? "voto-flash-amber .9s ease forwards"
+        : "voto-flash-verde .9s ease forwards";
+      card.addEventListener("animationend", () => { card.style.animation = ""; }, { once: true });
+    }
+  }
+
+  // Actualizar DOM quirúrgicamente — SIN outerHTML del card
+  _actualizarCardTrasVoto(pregId, displayVoto, esCambio);
+
+  // Stats en segundo plano
+  cargarStatsParticipacion().then(() => actualizarStatsInPlace());
+
+  // Gráfica — forzar refresh inmediato y resetear cache para que el próximo poll también refresque
+  if (!evData?.ocultar_graficos) {
+    delete portalCharts[pregId];
+    delete portalChartCache[pregId];
+    delete _votosCountCache[pregId]; // fuerza que el próximo poll detecte cambio
+    setTimeout(() => cargarYActualizarGrafica(pregId), 80);
   }
 }
 
-// ── RESULTADOS ────────────────────────────────────────
-async function cargarResultados(pregId) {
+// Actualización quirúrgica del card tras votar — NO usa outerHTML
+function _actualizarCardTrasVoto(pregId, texto, esCambio = false) {
+  const puedeEditar = evData?.permitir_cambiar_respuestas;
+
+  const checkSVG = esCambio
+    ? `<svg class="check-svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <polyline points="16 12 12 16 9 13"/>
+       </svg>`
+    : `<svg class="check-svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+        <polyline points="20 6 9 17 4 12"/>
+       </svg>`;
+
+  const badgeClass = `votado-badge${esCambio ? " cambio" : ""}`;
+  const badgeLabel = esCambio ? "Actualizado:" : "Tu voto:";
+
+  // Actualizar badge existente o crear uno nuevo
+  const badge  = document.getElementById(`vbadge-${pregId}`);
+  const vtexto = document.getElementById(`vtexto-${pregId}`);
+  if (vtexto) {
+    vtexto.textContent = texto;
+    // Reanimar badge al cambiar
+    if (badge) {
+      badge.className = badgeClass;
+      badge.style.animation = "none";
+      requestAnimationFrame(() => { badge.style.animation = ""; });
+    }
+  } else if (!badge) {
+    // Crear badge por primera vez
+    const body = document.getElementById(`preg-body-${pregId}`);
+    if (body) {
+      const badgeDiv = document.createElement("div");
+      badgeDiv.className = puedeEditar ? `${badgeClass}` : badgeClass;
+      badgeDiv.id = `vbadge-${pregId}`;
+      badgeDiv.innerHTML = `${checkSVG}${badgeLabel} <strong id="vtexto-${pregId}">${texto}</strong>${puedeEditar?' — <span style="opacity:.6;font-size:12px;">puedes cambiar</span>':""}`;
+      body.insertBefore(badgeDiv, body.firstChild);
+    }
+  } else {
+    badge.className = badgeClass;
+    badge.style.animation = "none";
+    requestAnimationFrame(() => { badge.style.animation = ""; });
+    badge.innerHTML = `${checkSVG}${badgeLabel} <strong id="vtexto-${pregId}">${texto}</strong>${puedeEditar?' — <span style="opacity:.6;font-size:12px;">puedes cambiar</span>':""}`;
+  }
+
+  // Si no puede editar: ocultar opciones y botón después de votar
+  if (!puedeEditar) {
+    const ops = document.getElementById(`ops-${pregId}`);
+    const btn = document.getElementById(`btnv-${pregId}`);
+    if (ops) ops.style.display = "none";
+    if (btn) btn.style.display = "none";
+  } else {
+    // Puede editar: restaurar botón y deseleccionar opciones
+    const btn = document.getElementById(`btnv-${pregId}`);
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>Cambiar respuesta`;
+    }
+    // Marcar opciones actuales como selected (soporte multi)
+    const preg = preguntas.find(p => String(p.id) === String(pregId));
+    const opciones = Array.isArray(preg?.opciones) ? preg.opciones : [];
+    const esMultiEdit = parseInt(preg?.max_respuestas) > 1;
+    // texto puede ser "Opción A, Opción B" (display) — recuperar de misVotos para split correcto
+    const votoGuardado = misVotos[pregId] || "";
+    const votosArr = esMultiEdit
+      ? votoGuardado.split(" | ").map(s => s.trim()).filter(Boolean)
+      : [votoGuardado];
+    document.querySelectorAll(`#ops-${pregId} .opcion`).forEach(el => el.classList.remove("selected"));
+    opciones.forEach((op, i) => {
+      const t = typeof op === "object" ? op.texto : op;
+      if (votosArr.includes(t)) document.getElementById(`op-${pregId}-${i}`)?.classList.add("selected");
+    });
+    // Re-inicializar selecciones con los votos confirmados — NO borrar, o el contador queda desfasado
+    selecciones[pregId] = esMultiEdit ? [...votosArr] : { idx: opciones.findIndex(op => (typeof op==="object"?op.texto:op) === votoGuardado), texto: votoGuardado };
+  }
+
+  // Actualizar progreso sidebar
+  const progWrap = document.getElementById("progreso-wrap");
+  if (progWrap) progWrap.innerHTML = renderProgresoPreguntas();
+
+  // Asegurarse que el div de resultado existe
+  if (!evData?.ocultar_graficos) {
+    let resEl = document.getElementById(`res-${pregId}`);
+    if (!resEl) {
+      const body = document.getElementById(`preg-body-${pregId}`);
+      if (body) {
+        resEl = document.createElement("div");
+        resEl.id = `res-${pregId}`;
+        resEl.style.marginTop = "12px";
+        body.appendChild(resEl);
+      }
+    }
+  }
+}
+
+// ─── PORTAL CHARTS ─────────────────────────────────────
+const PORTAL_COLORS = [
+  { bg:"rgba(168,85,247,.85)", border:"#a855f7" },
+  { bg:"rgba(34,211,238,.85)", border:"#22d3ee" },
+  { bg:"rgba(251,146,60,.85)", border:"#fb923c" },
+  { bg:"rgba(74,222,128,.85)", border:"#4ade80" },
+  { bg:"rgba(248,113,113,.85)",border:"#f87171" },
+  { bg:"rgba(250,204,21,.85)", border:"#facc15" },
+];
+
+// { pregId: Chart instance }
+const portalCharts = {};
+// { pregId: { resData, totalVotos, quorumMin } }
+const portalChartCache = {};
+// { pregId: "coef"|"quorum"|"nominal" } — métrica activa
+const chartMetrica = {};
+
+// ── CARGAR Y ACTUALIZAR GRÁFICA ───────────────────────
+async function cargarYActualizarGrafica(pregId) {
+  if (evData?.ocultar_graficos) return;
+
   const { data: votos } = await sb.from("votos")
-    .select("respuesta,coeficiente")
+    .select("respuesta,coeficiente,id_unidad")
     .eq("id_pregunta", pregId);
 
-  if (!votos?.length) return;
+  if (!votos) return;
 
-  // Agrupar por respuesta y sumar coeficientes
-  const totales = {};
-  let sumTotal = 0;
-  votos.forEach(v => {
-    const r = v.respuesta || "—";
-    const c = parseFloat(String(v.coeficiente||0).replace(",",".")) || 0;
-    totales[r] = (totales[r] || 0) + c;
-    sumTotal += c;
-  });
-
-  const preg = preguntas.find(p => p.id === pregId);
+  const preg     = preguntas.find(p => String(p.id) === String(pregId));
   const opciones = Array.isArray(preg?.opciones) ? preg.opciones : [];
-  const miVoto = misVotos[pregId];
+  const miVoto   = misVotos[pregId];
+  const quorumMin = parseFloat(evData?.quorum_minimo || 0);
 
-  let html = `<div class="resultado-card">
-    <div class="res-title">📊 Resultados en tiempo real — ${votos.length} voto${votos.length!==1?"s":""}</div>`;
+  // Calcular por opción
+  const totCoef = {}, totNom = {}, totUniq = new Set();
+  opciones.forEach(op => { const t = typeof op==="object"?op.texto:op; totCoef[t]=0; totNom[t]=0; });
+  votos.forEach(v => {
+    // Soporte opción múltiple: respuestas separadas por " | "
+    const partes = v.respuesta ? v.respuesta.split(" | ").map(s=>s.trim()).filter(Boolean) : [v.respuesta];
+    const coefPorParte = (parseFloat(String(v.coeficiente||0).replace(",",".")) || 0) / partes.length;
+    partes.forEach(r => {
+      if (!totCoef[r]) { totCoef[r]=0; totNom[r]=0; }
+      totCoef[r] += coefPorParte;
+      totNom[r]  += 1;
+    });
+    totUniq.add(v.id_unidad);
+  });
+  const sumCoef = Object.values(totCoef).reduce((a,b)=>a+b, 0);
 
-  // Ordenar opciones de mayor a menor
-  const resOrdenados = opciones.map(op => {
-    const texto = typeof op === "object" ? op.texto : op;
-    const coef = totales[texto] || 0;
-    const pct = sumTotal > 0 ? (coef / sumTotal) * 100 : 0;
-    return { texto, coef, pct };
-  }).sort((a,b) => b.pct - a.pct);
-
-  resOrdenados.forEach(r => {
-    const esMiVoto = r.texto === miVoto;
-    html += `<div class="res-barra-wrap">
-      <div class="res-label">
-        <span>${r.texto}${esMiVoto ? '<span class="mi-voto-badge">✓ Mi voto</span>' : ''}</span>
-        <span class="pct">${r.pct.toFixed(1)}%</span>
-      </div>
-      <div class="res-barra-bg">
-        <div class="res-barra ${esMiVoto?"mi-voto":"otro"}" style="width:${r.pct}%"></div>
-      </div>
-    </div>`;
+  const resData = opciones.map((op, i) => {
+    const texto = typeof op==="object" ? op.texto : op;
+    const coef  = totCoef[texto] || 0;
+    const nom   = totNom[texto]  || 0;
+    return {
+      texto, idx: i,
+      coefPct:   sumCoef > 0 ? (coef/sumCoef)*100 : 0,
+      quorumPct: quorumMin > 0 ? (coef/quorumMin)*100 : 0,
+      nominal:   nom,
+    };
   });
 
-  html += `</div>`;
+  const esMultiChart = parseInt(preg?.max_respuestas) > 1;
+  portalChartCache[pregId] = { resData, totalVotos: votos.length, totalElectores: totUniq.size, esMulti: esMultiChart, miVoto, quorumMin };
 
   const resEl = document.getElementById(`res-${pregId}`);
-  if (resEl) resEl.outerHTML = html;
+  if (!resEl) return;
+
+  const chartExists = !!portalCharts[pregId];
+
+  if (!chartExists) {
+    // Primera vez: construir HTML
+    resEl.innerHTML = buildChartCard(pregId, resData, miVoto, votos.length, quorumMin, totUniq.size, esMultiChart);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        dibujarChart(pregId, resData, miVoto);
+      });
+    });
+  } else {
+    // Ya existe: actualizar solo datos
+    actualizarGraficaDesdeCache(pregId);
+  }
 }
 
-// ── REALTIME ──────────────────────────────────────────
-function suscribirRealtime() {
-  // Escuchar cambios en el evento (estado, ocultar_graficos)
-  sb.channel(`portal-ev-${EV_ID}`)
-    .on("postgres_changes", {
-      event: "UPDATE", schema: "public", table: "eventos",
-      filter: `id=eq.${EV_ID}`
-    }, async (payload) => {
-      evData = { ...evData, ...payload.new };
-      await cargarPreguntas();
-    })
-    // Escuchar nuevas preguntas activas
-    .on("postgres_changes", {
-      event: "*", schema: "public", table: "preguntas",
-      filter: `id_evento=eq.${EV_ID}`
-    }, async () => {
-      await cargarPreguntas();
-    })
-    // Escuchar nuevos votos para actualizar gráficas en vivo
-    .on("postgres_changes", {
-      event: "*", schema: "public", table: "votos",
-      filter: `id_evento=eq.${EV_ID}`
-    }, () => {
-      // Refrescar resultados de preguntas ya votadas
-      Object.keys(misVotos).forEach(pregId => {
-        if (!evData?.ocultar_graficos) cargarResultados(pregId);
-      });
-    })
-    .subscribe();
+function actualizarGraficaDesdeCache(pregId) {
+  const cache = portalChartCache[pregId];
+  if (!cache || !portalCharts[pregId]) return;
+  const { resData, totalVotos, miVoto } = cache;
+  const metrica = chartMetrica[pregId] || "coef";
+
+  // Actualizar chart data
+  const chart = portalCharts[pregId];
+  chart.data.datasets[0].data = resData.map(r => getMetricVal(r, metrica));
+  chart.update("none"); // sin animación para velocidad
+
+  // Actualizar contador
+  const cntEl = document.getElementById(`res-cnt-${pregId}`);
+  if (cntEl) {
+    const label = cache.esMulti
+      ? `${cache.totalElectores||totalVotos} elector${(cache.totalElectores||totalVotos)!==1?"es":""}`
+      : `${totalVotos} voto${totalVotos!==1?"s":""}`;
+    cntEl.textContent = label;
+  }
+  // Actualizar tabla CSS
+  resData.forEach((r, i) => {
+    const val = getMetricVal(r, metrica);
+    const maxVal = Math.max(...resData.map(x => getMetricVal(x, metrica)));
+    const pctAncho = maxVal > 0 ? (val/maxVal)*100 : 0;
+    const el_bar = document.getElementById(`rbar-${pregId}-${i}`);
+    const el_val = document.getElementById(`rval-${pregId}-${i}`);
+    const el_nom = document.getElementById(`rnom-${pregId}-${i}`);
+    if (el_bar) el_bar.style.width = pctAncho + "%";
+    if (el_val) el_val.textContent = formatMetricVal(r, metrica);
+    if (el_nom) el_nom.textContent = r.nominal + " unid.";
+  });
+}
+
+function getMetricVal(r, metrica) {
+  if (metrica === "quorum") return +r.quorumPct.toFixed(2);
+  if (metrica === "nominal") return r.nominal;
+  return +r.coefPct.toFixed(2);
+}
+
+function formatMetricVal(r, metrica) {
+  if (metrica === "quorum")  return r.quorumPct.toFixed(1) + "% quórum";
+  if (metrica === "nominal") return r.nominal + " unid.";
+  return r.coefPct.toFixed(1) + "%";
+}
+
+// ── CONSTRUIR HTML DEL CARD ───────────────────────────
+function buildChartCard(pregId, resData, miVoto, totalVotos, quorumMin, totalElectores = totalVotos, esMulti = false) {
+  const isMobile = window.innerWidth < 600;
+  const metrica  = chartMetrica[pregId] || "coef";
+
+  const contadorLabel = esMulti
+    ? `${totalElectores} elector${totalElectores!==1?"es":""}`
+    : `${totalVotos} voto${totalVotos!==1?"s":""}`;
+
+  const btnStyle = (m) => metrica===m
+    ? "padding:5px 10px;border-radius:20px;border:1.5px solid rgba(168,85,247,.6);background:rgba(168,85,247,.2);color:#c4b5fd;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;"
+    : "padding:5px 10px;border-radius:20px;border:1.5px solid rgba(255,255,255,.12);background:transparent;color:var(--muted);font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;";
+
+  return `
+  <div class="resultado-card" id="rescard-${pregId}">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap;">
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);">📊 <span id="res-cnt-${pregId}">${contadorLabel}</span></div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;">
+        <button style="${btnStyle('coef')}" id="mbtn-coef-${pregId}" onclick="cambiarMetrica('${pregId}','coef')">Coef.</button>
+        ${quorumMin > 0 ? `<button style="${btnStyle('quorum')}" id="mbtn-quorum-${pregId}" onclick="cambiarMetrica('${pregId}','quorum')">Quórum</button>` : ""}
+        <button style="${btnStyle('nominal')}" id="mbtn-nominal-${pregId}" onclick="cambiarMetrica('${pregId}','nominal')">Nominal</button>
+      </div>
+    </div>
+    <!-- Canvas chart -->
+    <div style="position:relative;height:${isMobile ? Math.max(resData.length*38+20,130)+'px' : '220px'};" id="chwrap-${pregId}">
+      <canvas id="chart-${pregId}"></canvas>
+    </div>
+    <!-- Tabla debajo -->
+    <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px;" id="chartabla-${pregId}">
+      ${buildTablaRows(pregId, resData, miVoto, metrica)}
+    </div>
+  </div>`;
+}
+
+function buildTablaRows(pregId, resData, miVoto, metrica) {
+  return resData.map((r, i) => {
+    const esMio  = r.texto === miVoto;
+    const color  = PORTAL_COLORS[i%PORTAL_COLORS.length].border;
+    const val    = formatMetricVal(r, metrica);
+    const maxVal = Math.max(...resData.map(x => getMetricVal(x, metrica)));
+    const pctAncho = maxVal > 0 ? (getMetricVal(r, metrica)/maxVal)*100 : 0;
+    return `<div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+          <span style="font-size:11px;font-weight:${esMio?800:600};color:${esMio?'#4ade80':'#c4b5fd'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52%;">${r.texto}${esMio?' ✓':''}</span>
+          <div style="display:flex;gap:6px;align-items:center;white-space:nowrap;">
+            <span id="rval-${pregId}-${i}" style="font-size:11px;font-weight:800;color:#fff;">${val}</span>
+            <span id="rnom-${pregId}-${i}" style="font-size:10px;color:var(--muted);">${r.nominal} unid.</span>
+          </div>
+        </div>
+        <div style="height:5px;background:rgba(255,255,255,.07);border-radius:20px;overflow:hidden;">
+          <div id="rbar-${pregId}-${i}" style="height:100%;border-radius:20px;background:${esMio?'linear-gradient(90deg,#4ade80,#22d3ee)':color};width:${pctAncho}%;transition:width .6s ease;"></div>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// ── DIBUJAR CHART (primera vez) ───────────────────────
+function dibujarChart(pregId, resData, miVoto) {
+  const canvas = document.getElementById(`chart-${pregId}`);
+  if (!canvas) return;
+  if (portalCharts[pregId]) { portalCharts[pregId].destroy(); }
+
+  const metrica  = chartMetrica[pregId] || "coef";
+  const isMobile = window.innerWidth < 600;
+  const labels   = resData.map(r => r.texto.length > (isMobile?10:14) ? r.texto.slice(0,isMobile?9:13)+"…" : r.texto);
+  const vals     = resData.map(r => getMetricVal(r, metrica));
+  const bgColors = resData.map((_,i) => PORTAL_COLORS[i%PORTAL_COLORS.length].bg);
+  const brColors = resData.map((_,i) => PORTAL_COLORS[i%PORTAL_COLORS.length].border);
+
+  portalCharts[pregId] = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        data: vals,
+        backgroundColor: bgColors,
+        borderColor: brColors,
+        borderWidth: 2,
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      indexAxis: isMobile ? "y" : "x",
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 350 },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "rgba(10,5,25,.95)",
+          titleColor:"#fff", bodyColor:"#c4b5fd",
+          borderColor:"rgba(168,85,247,.4)", borderWidth:1, padding:10,
+          callbacks: {
+            title: items => resData[items[0].dataIndex]?.texto || "",
+            label: c => {
+              const r = resData[c.dataIndex];
+              const m = chartMetrica[pregId] || "coef";
+              return ` ${formatMetricVal(r, m)} · ${r.nominal} unid.`;
+            }
+          }
+        }
+      },
+      scales: {
+        [isMobile ? "x" : "y"]: {
+          beginAtZero: true,
+          grid: { color:"rgba(255,255,255,.05)", drawBorder:false },
+          ticks: { color:"rgba(196,181,253,.6)", font:{size:9},
+            callback: v => {
+              const m = chartMetrica[pregId] || "coef";
+              return m==="nominal" ? v : v+"%";
+            }
+          }
+        },
+        [isMobile ? "y" : "x"]: {
+          grid: { display: false },
+          ticks: { color:"#c4b5fd", font:{ size:9, weight:"600" }, maxRotation: isMobile?0:20 }
+        }
+      }
+    }
+  });
+}
+
+// ── CAMBIAR MÉTRICA ───────────────────────────────────
+function cambiarMetrica(pregId, metrica) {
+  chartMetrica[pregId] = metrica;
+  const cache = portalChartCache[pregId];
+  if (!cache) return;
+
+  // Actualizar estilos de botones
+  ["coef","quorum","nominal"].forEach(m => {
+    const btn = document.getElementById(`mbtn-${m}-${pregId}`);
+    if (!btn) return;
+    btn.style.background = m===metrica ? "rgba(168,85,247,.2)" : "transparent";
+    btn.style.borderColor = m===metrica ? "rgba(168,85,247,.6)" : "rgba(255,255,255,.12)";
+    btn.style.color = m===metrica ? "#c4b5fd" : "var(--muted)";
+  });
+
+  // Actualizar datos del chart
+  const chart = portalCharts[pregId];
+  if (chart) {
+    chart.data.datasets[0].data = cache.resData.map(r => getMetricVal(r, metrica));
+    chart.options.scales[window.innerWidth<600?"x":"y"].ticks.callback =
+      v => metrica==="nominal" ? v : v+"%";
+    chart.update();
+  }
+
+  // Actualizar tabla
+  const tablaEl = document.getElementById(`chartabla-${pregId}`);
+  if (tablaEl) tablaEl.innerHTML = buildTablaRows(pregId, cache.resData, cache.miVoto, metrica);
 }
 
 // ── TOAST ─────────────────────────────────────────────
@@ -736,39 +2991,624 @@ let _tt;
 function toast(msg, tipo="ok") {
   const t = document.getElementById("toast");
   t.textContent = msg;
-  t.style.background = tipo==="err" ? "#dc2626" : tipo==="warn" ? "#b45309" : "#4f0599";
+  t.style.background = tipo==="err"?"#dc2626":tipo==="warn"?"#b45309":"#4f0599";
   t.className = "show";
   clearTimeout(_tt);
-  _tt = setTimeout(() => t.className = "", 3500);
+  _tt = setTimeout(()=>t.className="", 3500);
 }
 
-// ── ZOOM TUTORIAL ──────────────────────────────────────
-function abrirZoomTutorial() {
-  const tut = document.getElementById("zoom-tutorial");
-  tut.style.display = "flex";
-  // Detectar móvil automáticamente
-  const esMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-  switchTutTab(esMobile ? "cel" : "pc");
-}
+// Re-render on resize — solo si cambia entre mobile↔desktop
+// En móvil el browser-chrome sube/baja al scrollear y dispara resize constantemente
+let _lastWasDesktop = window.innerWidth >= 900; // inicializar al cargar
+let _resizeTimer;
+window.addEventListener("resize", () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(() => {
+    const nowDesktop = esDesktop();
+    // Solo re-render si REALMENTE cambió el breakpoint
+    if (_lastWasDesktop !== null && nowDesktop !== _lastWasDesktop) {
+      _lastWasDesktop = nowDesktop;
+      if (evData) renderMain();
+    }
+  }, 400);
+});
 
-function switchTutTab(tab) {
-  document.getElementById("steps-pc").classList.toggle("active", tab === "pc");
-  document.getElementById("steps-cel").classList.toggle("active", tab === "cel");
-  document.getElementById("tab-pc").classList.toggle("active", tab === "pc");
-  document.getElementById("tab-cel").classList.toggle("active", tab === "cel");
-}
-
-function confirmarZoom() {
-  document.getElementById("zoom-tutorial").style.display = "none";
-  const meetId = evData?.zoom_meeting_id;
-  const pwd    = evData?.zoom_password || "";
-  if (!meetId) return;
-  // Construir URL de Zoom Web Client
-  const url = `https://zoom.us/wc/join/${meetId}?pwd=${encodeURIComponent(pwd)}&prefer=1&un=${encodeURIComponent(SS.nombre||"Participante")}`;
-  window.open(url, "_blank");
-}
+// Actualizar al volver a la pestaña — solo stats y charts, NO renderMain
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && evData) {
+    pingSession(); // ping inmediato al volver
+    cargarStatsParticipacion().then(() => {
+      actualizarStatsInPlace();
+      if (!evData?.ocultar_graficos) {
+        Object.keys(portalCharts).forEach(pregId => cargarYActualizarGrafica(pregId));
+      }
+    });
+  }
+});
 
 init();
+
+
+// ── ZOOM (iframe Web Client) ──────────────────────────────────────────
+// FIX 1: Zoom ocupa 65% del ancho por defecto — más grande que las preguntas
+// FIX 2: Resize suave con requestAnimationFrame
+// FIX 3: Mobile abre app Zoom y mantiene portal abierto
+// FIX 4: Un solo botón de unirse
+// FIX 5: Botón "Reingresar" cuando la reunión termina
+
+let _zoomPip  = false;
+let _zoomH    = Math.round(window.innerHeight * 0.85); // 85% altura pantalla por defecto
+let _zoomColW = Math.round(window.innerWidth  * 0.65); // 65% ancho por defecto
+
+function esMobile() { return window.innerWidth < 900; }
+
+function abrirZoomMobile() {
+  if (!evData?.zoom_meeting_id) return;
+  const n = String(evData.zoom_meeting_id).replace(/\s/g,"");
+  const p = evData.zoom_password || "";
+  const u = encodeURIComponent((SS.nombre || ("Unidad " + SS.codigo)).substring(0,50));
+
+  // Cargar Zoom en iframe fullscreen
+  const ifrm = document.getElementById("zoom-iframe-mobile");
+  if (ifrm) ifrm.src = `https://app.zoom.us/wc/${n}/join?prefer=1&pwd=${p}&uname=${u}`;
+
+  document.getElementById("zoom-mobile-fullscreen").style.display = "block";
+  document.body.classList.add("zoom-mobile-mode");
+  mostrarFabMobile();
+}
+
+function salirZoomMobile() {
+  document.getElementById("zoom-mobile-fullscreen").style.display = "none";
+  document.getElementById("zoom-iframe-mobile").src = "";
+  document.body.classList.remove("zoom-mobile-mode");
+  document.getElementById("mobile-vote-fab").style.display = "none";
+  cerrarMobilePanel();
+}
+
+// ── Detectar cuando usuario sale de Zoom desde adentro ───────────────
+window.addEventListener("message", (ev) => {
+  try {
+    const d = typeof ev.data === "string" ? JSON.parse(ev.data) : ev.data;
+    const s = String(ev.data || "");
+    if (d?.type === "leave" || d?.method === "leaveMeeting" ||
+        s.includes("meeting_end") || s.includes("leaveWebinar") ||
+        s.includes('"type":"leave"')) {
+      salirZoom();
+    }
+  } catch(e) {}
+});
+
+// ── Panel flotante mobile ─────────────────────────────────────────────
+let _mobilePregActual = null;
+let _mobileOpcionSel  = null;
+let _mobileSelMulti   = {}; // { pregId: [texto1, texto2, ...] } para multi-select
+
+function mostrarFabMobile() {
+  if (window.innerWidth >= 900) return;
+  const fab = document.getElementById("mobile-vote-fab");
+  if (!fab) return;
+  const hayAlgo = preguntas.length > 0 || preguntasCerradas.length > 0;
+  fab.style.display = hayAlgo ? "flex" : "none";
+  // Punto rojo si hay preguntas activas sin votar
+  const pendingDot = document.getElementById("fab-pending-dot");
+  if (pendingDot) {
+    const sinVotar = preguntas.some(p => !misVotos[p.id]);
+    pendingDot.style.display = sinVotar ? "block" : "none";
+  }
+}
+
+function abrirMobilePanel() {
+  const sinVotar = preguntas.find(p => !misVotos[p.id]);
+  const target   = sinVotar || preguntas[0] || preguntasCerradas[preguntasCerradas.length - 1];
+  if (!target) return;
+  renderMobilePanel(target);
+  document.getElementById("mobile-vote-panel").classList.add("visible");
+  document.getElementById("mobile-vote-fab").style.display = "none";
+}
+
+function cerrarMobilePanel() {
+  document.getElementById("mobile-vote-panel").classList.remove("visible");
+  // En zoom-mobile-mode el FAB siempre visible si hay preguntas activas
+  setTimeout(() => {
+    const fab = document.getElementById("mobile-vote-fab");
+    if (!fab) return;
+    const hayPreguntas = preguntas.length > 0;
+    if (hayPreguntas) fab.style.display = "flex";
+  }, 350);
+}
+
+function renderMobilePanel(preg) {
+  _mobilePregActual = preg;
+  const opciones     = Array.isArray(preg.opciones) ? preg.opciones : [];
+  const letras       = "ABCDEFGHIJKLMN";
+  const maxResp      = parseInt(preg.max_respuestas) || 1;
+  const esMulti      = maxResp > 1;
+  const esCerrada    = preg.estado === "Cerrada" || !!preguntasCerradas.find(c => c.id === preg.id);
+  const yaVoto       = !!misVotos[preg.id];
+  const puedeCambiar = yaVoto && !!evData?.permitir_cambiar_respuestas && !esCerrada;
+  const mostrarOpciones = (!yaVoto || puedeCambiar) && !esCerrada;
+
+  // Inicializar selección
+  if (mostrarOpciones) {
+    if (esMulti) {
+      if (!Array.isArray(_mobileSelMulti[preg.id])) {
+        const votoGuardado = misVotos[preg.id] || "";
+        _mobileSelMulti[preg.id] = votoGuardado
+          ? votoGuardado.split(" | ").map(s=>s.trim()).filter(Boolean)
+          : [];
+      }
+      _mobileOpcionSel = null;
+    } else {
+      _mobileOpcionSel = misVotos[preg.id] || null;
+      delete _mobileSelMulti[preg.id];
+    }
+  }
+
+  const selMultiActual = _mobileSelMulti[preg.id] || [];
+
+  let opcionesHtml = mostrarOpciones ? opciones.map((op, i) => {
+    const texto = typeof op === "object" ? op.texto : op;
+    const sel = esMulti
+      ? (selMultiActual.includes(texto) ? "selected" : "")
+      : (_mobileOpcionSel === texto ? "selected" : "");
+    const radioStyle = esMulti ? "border-radius:5px;" : "";
+    const checkStyle = esMulti ? "border-radius:2px;" : "";
+    return `<div class="mvp-opcion ${sel}" onclick="selMobileOpcion(this,'${texto.replace(/'/g,"\\'")}',${maxResp})">
+      <div class="mvp-op-radio" style="${radioStyle}"><div class="mvp-op-check" style="${checkStyle}"></div></div>
+      <div class="mvp-op-letra">${letras[i]}</div>
+      <div class="mvp-op-text">${texto}</div>
+    </div>`;
+  }).join("") : "";
+
+  let estadoBadge = esCerrada
+    ? `<div style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;background:rgba(220,38,38,.15);border:1px solid rgba(220,38,38,.3);font-size:10px;font-weight:700;color:#f87171;margin-bottom:10px;">🔒 Cerrada</div>`
+    : "";
+
+  const votoDisplay = yaVoto
+    ? (esMulti ? (misVotos[preg.id]||"").split(" | ").join(", ") : misVotos[preg.id])
+    : "";
+
+  let votadoHtml = "";
+  if (yaVoto) {
+    votadoHtml = `<div class="mvp-votado">
+      ✓ Tu voto: <strong>${votoDisplay}</strong>
+      ${puedeCambiar ? '<span style="font-size:10px;opacity:.7;margin-left:6px;">puedes cambiar</span>' : ""}
+    </div>`;
+  } else if (esCerrada) {
+    votadoHtml = `<div style="padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.05);font-size:12px;color:var(--muted);margin-bottom:10px;">Sin voto registrado</div>`;
+  }
+
+  const todas = [...preguntas, ...preguntasCerradas];
+  const idx = todas.findIndex(p => p.id === preg.id);
+  let navHtml = "";
+  if (todas.length > 1) {
+    navHtml = `<div style="display:flex;gap:8px;justify-content:center;margin-top:12px;">
+      ${idx > 0 ? `<button onclick="navMobilePreg(-1)" style="flex:1;padding:8px;border-radius:10px;background:rgba(255,255,255,.08);border:none;color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">← Ant</button>` : ""}
+      <span style="flex-shrink:0;font-size:11px;color:var(--muted);align-self:center;">${idx+1}/${todas.length}</span>
+      ${idx < todas.length-1 ? `<button onclick="navMobilePreg(1)" style="flex:1;padding:8px;border-radius:10px;background:rgba(255,255,255,.08);border:none;color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">Sig →</button>` : ""}
+    </div>`;
+  }
+
+  const mostrarBtn = (!yaVoto || puedeCambiar) && !esCerrada;
+  const tieneSeleccion = esMulti ? selMultiActual.length > 0 : !!_mobileOpcionSel;
+  const btnLabel = esMulti && tieneSeleccion
+    ? `Confirmar voto (${selMultiActual.length}/${maxResp})`
+    : (yaVoto ? "Cambiar respuesta" : "Confirmar voto");
+
+  const multiHint = esMulti && mostrarOpciones
+    ? `<div style="font-size:11px;color:rgba(196,181,253,.6);margin-bottom:8px;">Seleccioná hasta ${maxResp} opciones</div>`
+    : "";
+
+  document.getElementById("mvp-body").innerHTML = `
+    <div class="mvp-titulo">${preg.titulo || "Pregunta"}</div>
+    ${esMulti && mostrarOpciones ? `<div style="margin:4px 0 8px;font-size:11px;font-weight:700;color:rgba(255,255,255,.5);background:rgba(255,255,255,.08);display:inline-block;padding:2px 8px;border-radius:20px;">Selección múltiple · máx. ${maxResp}</div>` : ""}
+    ${estadoBadge}
+    ${votadoHtml}
+    ${mostrarOpciones ? `${multiHint}<div class="mvp-opciones" id="mvp-opciones">${opcionesHtml}</div>` : ""}
+    ${mostrarBtn ? `<button class="mvp-btn-votar" id="mvp-btn-votar" onclick="votarMobile()" ${!tieneSeleccion?"disabled":""}>
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      ${btnLabel}
+    </button>` : ""}
+    ${navHtml}`;
+}
+
+function renderMobileResultados(pregId, opciones) {
+  const cache = portalChartCache[pregId];
+  if (!cache || !cache.resData) return "";
+  const { resData, totalVotos } = cache;
+  if (!totalVotos) return "";
+  const miVotoRaw = misVotos[pregId] || "";
+  const misVotosArr = miVotoRaw.split(" | ").map(s=>s.trim()).filter(Boolean);
+  const colores = ["#a855f7","#22d3ee","#fb923c","#4ade80","#f87171","#facc15"];
+  const filas = resData.map((r, i) => {
+    const pct = r.coefPct.toFixed(1);
+    const esMio = misVotosArr.includes(r.texto);
+    return `<div class="mvp-res-fila">
+      <div class="mvp-res-label ${esMio?"mio":""}">${r.texto}</div>
+      <div class="mvp-res-track"><div class="mvp-res-fill" style="width:${r.coefPct}%;background:${esMio?'#4ade80':colores[i%colores.length]};"></div></div>
+      <div class="mvp-res-pct">${pct}%</div>
+    </div>`;
+  }).join("");
+  return `<div class="mvp-res"><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Resultados</div>${filas}</div>`;
+}
+
+function selMobileOpcion(el, opcion, maxResp = 1) {
+  const esMulti = maxResp > 1;
+  const pregId  = _mobilePregActual?.id;
+
+  if (!esMulti) {
+    document.querySelectorAll(".mvp-opcion").forEach(o => o.classList.remove("selected"));
+    el.classList.add("selected");
+    _mobileOpcionSel = opcion;
+    const btn = document.getElementById("mvp-btn-votar");
+    if (btn) btn.disabled = false;
+    return;
+  }
+
+  // Multi: toggle en array, rastrear por índice del DOM (no por texto)
+  if (!Array.isArray(_mobileSelMulti[pregId])) _mobileSelMulti[pregId] = [];
+  const arr    = _mobileSelMulti[pregId];
+  const existe = arr.indexOf(opcion);
+
+  if (existe >= 0) {
+    // Deseleccionar
+    arr.splice(existe, 1);
+    el.classList.remove("selected");
+  } else {
+    // Límite alcanzado: quitar el más antiguo automáticamente
+    if (arr.length >= maxResp) {
+      const primero = arr.shift();
+      document.querySelectorAll(".mvp-opcion").forEach(o => {
+        if (o.querySelector(".mvp-op-text")?.textContent === primero) o.classList.remove("selected");
+      });
+    }
+    arr.push(opcion);
+    el.classList.add("selected");
+  }
+
+  const btn = document.getElementById("mvp-btn-votar");
+  if (btn) {
+    const svg = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`;
+    btn.disabled = arr.length === 0;
+    btn.innerHTML = arr.length > 0
+      ? `${svg} Confirmar (${arr.length}/${maxResp})`
+      : `${svg} Confirmar voto`;
+  }
+}
+
+async function votarMobile() {
+  const preg    = _mobilePregActual;
+  if (!preg) return;
+  const pregId  = preg.id;
+  const maxResp = parseInt(preg.max_respuestas) || 1;
+  const esMulti = maxResp > 1;
+
+  let textoVoto;
+  if (esMulti) {
+    const arr = _mobileSelMulti[pregId] || [];
+    if (arr.length === 0) return;
+    textoVoto = arr.join(" | ");
+  } else {
+    if (!_mobileOpcionSel) return;
+    textoVoto = _mobileOpcionSel;
+  }
+
+  const btn = document.getElementById("mvp-btn-votar");
+  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spin"></div> Votando…'; }
+
+  const coef = parseFloat(String(unidadInfo?.coeficiente||0).replace(",",".")) || 0;
+
+  const { error } = await sb.from("votos").upsert({
+    id_pregunta: pregId, id_evento: EV_ID,
+    id_unidad: SS.unidadId, respuesta: textoVoto, coeficiente: coef,
+  }, { onConflict: "id_pregunta,id_unidad" });
+
+  if (error) {
+    const esRed = !error.code || error.message?.includes("fetch") || error.message?.includes("network");
+    if (esRed) mostrarBannerRed("voto");
+    else toast("Error al votar: " + (error.message||"Intenta de nuevo"), "err");
+    if (btn) { btn.disabled = false; btn.innerHTML = '✓ Confirmar voto'; }
+    return;
+  }
+
+  const { data: delegantes } = await sb.from("delegaciones")
+    .select("id_unidad_entrega")
+    .eq("id_evento", EV_ID)
+    .eq("id_unidad_recibe", SS.unidadId);
+
+  if (delegantes?.length > 0) {
+    const idsDel = delegantes.map(d => d.id_unidad_entrega).filter(Boolean);
+    const { data: uDels } = await sb.from("unidades").select("id,coeficiente").in("id", idsDel);
+    const coefMap = {};
+    (uDels||[]).forEach(u => { coefMap[u.id] = parseFloat(String(u.coeficiente||0).replace(",",".")) || 0; });
+    await Promise.all(idsDel.map(id =>
+      sb.from("votos").upsert({
+        id_pregunta: pregId, id_evento: EV_ID,
+        id_unidad: id, respuesta: textoVoto, coeficiente: coefMap[id]||0,
+      }, { onConflict: "id_pregunta,id_unidad" })
+    ));
+  }
+
+  const esCambioM = !!misVotos[pregId];
+  misVotos[pregId] = textoVoto;
+  // Reinicializar con votos confirmados para que el bump funcione al volver a cambiar
+  if (esMulti) {
+    _mobileSelMulti[pregId] = textoVoto.split(" | ").map(s=>s.trim()).filter(Boolean);
+  } else {
+    delete _mobileSelMulti[pregId];
+  }
+
+  if (btn) {
+    btn.style.background = esCambioM
+      ? "linear-gradient(135deg,#d97706,#f59e0b)"
+      : "linear-gradient(135deg,#16a34a,#22c55e)";
+    btn.innerHTML = esCambioM ? "✓ Actualizado" : "✓ Votado";
+    btn.style.transition = "opacity .3s";
+  }
+
+  toast(esCambioM ? "✓ Respuesta actualizada" : "✓ Voto registrado", "ok");
+  delete _votosCountCache[pregId];
+  setTimeout(() => { if (_mobilePregActual) renderMobilePanel(_mobilePregActual); }, 200);
+  cargarStatsParticipacion().then(() => actualizarStatsInPlace());
+}
+
+function navMobilePreg(dir) {
+  const todas = [...preguntas, ...preguntasCerradas];
+  const idx   = todas.findIndex(p => p.id === _mobilePregActual?.id);
+  const nueva = todas[idx + dir];
+  if (nueva) renderMobilePanel(nueva);
+}
+
+// Actualizar panel si está abierto cuando llegan nuevas preguntas
+function actualizarMobilePanelSiAbierto() {
+  mostrarFabMobile();
+  const panel = document.getElementById("mobile-vote-panel");
+  if (panel?.classList.contains("visible") && _mobilePregActual) {
+    renderMobilePanel(_mobilePregActual);
+  }
+}
+
+function unirseZoom() {
+  if (!evData?.zoom_meeting_id) { toast("No hay reunión configurada","warn"); return; }
+  if (esMobile()) { abrirZoomMobile(); return; }
+
+  const n  = String(evData.zoom_meeting_id).replace(/\s/g,"");
+  const p  = evData.zoom_password || "";
+  const u  = encodeURIComponent((SS.nombre || ("Unidad " + SS.codigo)).substring(0,50));
+  const url = `https://app.zoom.us/wc/${n}/join?prefer=1&pwd=${p}&uname=${u}`;
+
+  document.getElementById("zoom-iframe").src = url;
+  document.getElementById("zoom-container-wrapper").style.display = "block";
+  document.getElementById("zoom-join-bar").style.display = "none";
+
+  // Split 65/35 por defecto (zoom izquierda, preguntas derecha)
+  if (!_zoomResizadoManual) {
+    _zoomColW = Math.round(window.innerWidth * 0.62);
+    _zoomH    = window.innerHeight - 56;
+  }
+
+  document.documentElement.style.setProperty("--zoom-col-w", _zoomColW + "px");
+  document.documentElement.style.setProperty("--zoom-h", _zoomH + "px");
+  document.body.classList.add("with-zoom-split");
+  document.getElementById("zoom-resize-handle").style.display = "flex";
+  // Posicionar botón cerrar panel
+  const btnC = document.getElementById("btn-cerrar-panel");
+  if (btnC) btnC.style.left = (_zoomColW - 1) + "px";
+  actualizarZoomSidebarStats();
+}
+
+let _zoomResizadoManual = false;
+
+function salirZoom() {
+  const iframe = document.getElementById("zoom-iframe");
+  if (iframe) iframe.src = "";
+  const wrapper = document.getElementById("zoom-container-wrapper");
+  if (wrapper) { wrapper.style.display = "none"; wrapper.classList.remove("pip"); }
+  _zoomPip = false;
+  _zoomResizadoManual = false; // reset para próxima vez
+  document.body.classList.remove("with-zoom-split");
+  const bar = document.getElementById("zoom-join-bar");
+  if (bar) bar.style.display = "flex";
+  const stats = document.getElementById("zoom-sidebar-stats");
+  if (stats) stats.innerHTML = "";
+}
+
+function togglePanelDerecho() {
+  const cerrado = document.body.classList.toggle("panel-cerrado");
+  if (!cerrado) {
+    document.documentElement.style.setProperty("--zoom-col-w", _zoomColW + "px");
+    const btn = document.getElementById("btn-cerrar-panel");
+    if (btn) btn.style.left = (_zoomColW - 1) + "px";
+  }
+}
+
+function togglePip() {
+  const wrapper = document.getElementById("zoom-container-wrapper");
+  const btn     = document.getElementById("btn-pip");
+  _zoomPip = !_zoomPip;
+  wrapper.classList.toggle("pip", _zoomPip);
+  btn.textContent = _zoomPip ? "⊞" : "⊡";
+  btn.title = _zoomPip ? "Salir de flotante" : "Modo flotante";
+  document.body.classList.toggle("with-zoom-split", !_zoomPip);
+}
+
+function actualizarZoomSidebarStats() {
+  const el = document.getElementById("zoom-sidebar-stats");
+  if (!el || !document.body.classList.contains("with-zoom-split")) return;
+  const total   = statsGlobal.totalPart || 0;
+  const votaron = statsGlobal.totalVotaron || 0;
+  const coef    = (statsGlobal.coefVotado * 100).toFixed(1);
+  el.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <div style="text-align:center;">
+      <div style="font-size:22px;font-weight:900;color:#fff;">${votaron}<span style="font-size:12px;color:var(--muted);">/${total}</span></div>
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Votando</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:22px;font-weight:900;color:#a855f7;">${coef}%</div>
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Coef. votado</div>
+    </div>
+  </div>`;
+}
+
+// ── Resize VERTICAL suave (altura zoom) ──────────────────────────────
+function iniciarResize(e) {
+  e.preventDefault();
+  const startY = e.clientY, startH = _zoomH;
+  const wrapper = document.getElementById("zoom-container-wrapper");
+  let raf = null;
+
+  function onMove(ev) {
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      const newH = Math.max(180, Math.min(window.innerHeight * 0.9, startH + (ev.clientY - startY)));
+      _zoomH = newH;
+      _zoomResizadoManual = true;
+      wrapper.style.height = newH + "px";
+      document.documentElement.style.setProperty("--zoom-h", newH + "px");
+    });
+  }
+  function onUp() {
+    if (raf) cancelAnimationFrame(raf);
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("mouseup", onUp);
+    document.body.style.userSelect = "";
+  }
+  document.body.style.userSelect = "none";
+  document.addEventListener("mousemove", onMove);
+  document.addEventListener("mouseup", onUp);
+}
+
+// ── Resize HORIZONTAL suave (ancho columna) ───────────────────────────
+function iniciarResizeCol(e) {
+  e.preventDefault();
+  const startX = e.clientX, startW = _zoomColW;
+  const handle = document.getElementById("zoom-col-handle");
+  if (handle) handle.classList.add("dragging");
+  let raf = null;
+
+  function onMove(ev) {
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      const newW = Math.max(280, Math.min(window.innerWidth * 0.75, startW + (ev.clientX - startX)));
+      _zoomColW = newW;
+      _zoomResizadoManual = true;
+      document.documentElement.style.setProperty("--zoom-col-w", newW + "px");
+      const btnC = document.getElementById("btn-cerrar-panel");
+      if (btnC) btnC.style.left = (newW - 1) + "px";
+    });
+  }
+  function onUp() {
+    if (raf) cancelAnimationFrame(raf);
+    if (handle) handle.classList.remove("dragging");
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("mouseup", onUp);
+    document.body.style.userSelect = "";
+  }
+  document.body.style.userSelect = "none";
+  document.addEventListener("mousemove", onMove);
+  document.addEventListener("mouseup", onUp);
+}
+
+// ── FIX 5: Detectar fin de reunión por mensaje del iframe ─────────────
+window.addEventListener("message", (ev) => {
+  try {
+    const data = typeof ev.data === "string" ? JSON.parse(ev.data) : ev.data;
+    // Zoom envía este evento cuando la reunión termina
+    if (data?.type === "leave" || data?.method === "leaveMeeting" ||
+        String(ev.data).includes("meeting_end") || String(ev.data).includes("leave")) {
+      mostrarBannerReunionTerminada();
+    }
+  } catch(e) {}
+});
+
+function mostrarBannerReunionTerminada() {
+  const wrapper = document.getElementById("zoom-container-wrapper");
+  if (!wrapper || wrapper.style.display === "none") return;
+  wrapper.innerHTML = `
+    <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(15,10,30,.95);gap:16px;min-height:250px;">
+      <div style="font-size:40px;">📴</div>
+      <div style="font-size:16px;font-weight:800;color:#fff;">Reunión finalizada</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.5);text-align:center;max-width:200px;">La reunión de Zoom ha terminado</div>
+      <button onclick="reingresarZoom()" style="background:linear-gradient(135deg,#1a6aff,#0052cc);color:#fff;border:none;padding:10px 24px;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif;">
+        🔄 Reingresar
+      </button>
+      <button onclick="salirZoomDef()" style="background:none;color:rgba(255,255,255,.4);border:none;font-size:12px;cursor:pointer;font-family:'Outfit',sans-serif;">
+        Cerrar Zoom
+      </button>
+    </div>`;
+}
+
+function reingresarZoom() {
+  if (!evData?.zoom_meeting_id) return;
+  const n  = String(evData.zoom_meeting_id).replace(/\s/g,"");
+  const p  = evData.zoom_password || "";
+  const u  = encodeURIComponent((SS.nombre || ("Unidad " + SS.codigo)).substring(0,50));
+  // Reconstruir iframe
+  const wrapper = document.getElementById("zoom-container-wrapper");
+  wrapper.innerHTML = `
+    <iframe id="zoom-iframe" src="https://app.zoom.us/wc/${n}/join?prefer=1&pwd=${p}&uname=${u}"
+      allow="camera;microphone;fullscreen;display-capture"
+      style="width:100%;height:100%;min-height:300px;border:none;display:block;"></iframe>
+    <div id="zoom-controls" style="position:absolute;top:8px;right:8px;z-index:100;display:flex;gap:6px;">
+      <button class="zoom-ctrl-btn" onclick="togglePip()" title="Modo flotante" id="btn-pip">⊡</button>
+      <button class="zoom-ctrl-btn" onclick="salirZoomDef()" style="background:rgba(239,68,68,.6);">✕ Salir</button>
+    </div>
+    <div id="zoom-resize-handle" onmousedown="iniciarResize(event)"
+      style="width:100%;height:8px;background:rgba(124,58,237,.25);cursor:ns-resize;display:flex;align-items:center;justify-content:center;position:absolute;bottom:0;left:0;">
+      <div style="width:40px;height:3px;background:rgba(255,255,255,.3);border-radius:3px;"></div>
+    </div>`;
+}
+
+function salirZoomDef() {
+  const wrapper = document.getElementById("zoom-container-wrapper");
+  wrapper.style.display = "none";
+  wrapper.classList.remove("pip");
+  _zoomPip = false;
+  document.body.classList.remove("with-zoom-split");
+  if (evData?.zoom_meeting_id) document.getElementById("zoom-join-bar").style.display = "flex";
+  // Reconstruir iframe limpio para próxima vez
+  reingresarZoom();
+  wrapper.style.display = "none";
+}
+
+// ── Notificación nueva pregunta ───────────────────────────────────────
+let _notifTimer = null;
+function mostrarNotifPregunta() {
+  // Mobile con zoom: abrir panel flotante directamente
+  if (document.body.classList.contains("zoom-mobile-mode")) {
+    actualizarMobilePanelSiAbierto();
+    const sinVotar = preguntas.find(p => !misVotos[p.id]);
+    if (sinVotar) {
+      renderMobilePanel(sinVotar);
+      document.getElementById("mobile-vote-panel").classList.add("visible");
+      document.getElementById("mobile-vote-fab").style.display = "none";
+    }
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    return;
+  }
+
+  // Mobile sin zoom: mostrar FAB
+  if (window.innerWidth < 900) {
+    mostrarFabMobile();
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    return;
+  }
+
+  // Desktop: notificación banner arriba
+  const notif = document.getElementById("notif-nueva-preg");
+  if (!notif) return;
+  notif.style.display = "flex";
+  if (_notifTimer) clearTimeout(_notifTimer);
+  _notifTimer = setTimeout(() => { notif.style.display = "none"; }, 6000);
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+}
+
+function scrollAlPrimer() {
+  document.getElementById("notif-nueva-preg").style.display = "none";
+  const primera = document.querySelector(".pregunta-card");
+  if (primera) primera.scrollIntoView({ behavior:"smooth", block:"center" });
+}
+
 </script>
 </body>
 </html>
